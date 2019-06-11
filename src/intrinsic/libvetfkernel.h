@@ -40,6 +40,15 @@ void _apply_adam_f32(float* var, float* m, float *v,
                      const int64_t numElement, 
                      const float *grd ) ;
 
+
+
+int mean_d3a02_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2);
+
+
+
+
+
+
 #ifdef __cplusplus
 }
 #endif
