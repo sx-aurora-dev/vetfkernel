@@ -13,6 +13,7 @@
 
 REGISTER_KERNEL("ApplyGradientDescent", "op_ApplyGradientDescent");
 REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
+REGISTER_KERNEL("ApplyMomentum", "op_ApplyMomentum");
 
 #define CHECK_ARG_LEN(l0, l1) \
   if ((l0) != (l1)) { \
@@ -23,6 +24,7 @@ REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
 extern "C" {
   int op_ApplyGradientDescent(const void *arg, size_t len) ;
   int op_ApplyAdam(const void* arg, size_t len);
+  int op_ApplyMomentum(const void* arg, size_t len);
 }
 
 //
@@ -257,3 +259,79 @@ int op_ApplyAdam(const void* args, size_t len)
   return ret;
 }
 
+
+//
+// ApplyMomentum
+//
+
+namespace {
+
+template <typename T>
+int apply_momentum(bool use_nesterov, int64_t num_elements,
+               uint64_t var_ptr, uint64_t accum_ptr,
+               uint64_t lr_ptr, uint64_t momentum_ptr,
+               uint64_t grd_ptr )
+{
+  T* var   = reinterpret_cast<T*>(var_ptr);
+  T* accum = reinterpret_cast<T*>(accum_ptr);
+
+  const T* grd = reinterpret_cast<const T*>(grd_ptr);
+
+  const T lr       = reinterpret_cast<const T*>(lr_ptr)[0];
+  const T momentum = reinterpret_cast<const T*>(momentum_ptr)[0];
+
+  const T one = T(1.) ;
+
+
+  for(int64_t i=0; i<num_elements; i++) {
+    accum[i] = accum[i] * momentum + grd[i] ;
+  }
+  if (use_nesterov) {
+    for(int64_t i=0; i<num_elements; i++) {
+      var[i] -= grd[i] * lr + accum[i] * momentum * lr ;
+    }
+  } else {
+    for(int64_t i=0; i<num_elements; i++) {
+      var[i] -= accum[i] * lr ;
+    }
+  }
+  return 0 ;
+}
+
+}
+
+int op_ApplyMomentum(const void* args, size_t len)
+{
+  LOG(2) << __FUNCTION__ << " begin";
+
+  struct Args {
+    int dtype;
+    bool use_nesterov_ ;
+    int64_t num_elements ;
+    uint64_t var_ptr, accum_ptr ;
+    uint64_t lr_ptr, momentum_ptr ;
+    uint64_t grad_ptr;
+  } const* p;
+
+  CHECK_ARG_LEN(len, sizeof(Args));
+  p = reinterpret_cast<const Args*>(args);
+
+  int ret = 1;
+
+  if (p->dtype == DT_FLOAT) {
+    ret = apply_momentum<float> (p->use_nesterov_, p->num_elements,
+                                 p->var_ptr, p->accum_ptr,
+				 p->lr_ptr, p->momentum_ptr,
+				 p->grad_ptr ) ;
+  }
+  else if (p->dtype == DT_DOUBLE) {
+    ret = apply_momentum<double>(p->use_nesterov_, p->num_elements,
+                                 p->var_ptr, p->accum_ptr,
+				 p->lr_ptr, p->momentum_ptr,
+				 p->grad_ptr ) ;
+  }
+
+
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
+}
