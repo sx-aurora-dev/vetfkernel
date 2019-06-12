@@ -340,6 +340,14 @@ int mean_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
     return 0;
 }
 
+#ifdef LIBVETF_INTRINSIC
+template <>
+int mean_d2a0<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    return mean_d2a0_f32(out, in, dim0, dim1);
+}
+#endif
+
 template <typename T>
 int mean_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 {
