@@ -107,7 +107,7 @@ int mean_d3a02_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t d
         for (size_t k = 0; k < dim2; k+=VLEN) {
             const int64_t vlen = (dim2-k < VLEN ? dim2-k : VLEN);
             for (size_t i = 0; i < dim0; ++i) {
-                __vr vr_vl = _vel_vldu_vssl(4,pi + i * dim12 + j * dim2,vlen);
+                __vr vr_vl = _vel_vldu_vssl(4,pi + i * dim12 + j * dim2 +k,vlen);
                 vr_sum = _vel_vfadds_vvvvl(vr_sum, vr_vl, vr_sum, vlen);
             }
         }
