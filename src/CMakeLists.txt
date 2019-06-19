@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_C_COMPILER ${NCC})
 set(CMAKE_CXX_COMPILER ${NCXX})
 
-set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0")
+set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -report-all")
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
@@ -28,6 +28,7 @@ add_library(vetfkernel STATIC
   segment_reduction_ops.cc
   sparse_xent_ops.cc
   cwise_ops_gradients.cc
+  fused_batch_norm.cc
   revision.h
   $<TARGET_OBJECTS:vetfkernel_intrinsic>)
 
