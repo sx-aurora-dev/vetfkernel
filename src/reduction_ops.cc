@@ -70,6 +70,13 @@ int sum_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 
     return 0;
 }
+#ifdef LIBVETF_INTRINSIC
+template <>
+int sum_d2a0<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    return sum_d2a0_f32(out, in, dim0, dim1);
+}
+#endif
 
 template <typename T>
 int sum_d3a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
@@ -112,6 +119,14 @@ int sum_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
 
     return 0;
 }
+
+#ifdef LIBVETF_INTRINSIC
+template <>
+int sum_d3a02<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
+{
+    return sum_d3a02_f32(out, in, dim0, dim1, dim2);
+}
+#endif
 }
 
 int op_Sum(const void* args, size_t len)
@@ -136,15 +151,19 @@ int op_Sum(const void* args, size_t len)
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
+//            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 2 && p->axis == 0) {
+//            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 3 && p->axis == 1) {
+//            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
         if (p->ndims == 3 && p->axis == 0) {
+//            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }

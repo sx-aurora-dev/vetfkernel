@@ -42,10 +42,15 @@ void _apply_adam_f32(float* var, float* m, float *v,
 
 
 
+
+int sum_d3a02_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2);
+int sum_d2a0_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1);
+
 int mean_d3a02_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2);
 int mean_d2a0_f32(uint64_t out, uint64_t in, size_t dim0, size_t dim1);
 
 
+int tile_dim5_11_f32(float* px, float const*py, int64_t const* sx, int64_t const* sy);
 
 
 

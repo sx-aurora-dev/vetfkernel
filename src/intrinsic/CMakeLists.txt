@@ -16,5 +16,7 @@ add_library(vetfkernel_intrinsic OBJECT
 	libvetfkernel_Neg.c
 	libvetfkernel_Transpose.c
 	libvetfkernel_ApplyAdam.c
-	libvetfkernel_Mean.c)
+	libvetfkernel_Sum.c
+	libvetfkernel_Mean.c
+	libvetfkernel_Tile.c)
 

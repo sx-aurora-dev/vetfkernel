@@ -365,9 +365,9 @@ int binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
     uint64_t out = X.addr + (i0 * st0[0] + i1 * st0[1] + i2 * st0[2]) * sizeof(T);
     uint64_t in0 = Y.addr + (i0 * st0[0] + i1 * st0[1] + i2 * st0[2]) * sizeof(T);
     uint64_t in1 = Z.addr
-	+ ((i0 % Z.dim_size[0]) * st1[0]
-		+ (i1 % Z.dim_size[1]) * st1[1]
-		+ (i2 % Z.dim_size[2]) * st1[2]) * sizeof(T);
+        + ((i0 % Z.dim_size[0]) * st1[0]
+                + (i1 % Z.dim_size[1]) * st1[1]
+                + (i2 % Z.dim_size[2]) * st1[2]) * sizeof(T);
     op(out, in0, in1, n);
   }
 #endif
@@ -445,10 +445,10 @@ int op_add(const BinaryOpArgs& args) {
     } else if (args.in0.dims == 2 && args.in1.dims == 1
         && args.in0.dim_size[1] == args.in1.dim_size[0] ) {
       r = add2_nn_1n<float>(args.out.addr,
-			    args.in0.addr,
-			    args.in1.addr,
-			    args.in0.dim_size[0],
-			    args.in0.dim_size[1]) ;
+                            args.in0.addr,
+                            args.in1.addr,
+                            args.in0.dim_size[0],
+                            args.in0.dim_size[1]) ;
     } else if (check_dim(args.out, {8, 16, 64, 8, 8})
             && check_dim(args.in0, {8, 16, 64, 8, 8})
             && check_dim(args.in1, {1, 16, 64, 1, 1})) {
@@ -463,7 +463,7 @@ int op_add(const BinaryOpArgs& args) {
       r = binop_dimN<float>(args.out, args.in0, args.in1,
                        [](float y, float z) -> float { return y + z; });
     }
-  
+
     return r;
   }
   return 1;
@@ -521,7 +521,7 @@ inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
 template <typename T>
 int sub2_nn_n1(uint64_t out, 
                uint64_t in0,
-               uint64_t in1, 
+               uint64_t in1,
                size_t n0,
                size_t n1)
 {
@@ -724,7 +724,7 @@ inline int mul_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <typename T>
 int mul2_nn_n1(uint64_t out, 
                uint64_t in0,
-               uint64_t in1, 
+               uint64_t in1,
                size_t n0,
                size_t n1)
 {
@@ -952,7 +952,7 @@ int op_mul(const BinaryOpArgs& args) {
     } else if (args.in0.nelems == args.in1.nelems) {
      r = mul_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
                            args.in0.nelems);
-    } else if (args.in0.dims == 2 && args.in1.dims == 2 
+    } else if (args.in0.dims == 2 && args.in1.dims == 2
                && args.in0.dim_size[0] == args.in1.dim_size[0] ) {
       if( args.in1.dim_size[1] == 1 ) {
         r = mul2_nn_n1<float>(args.out.addr,
@@ -969,12 +969,12 @@ int op_mul(const BinaryOpArgs& args) {
                                args.in1.dim_size[1]);
       }
     } else if (args.in0.dims == 2 && args.in1.dims == 1
-	        && args.in0.dim_size[1] == args.in1.dim_size[0] ) {
+                && args.in0.dim_size[1] == args.in1.dim_size[0] ) {
       r = mul2_nn_1n<float>(args.out.addr,
-	                    args.in0.addr,
-			    args.in1.addr,
-			    args.in0.dim_size[0],
-			    args.in0.dim_size[1]) ;
+                            args.in0.addr,
+                            args.in1.addr,
+                            args.in0.dim_size[0],
+                            args.in0.dim_size[1]) ;
     } else if (check_dim(args.out, {8, 16, 64, 8, 8})
             && check_dim(args.in0, {8, 16, 64, 8, 8})
             && check_dim(args.in1, {1, 16, 64, 1, 1})) {
@@ -1021,6 +1021,7 @@ int op_mul(const BinaryOpArgs& args) {
       r = binop_dimN<float>(args.out, args.in0, args.in1,
               [](float a, float b) -> float { return a * b; });
     }
+
 
     return r;
   }
@@ -1086,7 +1087,7 @@ int op_equal(const BinaryOpArgs& args) {
                               args.in0.nelems);
     }
   }
-  
+
   return 1;
 }
 
@@ -1129,7 +1130,7 @@ int op_notEqual(const BinaryOpArgs& args) {
                               args.in0.nelems);
     }
   }
-  
+
   return 1;
 }
 
@@ -1211,7 +1212,7 @@ inline int div_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
 template <typename T>
 int div2_nn_n1(uint64_t out, 
                uint64_t in0,
-               uint64_t in1, 
+               uint64_t in1,
                size_t n0,
                size_t n1)
 {
@@ -1231,9 +1232,9 @@ int div2_nn_n1(uint64_t out,
 template <>
 inline int div2_nn_n1<float>(uint64_t out,
                              uint64_t in0,
-			     uint64_t in1,
-			     size_t n0,
-			     size_t n1)
+                             uint64_t in1,
+                             size_t n0,
+                             size_t n1)
 {
   return div2_nn_n1_f32(out, in0, in1, n0, n1) ;
 }
@@ -1303,7 +1304,7 @@ int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   const T* pi0 = reinterpret_cast<const T*>(in0);
   T i1 = *reinterpret_cast<const T*>(in1);
 
-  if( i1 == T(0.) ) { 
+  if( i1 == T(0.) ) {
     for (size_t i = 0; i < nelems; ++i) {
       po[i] = T(0.) ;
     }
@@ -1333,7 +1334,7 @@ int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <typename T>
 int divnonan2_nn_n1(uint64_t out, 
                     uint64_t in0,
-                    uint64_t in1, 
+                    uint64_t in1,
                     size_t n0,
                     size_t n1)
 {
@@ -1347,7 +1348,7 @@ int divnonan2_nn_n1(uint64_t out,
         po[i * n1 + j] = T(0.) ;
       }
     }
-    else { 
+    else {
       for (size_t j = 0; j < n1; ++j) {
         po[i * n1 + j] = pi0[i * n1 + j] / pi1[i];
       }
@@ -1517,7 +1518,7 @@ int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
     T const* pY = pY0 + i0 * n;
     T const* pZ = pZ0;
     for (size_t i = 0; i < n; ++i) {
-      T diff = pY[i] - pZ[i / 64]; 
+      T diff = pY[i] - pZ[i / 64];
       pX[i] = diff * diff;
     }
   }
@@ -1562,13 +1563,13 @@ int op_sqdiff(const BinaryOpArgs& args) {
                                args.in1.dim_size[1]);
       }
     } else if (args.in0.dims == 2 && args.in1.dims == 2
-	        && args.in0.dim_size[1] == args.in1.dim_size[1]
-		&& args.in1.dim_size[0] == 1 ) {
+                && args.in0.dim_size[1] == args.in1.dim_size[1]
+                && args.in1.dim_size[0] == 1 ) {
       r = sqdiff2_nn_1n<float>(args.out.addr,
-	                    args.in0.addr,
-			    args.in1.addr,
-			    args.in0.dim_size[0],
-			    args.in0.dim_size[1]) ;
+                            args.in0.addr,
+                            args.in1.addr,
+                            args.in0.dim_size[0],
+                            args.in0.dim_size[1]) ;
     } else if (check_dim(args.out, {8, 16, 64, 8, 8})
             && check_dim(args.in0, {8, 16, 64, 8, 8})
             && check_dim(args.in1, {1, 16, 64, 1, 1})) {
@@ -1705,7 +1706,7 @@ int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
     const int32_t b3 = pi0[vloop_begin+4*j+3] >= i1 ? 1 : 0 ;
 
     const int32_t b  = (b3 << 24) | (b2 << 16) | (b1 <<8) | b0 ;
-    po_i[j] = b ;  
+    po_i[j] = b ;
   }
 
 #pragma novector
