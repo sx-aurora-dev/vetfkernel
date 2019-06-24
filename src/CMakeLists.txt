@@ -29,6 +29,7 @@ add_library(vetfkernel STATIC
   sparse_xent_ops.cc
   cwise_ops_gradients.cc
   fused_batch_norm.cc
+  reverse.cc
   revision.h
   $<TARGET_OBJECTS:vetfkernel_intrinsic>)
 
