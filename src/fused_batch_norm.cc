@@ -32,10 +32,15 @@ template <typename T, typename U> int FusedBatchNorm(
   T const* var;
 
   if (is_training) {
+    // TODO: should be U?
     T* mean = reinterpret_cast<T*>(batch_mean_output->addr);
     T* var = reinterpret_cast<T*>(batch_var_output->addr);
     T* saved_mean = reinterpret_cast<T*>(saved_mean_output->addr);
     T* saved_var = reinterpret_cast<T*>(saved_var_output->addr);
+
+    const int rest_size_minus_one = rest_size > 1 ? rest_size - 1 : 1;
+    U rest_size_adjust
+        = static_cast<U>(rest_size) / static_cast<U>(rest_size_minus_one);
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
@@ -61,8 +66,9 @@ template <typename T, typename U> int FusedBatchNorm(
           var[c] += tmp * tmp;
         }
       }
-      var[c] = var[c] / rest_size;
-      saved_var[c] = var[c];
+      U tmp = var[c] / rest_size;
+      var[c] = tmp * rest_size_adjust;
+      saved_var[c] = tmp;
 
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
