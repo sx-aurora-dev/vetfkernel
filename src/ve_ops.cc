@@ -594,7 +594,7 @@ DEFINE_KERNEL(SoftmaxXentWithLogits, op_softmax_xent_with_logits);
 // Concat
 //
 template<typename T>
-int concat(uint64_t n, uint64_t dim0, uint64_t dim1, uint64_t out,
+int concat(uint64_t n, uint64_t dim0, uint64_t /*dim1*/, uint64_t out,
            uint64_t *ins, uint64_t *dim1s )
 {
     const T** pi = reinterpret_cast<const T**>(ins);
