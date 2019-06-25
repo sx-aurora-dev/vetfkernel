@@ -15,6 +15,7 @@
 #include "libvetfkernel.h"
 #endif
 
+REGISTER_KERNEL("Max", "op_Max");
 REGISTER_KERNEL("Sum", "op_Sum");
 REGISTER_KERNEL("Prod", "op_Prod");
 REGISTER_KERNEL("Mean", "op_Mean");
@@ -26,10 +27,157 @@ REGISTER_KERNEL("Mean", "op_Mean");
     }
 
 extern "C" {
+int op_Max(const void* arg, size_t len);
 int op_Sum(const void* arg, size_t len);
 int op_Prod(const void* arg, size_t len);
 int op_Mean(const void* arg, size_t len);
 }
+
+
+//
+// Max
+//
+
+template <typename T>
+int max_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    T* po = reinterpret_cast<T*>(out);
+    const T* pi = reinterpret_cast<const T*>(in);
+
+    for (size_t i = 0; i < dim0; ++i) {
+        T s = T(0);
+        for (size_t j = 0; j < dim1; ++j) {
+            T tmp = pi[i * dim1 + j];
+            if(tmp > s) s = tmp;
+        }
+        po[i] = s;
+    }
+
+    return 0;
+}
+
+template <typename T>
+int max_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    T* po = reinterpret_cast<T*>(out);
+    const T* pi = reinterpret_cast<const T*>(in);
+
+    for (size_t j = 0; j < dim1; ++j) {
+        T s = T(0);
+        for (size_t i = 0; i < dim0; ++i) {
+            T tmp = pi[i * dim1 + j];
+            if(tmp > s) s = tmp;
+        }
+        po[j] = s;
+    }
+
+    return 0;
+}
+
+
+template <typename T>
+int max_d3a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
+{
+    T* po = reinterpret_cast<T*>(out);
+    const T* pi = reinterpret_cast<const T*>(in);
+
+    size_t dim12 = dim1 * dim2;
+
+    for (size_t i = 0; i < dim0; ++i) {
+        for (size_t k = 0; k < dim2; ++k) {
+            T s = T(0);
+            for (size_t j = 0; j < dim1; ++j) {
+                T tmp = pi[i * dim12 + j * dim2 + k];
+                if(tmp > s) s = tmp;
+            }
+            po[i * dim2 + k] = s;
+        }
+    }
+
+    return 0;
+}
+
+template <typename T>
+int max_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
+{
+    T* po = reinterpret_cast<T*>(out);
+    const T* pi = reinterpret_cast<const T*>(in);
+
+    size_t dim12 = dim1 * dim2;
+
+    for (size_t j = 0; j < dim1; ++j) {
+        T s = T(0);
+        for (size_t i = 0; i < dim0; ++i) {
+            for (size_t k = 0; k < dim2; ++k) {
+                T tmp = pi[i * dim12 + j * dim2 + k];
+                if(tmp > s) s = tmp;
+            }
+        }
+        po[j] = s;
+    }
+
+    return 0;
+}
+
+
+int op_Max(const void* args, size_t len)
+{
+    LOG(2) << __FUNCTION__ << " begin";
+
+    struct Args {
+        int dtype;
+        int ndims;
+        uint64_t in;
+        uint64_t out;
+        int64_t dim_size[3];
+        int axis;
+    } const* p;
+
+    CHECK_ARG_LEN(len, sizeof(Args));
+    p = reinterpret_cast<const Args*>(args);
+
+    int ret = 1;
+
+    LOG(3) << __FUNCTION__ << ": ndims=" << p->ndims << " axis=" << p->axis;
+
+    if (p->dtype == DT_FLOAT) {
+        if (p->ndims == 2 && p->axis == 1) {
+            //            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
+            ret = max_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 2 && p->axis == 0) {
+            //            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
+            ret = max_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 3 && p->axis == 1) {
+            //            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
+            ret = max_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+        if (p->ndims == 3 && p->axis == 0) {
+            //            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
+            ret = max_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+    }
+    else if (p->dtype == DT_DOUBLE) {
+        if (p->ndims == 2 && p->axis == 1) {
+            ret = max_d2a1<double>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 2 && p->axis == 0) {
+            ret = max_d2a0<double>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 3 && p->axis == 1) {
+            ret = max_d3a1<double>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+        if (p->ndims == 3 && p->axis == 0) {
+            ret = max_d3a02<double>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+    }
+
+
+    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    return ret;
+}
+
 
 
 //
@@ -151,19 +299,19 @@ int op_Sum(const void* args, size_t len)
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
-//            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
+            //            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 2 && p->axis == 0) {
-//            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
+            //            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 3 && p->axis == 1) {
-//            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
+            //            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
         if (p->ndims == 3 && p->axis == 0) {
-//            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
+            //            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }
