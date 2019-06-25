@@ -24,6 +24,10 @@ extern "C" {
 #define _STR(v) __STR(v)
 #define __STR(v) #v
 
+#define PROF
+#ifdef PROF
+static bool _is_profiler_enabled = false;
+#endif
 
 
 class InitVETFKernel
@@ -34,6 +38,14 @@ public :
     LOG(1) << "vednn revision: " << VEDNN_REVISION;
     setaffinity() ;
     ASL::initialize() ;
+
+#ifdef PROF
+    if (const char* tmp = getenv("VE_PROF")) {
+      if (tmp[0] == '1')
+        _is_profiler_enabled = true;
+      LOG(1) << "VE_PROF=" << tmp << " _is_profiler_enabled=" << _is_profiler_enabled;
+#endif
+    }
   }
 
   ~InitVETFKernel() {
@@ -127,65 +139,10 @@ void register_kernel(char const* name, char const* func)
     << " kernel_index=" << kernel_index
     << " kernel_name=" << name
     << " func=" << func;
-    Kernel& k = table_[kernel_index++];
+  Kernel& k = table_[kernel_index++];
 
-    strcpy(k.name, name);
-    strcpy(k.func, func);
-}
-
-uint64_t vetfkl_entry(const void* arg, size_t len)
-{
-#if 0
-  fprintf(stderr, "vetfkl_entry: len=%lu\n", len);
-#endif
-
-  //const void* curr = arg;
-
-  uint64_t end = reinterpret_cast<uintptr_t>(arg) + len;
-  uintptr_t curr = reinterpret_cast<uintptr_t>(arg);
-
-  int32_t num_kernels = *reinterpret_cast<int32_t*>(curr);
-  curr += sizeof(int32_t);
-
-  LOG(3) << __FUNCTION__ << ": num_kernels=" << num_kernels;
-
-#if 0
-  fprintf(stderr, "%s: num_kernels=%d\n", __FUNCTION__, num_kernels);
-#endif
-
-  typedef int (*func_t)(const void* arg, size_t len);
-
-  for (int i = 0; i < num_kernels; ++i) {
-    uint64_t sym = *reinterpret_cast<uint64_t*>(curr);
-    curr += sizeof(uint64_t);
-    func_t func = reinterpret_cast<func_t>(sym);
-    size_t len0 = *reinterpret_cast<size_t*>(curr);
-    curr += sizeof(size_t);
-    const void* arg0 = reinterpret_cast<const void*>(curr);
-    curr += len0;
-
-    LOG(3) << __FUNCTION__ << ": i=" << i << "/" << num_kernels;
-#if 0
-    fprintf(stderr, "vetfkl_entry: i=%d/%d func=%p args0=%p len=%lu\n",
-            i, num_kernels, func, arg0, len0);
-#endif
-    int ret = func(arg0, len0);
-    LOG(3) <<  __FUNCTION__ << ": i=" << i << "/" << num_kernels << " ret=" << ret;
-#if 0
-    fprintf(stderr, "vetfkl_entry: ret=%d\n", ret);
-#endif
-    if (ret != 0) {
-      LOG(3) << __FUNCTION__ << ": return error. i=" << i << " ret=" << ret;
-      uint64_t retval = ((uint64_t)i) << 32 | ret;
-      return retval;
-    }
-  }
-
-  LOG(3) << __FUNCTION__ << ": end. ret=0";
-#if 0
-  fprintf(stderr, "vetfkl_entry: end\n");
-#endif
-  return 0;
+  strcpy(k.name, name);
+  strcpy(k.func, func);
 }
 
 static inline unsigned long int __ve_get_usrcc() {
@@ -239,6 +196,74 @@ int vetfkl_get_timestamp(void* arg, size_t len)
   return 0;
 #endif
 #endif
+}
+
+uint64_t vetfkl_entry(const void* arg, size_t len)
+{
+#if 0
+  fprintf(stderr, "vetfkl_entry: len=%lu\n", len);
+#endif
+
+  //const void* curr = arg;
+
+  uint64_t end = reinterpret_cast<uintptr_t>(arg) + len;
+  uintptr_t curr = reinterpret_cast<uintptr_t>(arg);
+
+  int32_t num_kernels = *reinterpret_cast<int32_t*>(curr);
+  curr += sizeof(int32_t);
+
+  LOG(3) << __FUNCTION__ << ": num_kernels=" << num_kernels;
+
+#if 0
+  fprintf(stderr, "%s: num_kernels=%d\n", __FUNCTION__, num_kernels);
+#endif
+
+  typedef int (*func_t)(const void* arg, size_t len);
+
+  for (int i = 0; i < num_kernels; ++i) {
+    uint64_t sym = *reinterpret_cast<uint64_t*>(curr);
+    curr += sizeof(uint64_t);
+    func_t func = reinterpret_cast<func_t>(sym);
+    size_t len0 = *reinterpret_cast<size_t*>(curr);
+    curr += sizeof(size_t);
+    const void* arg0 = reinterpret_cast<const void*>(curr);
+    curr += len0;
+
+    LOG(3) << __FUNCTION__ << ": i=" << i << "/" << num_kernels;
+#if 0
+    fprintf(stderr, "vetfkl_entry: i=%d/%d func=%p args0=%p len=%lu\n",
+            i, num_kernels, func, arg0, len0);
+#endif
+#ifdef PROF
+    uint64_t t0;
+    if (_is_profiler_enabled)
+      t0 = get_timestamp();
+#endif
+    int ret = func(arg0, len0);
+#ifdef PROF
+    if (_is_profiler_enabled) {
+      uint64_t t1 = get_timestamp();
+      LOG(0) << __FUNCTION__ << ": profile" 
+          << " " << (void*)func
+          << " " << (t1 - t0);
+    }
+#endif
+    LOG(3) <<  __FUNCTION__ << ": i=" << i << "/" << num_kernels << " ret=" << ret;
+#if 0
+    fprintf(stderr, "vetfkl_entry: ret=%d\n", ret);
+#endif
+    if (ret != 0) {
+      LOG(3) << __FUNCTION__ << ": return error. i=" << i << " ret=" << ret;
+      uint64_t retval = ((uint64_t)i) << 32 | ret;
+      return retval;
+    }
+  }
+
+  LOG(3) << __FUNCTION__ << ": end. ret=0";
+#if 0
+  fprintf(stderr, "vetfkl_entry: end\n");
+#endif
+  return 0;
 }
 
 #ifdef USE_DMA
