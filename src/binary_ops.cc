@@ -243,17 +243,17 @@ int binop_dim3(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 }
 
 // X = Y op Z
-template<typename T, typename F>
+template<typename TO, typename TI, typename F>
 int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 {
-    T* px = reinterpret_cast<T*>(X.addr);
-    T const* py = reinterpret_cast<T*>(Y.addr);
-    T const* pz = reinterpret_cast<T*>(Z.addr);
+    TO* px = reinterpret_cast<TO*>(X.addr);
+    TI const* py = reinterpret_cast<TI*>(Y.addr);
+    TI const* pz = reinterpret_cast<TI*>(Z.addr);
 
     assert(X.dims == Y.dims && X.dims == Z.dims);
 
     if (X.dims == 3)
-        return binop_dim3<T>(X, Y, Z, op);
+        return binop_dim3<TO>(X, Y, Z, op);
 
     LOG(3) << __FUNCTION__
         << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
@@ -460,7 +460,7 @@ int op_add(const BinaryOpArgs& args) {
     } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
       r = binop_dim5_x<float>(args.out, args.in0, args.in1, add_n1<float>);
     } else if (IsSameDims(args)) {
-      r = binop_dimN<float>(args.out, args.in0, args.in1,
+      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
                        [](float y, float z) -> float { return y + z; });
     }
 
@@ -650,7 +650,7 @@ int op_sub(const BinaryOpArgs& args) {
               && check_dim(args.in1, {1, 16, 16, 1, 1})) {
         r = sub_MxN_1xN_MxN<float, 16, 16>(args.out, args.in0, args.in1);
       } else {
-        r = binop_dimN<float>(args.out, args.in0, args.in1,
+        r = binop_dimN<float, float>(args.out, args.in0, args.in1,
                 [](float y, float z) -> float { return y - z; });
       }
     }
@@ -1018,7 +1018,7 @@ int op_mul(const BinaryOpArgs& args) {
     } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
       r = binop_dim5_x<float>(args.out, args.in0, args.in1, mul_n1<float>);
     } else if (IsSameDims(args)) {
-      r = binop_dimN<float>(args.out, args.in0, args.in1,
+      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
               [](float a, float b) -> float { return a * b; });
     }
 
@@ -1065,6 +1065,10 @@ int op_equal(const BinaryOpArgs& args) {
     else if( args.in0.nelems == args.in1.nelems ) {
       return equal_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
                               args.in0.nelems);
+    }
+    else if (IsSameDims(args)) {
+      return binop_dimN<float, bool>(args.out, args.in0, args.in1,
+              [](float y, float z) -> bool { return y == z; });
     }
   }
   else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
@@ -1121,7 +1125,10 @@ int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
 int op_notEqual(const BinaryOpArgs& args) {
   if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
+    if (args.in0.nelems == 1) {
+      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+                             args.in1.nelems);
+    } else if (args.in1.nelems == 1) {
       return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                              args.in0.nelems);
     }
@@ -1273,7 +1280,7 @@ int op_div(const BinaryOpArgs& args) {
                                args.in0.dim_size[0],
                                args.in0.dim_size[1]);
     } else if (IsSameDims(args)) {
-      r = binop_dimN<float>(args.out, args.in0, args.in1,
+      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
               [](float y, float z) -> float { return y / z; });
     }
     return r;
@@ -1577,7 +1584,7 @@ int op_sqdiff(const BinaryOpArgs& args) {
     } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
       r = binop_dim5_x<float>(args.out, args.in0, args.in1, sqdiff_n1<float>);
     } else if (IsSameDims(args)) {
-         r = binop_dimN<float>(args.out, args.in0, args.in1,
+         r = binop_dimN<float, float>(args.out, args.in0, args.in1,
                  [](float y, float z) -> float { return (y-z)*(y-z); });
     }
 
