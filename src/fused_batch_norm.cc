@@ -30,6 +30,8 @@ template <typename T, typename U> int FusedBatchNorm(
   T const* X = reinterpret_cast<T*>(x_input->addr);
   T const* mean;
   T const* var;
+  T const* scale = reinterpret_cast<T*>(scale_input->addr);
+  T const* offset = reinterpret_cast<T*>(offset_input->addr);
 
   if (is_training) {
     // TODO: should be U?
@@ -76,7 +78,8 @@ template <typename T, typename U> int FusedBatchNorm(
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
           y[c * sizeHW + i] 
-              = y[c * sizeHW + i] / std::sqrt(var[c] + epsilon);
+              = y[c * sizeHW + i] / std::sqrt(var[c] + epsilon) * scale[c]
+              + offset[c];
         }
       }
     }
@@ -93,7 +96,8 @@ template <typename T, typename U> int FusedBatchNorm(
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
           y[c * sizeHW + i] 
-              = (x[c * sizeHW + i] - mean[c]) / std::sqrt(var[c] + epsilon);
+              = (x[c * sizeHW + i] - mean[c]) / std::sqrt(var[c] + epsilon)
+              * scale[c] + offset[c];
         }
       }
     }
