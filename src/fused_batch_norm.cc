@@ -317,8 +317,10 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
     float epsilon = *args.arg<float>(10);
     LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
 
-    memset(reinterpret_cast<void*>(placeholder_1->addr), 0, placeholder_1->nelems);
-    memset(reinterpret_cast<void*>(placeholder_2->addr), 0, placeholder_2->nelems);
+    memset(reinterpret_cast<void*>(placeholder_1->addr), 0,
+            sizeof(float) * placeholder_1->nelems);
+    memset(reinterpret_cast<void*>(placeholder_2->addr), 0,
+            sizeof(float) * placeholder_2->nelems);
 
     return FusedBatchNormGrad_NCHW<float, float>(
             y_backprop, x, scale, 
