@@ -169,3 +169,167 @@ int op_FusedBatchNorm(VEOpArgs const& args)
 } // namespace
 
 DEFINE_KERNEL(FusedBatchNorm, op_FusedBatchNorm);
+
+//
+// FusedBatchNormGrad
+//
+
+namespace {
+
+template <typename T, typename U> int FusedBatchNormGrad_NCHW(
+        Tensor const* y_backprop_input,
+        Tensor const* x_input,
+        Tensor const* scale_input,
+        Tensor const* mean_input,
+        Tensor const* variance_input,
+        Tensor const* x_backprop_output,
+        Tensor const* scale_backprop_output,
+        Tensor const* offset_backprop_output,
+        U epsilon,
+        bool is_training)
+{
+  T const* y_backprop = reinterpret_cast<T const*>(y_backprop_input->addr);
+  T const* x = reinterpret_cast<T const*>(x_input->addr);
+  T const* scale = reinterpret_cast<T const*>(scale_input->addr);
+  T const* mean = reinterpret_cast<T const*>(mean_input->addr);
+  T const* variance = reinterpret_cast<T const*>(variance_input->addr);
+
+  T* x_backprop = reinterpret_cast<T*>(x_backprop_output->addr);
+  T* scale_backprop = reinterpret_cast<T*>(scale_backprop);
+  T* offset_backprop = reinterpret_cast<T*>(offset_backprop);
+
+  size_t batch_size = x_input->dim_size[0]; // N
+  const int depth = x_input->dim_size[1]; // C
+  const int size = x_input->nelems;
+  const int rest_size = size / depth;
+  size_t sizeCHW = size / batch_size; // C*H*W
+  size_t sizeHW = sizeCHW / depth; // H*W
+
+  if (is_training) {
+    // Note: the following formulas are used to compute the gradients for
+    // back propagation.
+    // x_backprop = scale * rsqrt(variance + epsilon) *
+    //              [y_backprop - mean(y_backprop) - (x - mean(x)) *
+    //              mean(y_backprop * (x - mean(x))) / (variance + epsilon)]
+    // scale_backprop = sum(y_backprop *
+    //                  (x - mean(x)) * rsqrt(variance + epsilon))
+    // offset_backprop = sum(y_backprop)
+
+#pragma omp parallel for
+    for (size_t c = 0; c < depth; ++c) {
+      offset_backprop[c] = T(0);
+      scale_backprop[c] = T(0);
+#pragma _NEC novector
+      for (size_t b = 0; b < batch_size; ++b) {
+        size_t offset = b * sizeCHW + c * sizeHW;
+        for (size_t i = 0; i < sizeHW; ++i) {
+          offset_backprop[c] += y_backprop[offset + i];
+          scale_backprop[c] += y_backprop[offset + i]
+              * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);
+        }
+      }
+    }
+
+#pragma omp parallel for
+    for (size_t c = 0; c < depth; ++c) {
+#pragma _NEC novector
+      for (size_t b = 0; b < batch_size; ++b) {
+        size_t offset = b * sizeCHW + c * sizeHW;
+        for (size_t i = 0; i < sizeHW; ++i) {
+          x_backprop[offset + i]
+              = scale[c] / std::sqrt(variance[c] + epsilon)
+              * (y_backprop[offset + i]
+                      - offset_backprop[c] * (scale_backprop[c] / rest_size));
+        }
+      }
+    }
+  } else {
+    // offset_backprop  = sum(y_backprop)
+    // scale_backprop = y_backprop * ((x - pop_mean) * rsqrt(pop_var + epsilon))
+    // x_backprop = y_backprop * (scale * rsqrt(pop_var + epsilon))
+
+#pragma omp parallel for
+    for (size_t c = 0; c < depth; ++c) {
+#pragma _NEC novector
+      for (size_t b = 0; b < batch_size; ++b) {
+        size_t offset = b * sizeCHW + c * sizeHW;
+        for (size_t i = 0; i < sizeHW; ++i) {
+          offset_backprop[c] += y_backprop[offset + i];
+          scale_backprop[c] += y_backprop[offset + i]
+              * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);
+          x_backprop[offset + c]
+              = y_backprop[offset + i]
+              * scale[c] / std::sqrt(variance[c] + epsilon);
+        }
+      }
+    }
+  }
+
+  return 1;
+}
+
+int op_FusedBatchNormGrad(VEOpArgs const& args)
+{
+  if (args.nVariables() != 15) {
+    LOG(1) << __FUNCTION__ << ": nVariables should be 15. But "
+        << args.nVariables();
+    return 1;
+  }
+
+  // dimensions are checked in TF
+  // input tensors
+  Tensor const* y_backprop = args.arg<Tensor>(0); // 4D
+  Tensor const* x = args.arg<Tensor>(1); // 4D
+  Tensor const* scale = args.arg<Tensor>(2); // 1D
+  Tensor const* saved_mean_or_pop_mean = args.arg<Tensor>(3); // 1D
+  Tensor const* saved_maybe_inv_var_or_pop_var = args.arg<Tensor>(4); // 1D
+  // output tensors
+  Tensor const* x_backprop = args.arg<Tensor>(5); // 4D
+  Tensor const* scale_backprop = args.arg<Tensor>(6); // 1D
+  Tensor const* offset_backprop = args.arg<Tensor>(7); // 1D
+  Tensor const* placeholder_1 = args.arg<Tensor>(8);
+  Tensor const* placeholder_2 = args.arg<Tensor>(9);
+  // epsilon(10)
+  int32_t tensor_format = *args.arg<int32_t>(11);
+  bool is_training = *args.arg<bool>(12);
+  int Ttype = *args.arg<int64_t>(13);
+  int Utype = *args.arg<int64_t>(14);
+
+#define PT(T) \
+  LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
+  PT(y_backprop);
+  PT(x);
+  PT(scale);
+  PT(saved_mean_or_pop_mean);
+  PT(saved_maybe_inv_var_or_pop_var);
+  PT(x_backprop);
+  PT(scale_backprop);
+  PT(offset_backprop);
+  PT(placeholder_1);
+  PT(placeholder_2);
+  LOG(3) << __FUNCTION__ << ": tensor_format=" << tensor_format;
+  LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
+  LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
+  LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+
+  int ret = 1;
+  if (Ttype == DT_FLOAT && Utype == DT_FLOAT && tensor_format == FORMAT_NCHW) {
+    float epsilon = *args.arg<float>(10);
+    LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
+
+    memset(reinterpret_cast<void*>(placeholder_1->addr), 0, placeholder_1->nelems);
+    memset(reinterpret_cast<void*>(placeholder_2->addr), 0, placeholder_2->nelems);
+
+    return FusedBatchNormGrad_NCHW<float, float>(
+            y_backprop, x, scale, 
+            saved_mean_or_pop_mean, saved_maybe_inv_var_or_pop_var,
+            x_backprop, scale_backprop, offset_backprop,
+            epsilon, is_training);
+  }
+
+  return ret;
+}
+
+} // namespace
+
+DEFINE_KERNEL(FusedBatchNormGrad, op_FusedBatchNormGrad);
