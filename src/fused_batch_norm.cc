@@ -195,8 +195,8 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
   T const* variance = reinterpret_cast<T const*>(variance_input->addr);
 
   T* x_backprop = reinterpret_cast<T*>(x_backprop_output->addr);
-  T* scale_backprop = reinterpret_cast<T*>(scale_backprop);
-  T* offset_backprop = reinterpret_cast<T*>(offset_backprop);
+  T* scale_backprop = reinterpret_cast<T*>(scale_backprop_output->addr);
+  T* offset_backprop = reinterpret_cast<T*>(offset_backprop_output->addr);
 
   size_t batch_size = x_input->dim_size[0]; // N
   const int depth = x_input->dim_size[1]; // C
@@ -204,6 +204,18 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
   const int rest_size = size / depth;
   size_t sizeCHW = size / batch_size; // C*H*W
   size_t sizeHW = sizeCHW / depth; // H*W
+
+#if 0
+  LOG(3) << __FUNCTION__ << ": "
+      << " y_backprop=" << y_backprop
+      << " x=" << x
+      << " scale=" << scale
+      << " mean=" << mean
+      << " variance=" << variance
+      << " x_backprop=" << x_backprop
+      << " scale_backprop=" << scale_backprop
+      << " offset_backprop=" << offset_backprop;
+#endif
 
   if (is_training) {
     // Note: the following formulas are used to compute the gradients for
@@ -215,7 +227,12 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
     //                  (x - mean(x)) * rsqrt(variance + epsilon))
     // offset_backprop = sum(y_backprop)
 
-#pragma omp parallel for
+#if 0
+    LOG(3) << __FUNCTION__ << ":"
+        << " depth=" << depth;
+#endif
+
+//#pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
       offset_backprop[c] = T(0);
       scale_backprop[c] = T(0);
@@ -228,10 +245,12 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
               * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);
         }
       }
+#if 0
     }
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
+#endif
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         size_t offset = b * sizeCHW + c * sizeHW;
@@ -265,7 +284,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
     }
   }
 
-  return 1;
+  return 0;
 }
 
 int op_FusedBatchNormGrad(VEOpArgs const& args)
