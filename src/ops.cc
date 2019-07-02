@@ -1027,6 +1027,28 @@ inline  int transpose4_0312<float>(uint64_t out, uint64_t in, const int32_t* dim
   return transpose4_0312_f32(out, in, dim_size) ;
 }
 #endif
+
+template<typename Tin, typename Tout = Tin>
+int transpose3_102(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const uint64_t d0 = dim_size[0] ;
+  const uint64_t d1 = dim_size[1] ;
+  const uint64_t d2 = dim_size[2] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+      }
+    }
+  }
+
+  return 0;
+}
+
 }
 
 int op_Transpose(const void* args, size_t len)
@@ -1105,6 +1127,11 @@ int op_Transpose(const void* args, size_t len)
 	    ret |= 0 ;
 	  }
 	}
+      }
+    }
+    else if(p->size==3) {
+      if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
+	ret = transpose3_102<float>(p->out, p->in, p->dim_size) ;
       }
     }
   }
