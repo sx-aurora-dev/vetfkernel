@@ -232,7 +232,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
         << " depth=" << depth;
 #endif
 
-//#pragma omp parallel for
+#pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
       offset_backprop[c] = T(0);
       scale_backprop[c] = T(0);
