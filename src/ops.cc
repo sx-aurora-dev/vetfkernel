@@ -1038,10 +1038,24 @@ int transpose3_102(uint64_t out, uint64_t in, const int32_t* dim_size)
   const uint64_t d1 = dim_size[1] ;
   const uint64_t d2 = dim_size[2] ;
 
-  for (int64_t i0 = 0; i0 < d0; ++i0) {
+
+  if( d0 > d1 ) {
+#pragma omp parallel for
+    for (int64_t i0 = 0; i0 < d0; ++i0) {
+      for (int64_t i1 = 0; i1 < d1; ++i1) {
+	for (int64_t i2 = 0; i2 < d2; ++i2) {
+	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+	}
+      }
+    }
+  }
+  else {
+#pragma omp parallel for
     for (int64_t i1 = 0; i1 < d1; ++i1) {
-      for (int64_t i2 = 0; i2 < d2; ++i2) {
-	po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+      for (int64_t i0 = 0; i0 < d0; ++i0) {
+	for (int64_t i2 = 0; i2 < d2; ++i2) {
+	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+	}
       }
     }
   }
