@@ -1613,6 +1613,24 @@ int op_sqdiff(const BinaryOpArgs& args) {
                             args.in1.addr,
                             args.in0.dim_size[0],
                             args.in0.dim_size[1]) ;
+    } else if (args.in0.dims == 3 && args.in1.dims == 3
+	         && args.in1.dim_size[0] == 1
+		 && args.in1.dim_size[1] == 1
+		 && args.in1.dim_size[2] == args.in0.dim_size[2]) {
+      r = sqdiff2_nn_1n<float>(args.out.addr,
+	                    args.in0.addr,
+                            args.in1.addr,
+                            args.in0.dim_size[0]*args.in0.dim_size[1],
+                            args.in0.dim_size[2]) ;
+    } else if (args.in0.dims == 3 && args.in1.dims == 3
+	         && args.in0.dim_size[0] == 1
+		 && args.in0.dim_size[1] == 1
+		 && args.in0.dim_size[2] == args.in1.dim_size[2]) {
+      r = sqdiff2_nn_1n<float>(args.out.addr,
+	                    args.in1.addr,
+                            args.in0.addr,
+                            args.in1.dim_size[0]*args.in1.dim_size[1],
+                            args.in1.dim_size[2]) ;
     } else if (check_dim(args.out, {8, 16, 64, 8, 8})
             && check_dim(args.in0, {8, 16, 64, 8, 8})
             && check_dim(args.in1, {1, 16, 64, 1, 1})) {
