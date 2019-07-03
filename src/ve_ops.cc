@@ -594,22 +594,36 @@ DEFINE_KERNEL(SoftmaxXentWithLogits, op_softmax_xent_with_logits);
 // Concat
 //
 template<typename T>
-int concat(uint64_t n, uint64_t dim0, uint64_t /*dim1*/, uint64_t out,
-           uint64_t *ins, uint64_t *dim1s )
+int concat(uint64_t n, uint64_t dim0, uint64_t out,
+           uint64_t *ins, uint64_t *dim1_offset )
 {
     const T** pi = reinterpret_cast<const T**>(ins);
-    const uint64_t* in_dim1s = reinterpret_cast<const uint64_t*>(dim1s);
+    const uint64_t* dim1ost = reinterpret_cast<const uint64_t*>(dim1_offset);
     T* po = reinterpret_cast<T*>(out);
 
-    for(int64_t i=0; i<dim0; i++) {
-        for(int64_t j=0; j<n; j++) {
-            int64_t idim1 = idim1 = in_dim1s[j] ;
-            for(int64_t k=0; k<idim1; k++) {
-                po[k] = pi[j][i*idim1+k] ;
-            }
-            po+=idim1 ;
-        }
+    if ( dim0 == 1 ) {
+#pragma omp parallel for
+      for(int64_t j=0; j<n; j++) {
+	int64_t idim1 = dim1ost[j+1] - dim1ost[j] ;
+	for(int64_t k=0; k<idim1; k++) {
+	  po[dim1ost[j]+k] = pi[j][k] ;
+	}
+      }
     }
+    else {
+#pragma omp parallel for
+      for(int64_t i=0; i<dim0; i++) {
+	T* po1 = po + i*dim1ost[n] ;
+	for(int64_t j=0; j<n; j++) {
+	  int64_t idim1 = dim1ost[j+1] - dim1ost[j] ;
+	  for(int64_t k=0; k<idim1; k++) {
+	    po1[k] = pi[j][i*idim1+k] ;
+	  }
+	  po1+=idim1 ;
+	}
+      }
+    }
+
     return 0 ;
 }
 
@@ -624,25 +638,25 @@ int op_Concat(const VEOpArgs& args)
     const int64_t dtype              = *args.arg<int64_t>(narg++) ;
     const uint64_t n_input           = *args.arg<uint64_t>(narg++) ;
     const uint64_t outputs_flat_dim0 = *args.arg<uint64_t>(narg++) ;
-    const uint64_t outputs_flat_dim1 = *args.arg<uint64_t>(narg++) ;
     const uint64_t output_ptr        = *args.arg<uint64_t>(narg++) ;
 
-
     uint64_t ins[n_input] ;
-    uint64_t dim1s[n_input] ;
+    uint64_t dim1_offset[n_input+1] ;
+    dim1_offset[0] = *args.arg<uint64_t>(narg++) ;
+
     for(int64_t i=0; i<n_input; i++) {
         ins[i]   = *args.arg<uint64_t>(narg++) ;
-        dim1s[i] = *args.arg<uint64_t>(narg++) ;
+        dim1_offset[i+1] = *args.arg<uint64_t>(narg++) ;
     }
 
     if (dtype == DT_FLOAT) {
-        ret = concat<float>(n_input, outputs_flat_dim0, outputs_flat_dim1, output_ptr, ins, dim1s ) ;
+        ret = concat<float>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
     else if (dtype == DT_INT32) {
-        ret = concat<int32_t>(n_input, outputs_flat_dim0, outputs_flat_dim1, output_ptr, ins, dim1s ) ;
+        ret = concat<int32_t>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
     else if (dtype == DT_DOUBLE) {
-        ret = concat<double>(n_input, outputs_flat_dim0, outputs_flat_dim1, output_ptr, ins, dim1s ) ;
+        ret = concat<double>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
 
     LOG(2) << __FUNCTION__ << " end. ret=" << ret;
