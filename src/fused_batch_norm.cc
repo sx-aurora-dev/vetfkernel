@@ -72,13 +72,14 @@ template <typename T, typename U> int FusedBatchNorm(
       var[c] = tmp * rest_size_adjust;
       saved_var[c] = tmp;
 
+      const T rsqrt_var = T(1) / std::sqrt(var[c]+epsilon) ;
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         T* y = Y + b * sizeCHW;
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
           y[c * sizeHW + i] 
-              = y[c * sizeHW + i] / std::sqrt(var[c] + epsilon) * scale[c]
+              = y[c * sizeHW + i] * rsqrt_var * scale[c]
               + offset[c];
         }
       }
@@ -90,14 +91,14 @@ template <typename T, typename U> int FusedBatchNorm(
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
+      const T rsqrt_var = T(1) / std::sqrt(var[c]+epsilon) ;
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         T* y = Y + b * sizeCHW;
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
           y[c * sizeHW + i] 
-              = (x[c * sizeHW + i] - mean[c]) / std::sqrt(var[c] + epsilon)
-              * scale[c] + offset[c];
+              = (x[c * sizeHW + i] - mean[c]) * rsqrt_var * scale[c] + offset[c];
         }
       }
     }
