@@ -393,7 +393,7 @@ int op_tile(const VEOpArgs& args)
     if (ti->dtype == DT_FLOAT && to->dtype == DT_FLOAT) {
         const float* pi = reinterpret_cast<const float*>(ti->addr);
         float* po = reinterpret_cast<float*>(to->addr);
-        if (ti->dims == 1 && to->dims == 1 && ti->nelems == 1) {
+        if (ti->nelems == 1) {
             for (size_t i = 0; i < to->nelems; ++i) {
                 po[i] = pi[0];
             }
