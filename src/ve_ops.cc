@@ -168,6 +168,8 @@ int op_cast(const VEOpArgs& args)
         cast2bool<float>(to, ti);
     } else if (ti->dtype == DT_INT32 && to->dtype == DT_FLOAT) {
         cast<float, int32_t>(to, ti);
+    } else if (ti->dtype == DT_INT64 && to->dtype == DT_FLOAT) {
+        cast<float, int64_t>(to, ti);
     } else if (ti->dtype == DT_BOOL && to->dtype == DT_INT32) {
         cast2bool<int32_t>(to, ti);
     } else if (ti->dtype == DT_UINT16 && to->dtype == DT_INT32) {
