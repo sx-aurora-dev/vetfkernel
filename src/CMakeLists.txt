@@ -19,6 +19,7 @@ add_library(vetfkernel STATIC
   maxpooling_backprop.cc
   ops.cc
   ve_ops.cc
+  unary_ops.cc
   binary_ops.cc
   reduction_ops.cc
   argmax.cc
