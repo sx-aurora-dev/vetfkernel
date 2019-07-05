@@ -106,7 +106,7 @@ void cast(const Tensor* to, const Tensor* ti) {
 }
 
 template <typename TO>
-void cast2bool(const Tensor* to, const Tensor* ti) {
+void cast_from_bool(const Tensor* to, const Tensor* ti) {
     TO* po = reinterpret_cast<TO*>(to->addr);
     const bool* pi = reinterpret_cast<const bool*>(ti->addr);
 
@@ -165,13 +165,13 @@ int op_cast(const VEOpArgs& args)
         return 1;
 
     if (ti->dtype == DT_BOOL && to->dtype == DT_FLOAT) {
-        cast2bool<float>(to, ti);
+        cast_from_bool<float>(to, ti);
     } else if (ti->dtype == DT_INT32 && to->dtype == DT_FLOAT) {
         cast<float, int32_t>(to, ti);
     } else if (ti->dtype == DT_INT64 && to->dtype == DT_FLOAT) {
         cast<float, int64_t>(to, ti);
     } else if (ti->dtype == DT_BOOL && to->dtype == DT_INT32) {
-        cast2bool<int32_t>(to, ti);
+        cast_from_bool<int32_t>(to, ti);
     } else if (ti->dtype == DT_UINT16 && to->dtype == DT_INT32) {
         cast<int32_t, uint16_t>(to, ti);
     } else if (ti->dtype == DT_INT8 && to->dtype == DT_BOOL) {
