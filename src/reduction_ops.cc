@@ -45,7 +45,7 @@ int max_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
     const T* pi = reinterpret_cast<const T*>(in);
 
     for (size_t i = 0; i < dim0; ++i) {
-        T s = T(0);
+        T s = pi[i * dim1];
         for (size_t j = 0; j < dim1; ++j) {
             T tmp = pi[i * dim1 + j];
             if(tmp > s) s = tmp;
@@ -63,7 +63,7 @@ int max_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
     const T* pi = reinterpret_cast<const T*>(in);
 
     for (size_t j = 0; j < dim1; ++j) {
-        T s = T(0);
+        T s = pi[j];
         for (size_t i = 0; i < dim0; ++i) {
             T tmp = pi[i * dim1 + j];
             if(tmp > s) s = tmp;
@@ -85,7 +85,7 @@ int max_d3a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
 
     for (size_t i = 0; i < dim0; ++i) {
         for (size_t k = 0; k < dim2; ++k) {
-            T s = T(0);
+            T s = pi[i * dim12 + k] ;
             for (size_t j = 0; j < dim1; ++j) {
                 T tmp = pi[i * dim12 + j * dim2 + k];
                 if(tmp > s) s = tmp;
@@ -106,7 +106,7 @@ int max_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
     size_t dim12 = dim1 * dim2;
 
     for (size_t j = 0; j < dim1; ++j) {
-        T s = T(0);
+        T s = pi[j] ;
         for (size_t i = 0; i < dim0; ++i) {
             for (size_t k = 0; k < dim2; ++k) {
                 T tmp = pi[i * dim12 + j * dim2 + k];
@@ -142,19 +142,15 @@ int op_Max(const void* args, size_t len)
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
-            //            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = max_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 2 && p->axis == 0) {
-            //            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = max_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 3 && p->axis == 1) {
-            //            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = max_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
         if (p->ndims == 3 && p->axis == 0) {
-            //            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = max_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }
