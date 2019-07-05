@@ -217,13 +217,13 @@ int add2_nn_1n(uint64_t out,
 }
 
 // X = Y op Z
-template<typename T, typename F>
+template<typename T0, typename T1, typename F>
 int binop_dim3(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 {
     LOG(3) << __FUNCTION__;
-    T* px = reinterpret_cast<T*>(X.addr);
-    T const* py = reinterpret_cast<T*>(Y.addr);
-    T const* pz = reinterpret_cast<T*>(Z.addr);
+    T0* px = reinterpret_cast<T0*>(X.addr);
+    T1 const* py = reinterpret_cast<T1*>(Y.addr);
+    T1 const* pz = reinterpret_cast<T1*>(Z.addr);
 
     int64_t const* sx = X.dim_size;
     int64_t const* sy = Y.dim_size;
@@ -253,7 +253,7 @@ int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
     assert(X.dims == Y.dims && X.dims == Z.dims);
 
     if (X.dims == 3)
-        return binop_dim3<TO>(X, Y, Z, op);
+        return binop_dim3<TO,TI>(X, Y, Z, op);
 
     LOG(3) << __FUNCTION__
         << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
@@ -1103,7 +1103,7 @@ int op_equal(const BinaryOpArgs& args) {
                               args.in0.nelems);
     }
     else if (IsSameDims(args)) {
-      return binop_dimN<float, bool>(args.out, args.in0, args.in1,
+      return binop_dimN<bool, float>(args.out, args.in0, args.in1,
               [](float y, float z) -> bool { return y == z; });
     }
   }
