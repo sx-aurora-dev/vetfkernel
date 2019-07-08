@@ -93,7 +93,7 @@ class Parser:
         return expr
 
     def add_vsc_vgt_range(self, veintrin, i):
-        if ('vsc' in veintrin and i == 1) or ('vgt' in veintrin and i == 0):
+        if ('vsc' in veintrin and i == 2) or ('vgt' in veintrin and i == 1):
             print(", 0, 0", end="")
 
     def add_vl(self, veintrin, i):
@@ -107,22 +107,24 @@ class Parser:
         while True:
             #logging.debug("parse_list: token={}".format(token.text))
             if self.token.kind == ')':
+                logging.debug("add VL: {}".format(veintrin))
                 self.add_vsc_vgt_range(veintrin, i)
                 self.add_vl(veintrin, i)
-                i += 1
                 break
             elif self.token.kind == ',':
                 self.add_vsc_vgt_range(veintrin, i)
                 self.consume()
-                i += 1
             elif self.token.kind == 'id' or self.token.kind == 'other':
                 self.parse_expr()
+                i += 1
             elif self.token.kind == '(':
                 self.consume()
                 self.parse_expr()
                 self.consume() # )
+                i += 1
             elif self.token.kind == 'intrinsic':
                 self.parse_intrin()
+                i += 1
             else:
                 raise RuntimeError("unknown token in intrinsic arguments: {}".format(self.token.text))
         #logging.debug("parse_list: list={} next_token={}".format(",".join(ary), token.text))
@@ -205,6 +207,10 @@ def ve2vel(intrin):
     intrin = re.sub(r'vbrdu_vs_f32', 'vbrds_vs', intrin)
     intrin = re.sub(r'vsc(.*)_vv', r'vsc\1_vvss', intrin)
     intrin = re.sub(r'vgt(.*)_vv', r'vgt\1_vvss', intrin)
+    intrin = re.sub(r'vbrd_vs_i64', 'vbrdl_vs', intrin)
+    intrin = re.sub(r'vbrd_vs_i32', 'vbrdw_vs', intrin)
+    intrin = re.sub(r'vbrd_vs_f64', 'vbrdd_vs', intrin)
+    intrin = re.sub(r'vbrd_vs_f32', 'vbrds_vs', intrin)
     if hasVL(intrin):
         intrin += "l"
     return intrin
