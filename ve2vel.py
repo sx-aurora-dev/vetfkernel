@@ -13,7 +13,7 @@ def skip_space(src):
     return text
 
 def isChar(c):
-    return c.isalnum() or c in "#._"
+    return c.isalnum() or c in "#._\\"
 
 class Token:
     def __init__(self, kind, text):
@@ -36,7 +36,7 @@ class Tokenizer:
             self.src.pop(0)
             token = Token(c, c) 
         elif c in '<>"{}?:*-+&%[]/!|':
-            token = Token('sep', self.src.pop(0))
+            token = Token('other', self.src.pop(0))
         elif isChar(self.src[0]):
             text = ''
             while self.src:
@@ -72,11 +72,18 @@ class Parser:
             self.puttoken()
         self.gettoken()
 
+
     def parse_expr(self, flag = True):
         expr = ''
         while True:
-            if self.token.kind in ['sep', 'id']:
+            if self.token.kind in ['other', 'id']:
                 expr += self.token.text
+                self.consume(flag)
+            elif self.token.kind in '(':
+                self.consume(flag)
+                self.parse_expr(flag)
+                if self.token.kind != ')':
+                    raise RuntimeError("unexpected token: {}".format(self.token.text))
                 self.consume(flag)
             elif self.token.kind in ',)':
                 break
@@ -85,26 +92,62 @@ class Parser:
         logging.debug("parse_expr: expr={} next_token={}".format(expr, self.token.text))
         return expr
 
+    def add_vsc_vgt_range(self, veintrin, i):
+        if ('vsc' in veintrin and i == 1) or ('vgt' in veintrin and i == 0):
+            print(", 0, 0", end="")
+
+    def add_vl(self, veintrin, i):
+        if hasVL(veintrin):
+            if i > 0:
+                print(", ", end="")
+            print("{}".format(self.currVL), end="")
+
     def parse_intrinsic_arguments(self, veintrin):
+        i = 0
         while True:
             #logging.debug("parse_list: token={}".format(token.text))
             if self.token.kind == ')':
-                if hasVL(veintrin):
-                    print(", {}".format(self.currVL), end="")
+                self.add_vsc_vgt_range(veintrin, i)
+                self.add_vl(veintrin, i)
+                i += 1
                 break
             elif self.token.kind == ',':
+                self.add_vsc_vgt_range(veintrin, i)
                 self.consume()
-            elif self.token.kind == 'id' or self.token.kind == 'sep':
+                i += 1
+            elif self.token.kind == 'id' or self.token.kind == 'other':
                 self.parse_expr()
+            elif self.token.kind == '(':
+                self.consume()
+                self.parse_expr()
+                self.consume() # )
             elif self.token.kind == 'intrinsic':
                 self.parse_intrin()
             else:
                 raise RuntimeError("unknown token in intrinsic arguments: {}".format(self.token.text))
         #logging.debug("parse_list: list={} next_token={}".format(",".join(ary), token.text))
 
+    def parse_vfmk(self, veintrin):
+        self.gettoken()
+        logging.debug("parse_vfmk: token={}".format(self.token.text))
+        cc = self.token.text
+        self.gettoken() # skip cc
+        self.gettoken() # skop ,
+
+        CC = {"VECC_G" : "gt"}
+
+        if veintrin == "_ve_vfmkw_mcv":
+            text = "_vel_vfmkw{}_mvl(".format(CC[cc])
+        print(text, end="")
+        self.parse_intrinsic_arguments(veintrin)
+
     def parse_intrin(self):
         veintrin = self.token.text
         self.gettoken()
+
+        if '_ve_vfmk' in veintrin:
+            self.parse_vfmk(veintrin)
+            return
 
         velintrin = ve2vel(veintrin)
         logging.debug("parse_intrin: {} -> {}".format(veintrin, velintrin))
@@ -148,7 +191,7 @@ class Parser:
                 self.consume()
 
 def hasVL(intrin):
-    noVL = ['lvl', 'pack', 'lvm', 'svm', 'andm', 'orm', 'xorm', 'eqvm', 'nndm', 'negm']
+    noVL = ['lvl', 'pack', 'lvm', 'svm', 'andm', 'orm', 'xorm', 'eqvm', 'nndm', 'negm', 'svob']
     for tmp in noVL:
         if tmp in intrin:
             return False
@@ -158,10 +201,13 @@ def ve2vel(intrin):
     intrin = re.sub(r'_ve', '_vel', intrin)
     intrin = re.sub(r'vfdivsA', 'approx_vfdivs', intrin)
     intrin = re.sub(r'pvfdivA', 'approx_pvfdiv', intrin)
+    intrin = re.sub(r'vbrd_vs_f64', 'vbrdd_vs', intrin)
+    intrin = re.sub(r'vbrdu_vs_f32', 'vbrds_vs', intrin)
+    intrin = re.sub(r'vsc(.*)_vv', r'vsc\1_vvss', intrin)
+    intrin = re.sub(r'vgt(.*)_vv', r'vgt\1_vvss', intrin)
     if hasVL(intrin):
         intrin += "l"
     return intrin
-
 
 def main():
     parser = argparse.ArgumentParser()
