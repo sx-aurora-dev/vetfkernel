@@ -261,7 +261,7 @@ int tile_dim4(Tensor const& X, Tensor const& Y)
     int64_t const* sx = X.dim_size;
     int64_t const* sy = Y.dim_size;
 
-    printf("tile4_11: %d %d %d %d\n",sx[0],sx[1],sx[2],sx[3],sx[4]);
+//    printf("tile4_11: %d %d %d %d\n",sx[0],sx[1],sx[2],sx[3],sx[4]);
 
     for (size_t i0 = 0; i0 < sx[0]; ++i0) {
         const size_t ix0 = i0 ;
