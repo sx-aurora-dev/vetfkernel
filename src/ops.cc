@@ -968,6 +968,103 @@ int op_Tanh(const void* args, size_t len)
 //
 
 namespace {
+
+
+template<typename Tin, typename Tout = Tin>
+int notranspose_copy(uint64_t out, uint64_t in, const int64_t nelems )
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = pi[i];
+  }
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose2_10(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const uint64_t d0 = dim_size[0] ;
+  const uint64_t d1 = dim_size[1] ;
+
+  for (int64_t i1 = 0; i1 < d1; ++i1) {
+    for (int64_t i0 = 0; i0 < d0; ++i0) {
+      po[i1*d0+i0] = pi[i0*d1+i1];
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose3_102(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const uint64_t d0 = dim_size[0] ;
+  const uint64_t d1 = dim_size[1] ;
+  const uint64_t d2 = dim_size[2] ;
+
+
+  if( d0 > d1 ) {
+#pragma omp parallel for
+    for (int64_t i0 = 0; i0 < d0; ++i0) {
+      for (int64_t i1 = 0; i1 < d1; ++i1) {
+	for (int64_t i2 = 0; i2 < d2; ++i2) {
+	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+	}
+      }
+    }
+  }
+  else {
+#pragma omp parallel for
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i0 = 0; i0 < d0; ++i0) {
+	for (int64_t i2 = 0; i2 < d2; ++i2) {
+	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose3(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+
+  int64_t stride_out[3] ;
+  stride_out[perm[2]] = 1 ;
+  for(int64_t d=1; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
+  }
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	po[i0*s0+i1*s1+i2*s2] = pi[(i0*d1+i1)*d2+i2];
+      }
+    }
+  }
+
+  return 0;
+}
+
 template<typename Tin, typename Tout = Tin>
 int transpose4_0231(uint64_t out, uint64_t in, const int32_t* dim_size)
 {
@@ -1067,32 +1164,31 @@ inline  int transpose4_0312<float>(uint64_t out, uint64_t in, const int32_t* dim
 #endif
 
 template<typename Tin, typename Tout = Tin>
-int transpose3_102(uint64_t out, uint64_t in, const int32_t* dim_size)
+int transpose4(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
 {
   Tout* po = reinterpret_cast<Tout*>(out);
   const Tin* pi = reinterpret_cast<Tin*>(in);
 
-  const uint64_t d0 = dim_size[0] ;
-  const uint64_t d1 = dim_size[1] ;
-  const uint64_t d2 = dim_size[2] ;
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
 
-
-  if( d0 > d1 ) {
-#pragma omp parallel for
-    for (int64_t i0 = 0; i0 < d0; ++i0) {
-      for (int64_t i1 = 0; i1 < d1; ++i1) {
-	for (int64_t i2 = 0; i2 < d2; ++i2) {
-	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
-	}
-      }
-    }
+  int64_t stride_out[4] ;
+  stride_out[perm[3]] = 1 ;
+  for(int64_t d=2; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
   }
-  else {
-#pragma omp parallel for
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+  const int64_t s3 = stride_out[3] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
     for (int64_t i1 = 0; i1 < d1; ++i1) {
-      for (int64_t i0 = 0; i0 < d0; ++i0) {
-	for (int64_t i2 = 0; i2 < d2; ++i2) {
-	  po[(i1*d0+i0)*d2+i2] = pi[(i0*d1+i1)*d2+i2];
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	for (int64_t i3 = 0; i3 < d3; ++i3) {
+	  po[i0*s0+i1*s1+i2*s2+i3*s3] = pi[((i0*d1+i1)*d2+i2)*d3+i3];
 	}
       }
     }
@@ -1100,7 +1196,6 @@ int transpose3_102(uint64_t out, uint64_t in, const int32_t* dim_size)
 
   return 0;
 }
-
 }
 
 int op_Transpose(const void* args, size_t len)
@@ -1133,8 +1228,28 @@ int op_Transpose(const void* args, size_t len)
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {
-    if (p->size == 4) {
-      if (p->perm[0] == 0 && p->perm[1] == 2 
+    switch(p->size) {
+    case 1 :
+      notranspose_copy<float>(p->out, p->in, p->dim_size[0]) ;
+      break ;
+    case 2 :
+      if ( p->perm[0] == 1 && p->perm[1] == 0 ) {
+	transpose2_10<float>(p->out, p->in, p->dim_size) ;
+      }
+      else {
+	notranspose_copy<float>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
+      }
+      break ;
+    case 3 :
+      if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
+	ret = transpose3_102<float>(p->out, p->in, p->dim_size) ;
+      }
+      else {
+	ret = transpose3<float>(p->out, p->in, p->dim_size, p->perm) ;
+      }
+      break ;
+    case 4 :
+      if (p->perm[0] == 0 && p->perm[1] == 2
           && p->perm[2] == 3 && p->perm[3] == 1) {
 	ret = 0 ;
 #pragma omp parallel reduction(|:ret)
@@ -1159,7 +1274,7 @@ int op_Transpose(const void* args, size_t len)
 	  }
 	}
 
-      } else if (p->perm[0] == 0 && p->perm[1] == 3 
+      } else if (p->perm[0] == 0 && p->perm[1] == 3
                  && p->perm[2] == 1 && p->perm[3] == 2) {
 	ret = 0 ;
 #pragma omp parallel reduction(|:ret)
@@ -1183,36 +1298,17 @@ int op_Transpose(const void* args, size_t len)
 	    ret |= 0 ;
 	  }
 	}
-      } else if (p->perm[0] == 1 && p->perm[1] == 0 
+      } else if (p->perm[0] == 1 && p->perm[1] == 0
                  && p->perm[2] == 2 && p->perm[3] == 3) {
-	ret = 0 ;
-        //#pragma omp parallel reduction(|:ret)
-	{
-	  int64_t nthreads = omp_get_num_threads() ;
-	  int64_t threadid = omp_get_thread_num() ;
-
-	  int64_t chunkSize = p->dim_size[0] / nthreads ;
-	  int64_t remain    = p->dim_size[0] % nthreads ;
-
-	  int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-	  int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
-
-	  int64_t offset    = chunkBegin * sizeof(float) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
-
-	  if( myChunk > 0 ) {
-	    int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
-	    ret = transpose4_1023<float>(p->out+offset, p->in+offset, dim_size) ;
-	  }
-	  else {
-	    ret |= 0 ;
-	  }
-	}
+	ret = transpose4_1023<float>(p->out, p->in, p->dim_size) ;
       }
-    }
-    else if(p->size==3) {
-      if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
-	ret = transpose3_102<float>(p->out, p->in, p->dim_size) ;
+      else
+      {
+	ret = transpose4<float>(p->out, p->in, p->dim_size, p->perm) ;
       }
+      break ;
+    default :
+      break ;
     }
   }
 
