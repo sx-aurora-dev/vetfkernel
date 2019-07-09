@@ -107,7 +107,6 @@ class Parser:
         while True:
             #logging.debug("parse_list: token={}".format(token.text))
             if self.token.kind == ')':
-                logging.debug("add VL: {}".format(veintrin))
                 self.add_vsc_vgt_range(veintrin, i)
                 self.add_vl(veintrin, i)
                 break
@@ -130,24 +129,31 @@ class Parser:
         #logging.debug("parse_list: list={} next_token={}".format(",".join(ary), token.text))
 
     def parse_vfmk(self, veintrin):
-        self.gettoken()
+        self.gettoken() # skip (
         logging.debug("parse_vfmk: token={}".format(self.token.text))
         cc = self.token.text
         self.gettoken() # skip cc
         self.gettoken() # skop ,
 
-        CC = {"VECC_G" : "gt"}
+        CC = {"VECC_G" : "gt", "VECC_L": "lt",
+              "VECC_NE" : "ne", "VECC_EQ": "eq",
+              "VECC_GE" : "ge", "VECC_LE": "le",
+              "VECC_NUM" : "num", "VECC_NAN": "nan",
+              "VECC_GNAN" : "gnan", "VECC_LNAN": "lnan",
+              "VECC_NENAN" : "nenan", "VECC_EQNAN": "eqnan",
+              "VECC_GENAN" : "genan", "VECC_LENAN": "lenan"}
 
-        if veintrin == "_ve_vfmkw_mcv":
-            text = "_vel_vfmkw{}_mvl(".format(CC[cc])
-        print(text, end="")
+        velintrin = re.sub(r'_ve_vfmk([dslw])_mcv', r'_vel_vfmk\1', veintrin)
+        print("{}{}_mvl(".format(velintrin, CC[cc]), end="")
+
         self.parse_intrinsic_arguments(veintrin)
 
     def parse_intrin(self):
         veintrin = self.token.text
         self.gettoken()
 
-        if '_ve_vfmk' in veintrin:
+        m = re.match(r'_ve_vfmk[dslw]', veintrin)
+        if m:
             self.parse_vfmk(veintrin)
             return
 
