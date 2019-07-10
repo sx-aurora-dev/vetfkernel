@@ -232,7 +232,44 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
     LOG(3) << __FUNCTION__ << ":"
         << " depth=" << depth;
 #endif
+#if 1 // optimized version
+#pragma omp parallel for
+    for (size_t c = 0; c < depth; ++c) {
 
+      T sum_y_backprop = T(0);
+      T sum_y_backprop_x_centered = T(0) ;
+#pragma _NEC novector
+      for (size_t b = 0; b < batch_size; ++b) {
+        size_t offset = b * sizeCHW + c * sizeHW;
+        for (size_t i = 0; i < sizeHW; ++i) {
+          sum_y_backprop += y_backprop[offset + i];
+          sum_y_backprop_x_centered +=
+              y_backprop[offset + i] * (x[offset + i] - mean[c]) ;
+        }
+      }
+
+      const T mean_y_backprop = sum_y_backprop / rest_size ;
+      const T mean_y_backprop_x_centered = sum_y_backprop_x_centered / rest_size ;
+
+      const T rsqrt_variance = T(1.0) /std::sqrt(variance[c] + epsilon) ;
+      const T coef1 = scale[c] * rsqrt_variance ;
+      const T coef2 = mean_y_backprop_x_centered / (variance[c] + epsilon)  ;
+#pragma _NEC novector
+      for (size_t b = 0; b < batch_size; ++b) {
+        size_t offset = b * sizeCHW + c * sizeHW;
+        for (size_t i = 0; i < sizeHW; ++i) {
+          x_backprop[offset +i] =
+              coef1
+	       * ( y_backprop[offset + i]
+		   - mean_y_backprop
+                   - (x[offset +i] - mean[c]) * coef2 ) ;
+        }
+      }
+
+      offset_backprop[c] = sum_y_backprop ;
+      scale_backprop[c]  = sum_y_backprop_x_centered * rsqrt_variance ;
+    }
+#else // original version
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
       offset_backprop[c] = T(0);
@@ -269,6 +306,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
         }
       }
     }
+#endif
   } else {
     // offset_backprop  = sum(y_backprop)
     // scale_backprop = y_backprop * ((x - pop_mean) * rsqrt(pop_var + epsilon))
