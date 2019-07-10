@@ -241,25 +241,31 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
       for (size_t b = 0; b < batch_size; ++b) {
         size_t offset = b * sizeCHW + c * sizeHW;
         for (size_t i = 0; i < sizeHW; ++i) {
-          offset_backprop[c] += y_backprop[offset + i];
-          scale_backprop[c] += y_backprop[offset + i]
-              * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);
+          offset_backprop[c] += y_backprop[offset + i];                        // offset_backprop = sum(y_backprop)
+          scale_backprop[c] += y_backprop[offset + i]                          // scale_backprop = sum(y_backprop *
+              * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);  //                  (x - mean(x)) * rsqrt(variance + epsilon))
         }
       }
-#if 0
     }
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
-#endif
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         size_t offset = b * sizeCHW + c * sizeHW;
         for (size_t i = 0; i < sizeHW; ++i) {
-          x_backprop[offset + i]
-              = scale[c] / std::sqrt(variance[c] + epsilon)
-              * (y_backprop[offset + i]
-                      - offset_backprop[c] * (scale_backprop[c] / rest_size));
+
+          x_backprop[offset +i] =                                              // x_backprop =
+              scale[c]                                                         //    scale
+              * (T(1.0) /std::sqrt(variance[c] + epsilon))	               //  * rsqrt(variance + epsilon)
+              * (                                                              //  * [
+        	  y_backprop[offset + i]                                       //      y_backprop
+                  - offset_backprop[c] / rest_size                             //      - mean(y_backprop)
+                  - (x[offset +i] - mean[c])       	                       //      - (x - mean(x))
+		     * scale_backprop[c] * std::sqrt(variance[c] + epsilon) / rest_size
+		                                                               //         * mean(y_backprop * (x - mean(x)))
+        	     / (variance[c] + epsilon)                                 //        / (variance + epsilon)
+                 ) ;                                                           //    ]
         }
       }
     }
@@ -270,6 +276,8 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
+      offset_backprop[c] = T(0);
+      scale_backprop[c] = T(0);
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         size_t offset = b * sizeCHW + c * sizeHW;
