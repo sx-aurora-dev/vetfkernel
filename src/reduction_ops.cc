@@ -9,8 +9,6 @@
 
 #include <omp.h>
 
-#define LIBVETF_INTRINSIC
-
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
 #endif
