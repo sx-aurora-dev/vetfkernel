@@ -217,6 +217,7 @@ def ve2vel(intrin):
     intrin = re.sub(r'vbrd_vs_i32', 'vbrdw_vs', intrin)
     intrin = re.sub(r'vbrd_vs_f64', 'vbrdd_vs', intrin)
     intrin = re.sub(r'vbrd_vs_f32', 'vbrds_vs', intrin)
+    intrin = re.sub(r'vfmk(a[tf])', r'vfmkl\1', intrin)
     if hasVL(intrin):
         intrin += "l"
     return intrin
