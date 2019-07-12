@@ -4,8 +4,6 @@
 #include <sstream>
 #include "ve_ops_common.h"
 
-#define LIBVETF_INTRINSIC
-
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
 #endif

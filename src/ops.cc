@@ -11,13 +11,9 @@
 
 #include "vednn.h"
 
-
-#define LIBVETF_INTRINSIC
-
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
 #endif
-
 
 //#define SET_TIMER
 

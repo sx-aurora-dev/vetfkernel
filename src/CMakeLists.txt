@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.0)
 
+option(USE_INTRINSIC "Use intrinsic" ON)
+
 set(CMAKE_C_COMPILER ${NCC})
 set(CMAKE_CXX_COMPILER ${NCXX})
 
-set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -report-all")
+set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -report-all -assembly-list")
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
@@ -35,6 +37,9 @@ add_library(vetfkernel STATIC
   $<TARGET_OBJECTS:vetfkernel_intrinsic>)
 
 target_compile_options(vetfkernel PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
+if (USE_INTRINSIC)
+        target_compile_definitions(vetfkernel PRIVATE LIBVETF_INTRINSIC)
+endif()
 
 target_include_directories(vetfkernel PRIVATE ${VEDNN_PATH}/src)
 target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/intrinsic)
