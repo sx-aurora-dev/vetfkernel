@@ -46,40 +46,40 @@ template <typename T, typename U> int FusedBatchNorm(
 
 #pragma omp parallel for
     for (size_t c = 0; c < depth; ++c) {
-      mean[c] = 0;
+      T _mean= T(0);
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
-          mean[c] += x[c * sizeHW + i];
+          _mean += x[c * sizeHW + i];
         }
       }
-      mean[c] = mean[c] / rest_size;
-      saved_mean[c] = mean[c];
+      _mean /= rest_size ;
+      saved_mean[c] = mean[c] = _mean ;
 
-      var[c] = 0;
+      T _var = T(0) ;
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         T* y = Y + b * sizeCHW;
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
-          T tmp = x[c * sizeHW + i] - mean[c];
+          T tmp = x[c * sizeHW + i] - _mean ;
           y[c * sizeHW + i] = tmp;
-          var[c] += tmp * tmp;
+          _var += tmp * tmp;
         }
       }
-      U tmp = var[c] / rest_size;
-      var[c] = tmp * rest_size_adjust;
-      saved_var[c] = tmp;
+      _var /= rest_size ;
+      var[c] = _var * rest_size_adjust;
+      saved_var[c] = _var ;
 
-      const T rsqrt_var = T(1) / std::sqrt(var[c]+epsilon) ;
+      const T scaling_factor = scale[c] / std::sqrt(_var+epsilon) ;
 #pragma _NEC novector
       for (size_t b = 0; b < batch_size; ++b) {
         T* y = Y + b * sizeCHW;
         T const* x = X + b * sizeCHW;
         for (size_t i = 0; i < sizeHW; ++i) {
           y[c * sizeHW + i] 
-              = y[c * sizeHW + i] * rsqrt_var * scale[c]
+              = y[c * sizeHW + i] * scaling_factor
               + offset[c];
         }
       }
