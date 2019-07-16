@@ -15,6 +15,7 @@ enum {
 extern "C" {
   int op_Add(const void* args, size_t len);
   int op_BiasAdd(const void* args, size_t len);
+  int op_BiasAddGrad(const void* args, size_t len);
   int op_Div(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
   int op_Mul(const void* args, size_t len);
@@ -38,16 +39,33 @@ static double second()
 template <typename T> struct to_dtype {};
 template<> struct to_dtype<float> { static const int val = 1; };
 
+struct BenchOpts
+{
+  int verbose;
+  double threshold;
+};
+
+
 template <typename T>
-int check(T const* a, T const* b, size_t n, int verbose = 0)
+int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
 {
   int flag = 1;
-  for (int j = 0; j < n; ++j) {
-    if (a[j] != b[j]) {
-      flag = 0;
-      if (verbose > 0) {
-        fprintf(stderr, "a %18.12e b %18.12e diff %18.12e\n", 
-                a[j], b[j], std::abs(a[j] - b[j]));
+  for (int i = 0; i < n; ++i) {
+    double diff = a[i] - b[i];
+    if (diff != 0.0) {
+      double err;
+      if (a[i] == 0.0 && b[i] == 0.0) {
+        err = diff;
+      } else {
+        err = std::sqrt(diff * diff / (a[i] * a[i] + b[i] * b[i]));
+      }
+
+      if (err > opts.threshold) {
+        flag = 1;
+        if (opts.verbose) {
+          fprintf(stderr, "a[%d] %18.12e b[%d] %18.12e diff %18.12e err %18.12e\n", 
+                  i, a[i], i, b[i], diff, err);
+        }
       }
     }
   }
@@ -60,7 +78,7 @@ struct Bench
     : name_(name), data_size_(0), flop_count_(0) {}
 
   std::string name() const { return name_; }
-  virtual int validate(int verbose) = 0;
+  virtual int validate(BenchOpts const&) = 0;
   virtual int run() = 0;
   
   std::string name_;
@@ -216,6 +234,27 @@ int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias,
 
   return 0;
 }
+
+template<typename T>
+int BiasAddGrad_NCHW(uint64_t output, uint64_t output_backprop,
+                     int batch, int width, int height, int channel)
+{
+  T* pout = reinterpret_cast<T*>(output);
+  const T* pin = reinterpret_cast<const T*>(output_backprop);
+
+  memset(pout, 0, sizeof(T) * channel);
+
+  for (int b = 0; b < batch; ++b) {
+    for (int c = 0; c < channel; ++c) {
+      for (int i = 0; i < width * height; ++i) {
+        pout[c] += pin[b * channel * height * width + c * height * width + i];
+      }
+    }
+  }
+
+  return 0;
+}
+
 
 // Tile
 
@@ -376,12 +415,12 @@ class UnaryOpBench : public Bench
         args_.out.dim_size[0] = n;
       }
 
-    int validate(int verbose) {
+    int validate(BenchOpts const& opts) override {
       memset(x0_, 0, sizeof(T) * n_);
       memset(x1_, 0, sizeof(T) * n_);
       run();
       ref_op_(x1_, y_, n_);
-      return check(x0_, x1_, n_, verbose);
+      return check(x0_, x1_, n_, opts);
     }
 
     int run() {
@@ -432,14 +471,14 @@ class BinaryOpBench : public Bench
         flop_count_ = n;
       }
 
-    int validate(int verbose) override {
+    int validate(BenchOpts const& opts) override {
       memset(x0_, 0, sizeof(T) * n_);
       memset(x1_, 0, sizeof(T) * n_);
       int ret = run();
       if (ret != 0)
         fprintf(stderr, "ret=%d\n", ret);
       ref_op_(x1_, y_, z_, n_);
-      return check(x0_, x1_, n_, verbose);
+      return check(x0_, x1_, n_, opts);
     }
 
     int run() override {
@@ -525,13 +564,13 @@ class ReductionOpBench : public Bench
       return op_(reinterpret_cast<void const*>(&args_), sizeof(Args));
     }
 
-    int validate(int verbose) override {
+    int validate(BenchOpts const& opts) override {
       x0_[0] = 0;
       x1_[0] = 0;
       run();
       ref_op_(reinterpret_cast<uint64_t>(x1_), 
               reinterpret_cast<uint64_t>(y_), 1, n_);
-      return check(x0_, x1_, 1, verbose);
+      return check(x0_, x1_, 1, opts);
     }
 
   private:
@@ -579,20 +618,20 @@ class BiasAddOpBench : public Bench
       args_.bias = reinterpret_cast<uint64_t>(bias_);
       args_.out = reinterpret_cast<uint64_t>(out0_);
       args_.batch = nchw[0];
-      args_.width = nchw[1];
+      args_.width = nchw[3];
       args_.height = nchw[2];
-      args_.channel = nchw[3];
+      args_.channel = nchw[1];
     }
 
-    int validate(int verbose) override {
+    int validate(BenchOpts const& opts) override {
       memset(out0_, 0, sizeof(T) * szio_);
       memset(out1_, 0, sizeof(T) * szio_);
       run();
       ref::BiasAdd_NCHW<float>(reinterpret_cast<uint64_t>(out1_),
                                reinterpret_cast<uint64_t>(in_),
                                reinterpret_cast<uint64_t>(bias_),
-                               nchw_[0], nchw_[1], nchw_[2], nchw_[3]);
-      return check(out0_, out1_, szio_, verbose);
+                               nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
+      return check(out0_, out1_, szio_, opts);
     }
 
     int run() override {
@@ -620,6 +659,68 @@ class BiasAddOpBench : public Bench
     T* out0_;
     T* out1_;
 };
+
+template <typename T>
+class BiasAddGradOpBench : public Bench
+{
+  public:
+    BiasAddGradOpBench(T const* in, size_t nchw[4]) : Bench("BiasAddGrad"), in_(in) {
+      memcpy(nchw_, nchw, sizeof(size_t) * 4);
+      //size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
+      size_t szb = nchw[1];
+      //this->data_size_ =  (szio * 2 + szb) * sizeof(T);
+      //this->flop_count_ = szio;
+
+      output0_ = new T[szb];
+      output1_ = new T[szb];
+
+      szb_ = szb;
+
+      args_.dtype = to_dtype<T>::val;
+      args_.data_format = FORMAT_NCHW;
+      args_.output_backprop = reinterpret_cast<uint64_t>(in_);
+      args_.output = reinterpret_cast<uint64_t>(output0_);
+      args_.batch = nchw[0];
+      args_.width = nchw[3];
+      args_.height = nchw[2];
+      args_.channel = nchw[1];
+    }
+
+    int validate(BenchOpts const& opts) override {
+      memset(output0_, 0, sizeof(T) * szb_);
+      memset(output1_, 0, sizeof(T) * szb_);
+      run();
+      ref::BiasAddGrad_NCHW<float>(reinterpret_cast<uint64_t>(output1_),
+                                   reinterpret_cast<uint64_t>(in_),
+                                   nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
+      //fprintf(stderr, "%f %f\n", output0_[0], output1_[0]);
+      return check(output0_, output1_, szb_, opts);
+    }
+
+    int run() override {
+      return op_BiasAddGrad(reinterpret_cast<void const*>(&args_), sizeof(Args));
+    }
+
+  private:
+    struct Args{
+      int dtype;
+      int data_format;
+      uint64_t output_backprop;
+      uint64_t output;
+      int batch;
+      int width;
+      int height;
+      int channel;
+    } args_;
+
+    size_t nchw_[4];
+    size_t szb_;
+
+    T const* in_;
+    T* output0_;
+    T* output1_;
+};
+
 
 template <typename T>
 class TileOpBench : public Bench
@@ -678,12 +779,12 @@ class TileOpBench : public Bench
       *reinterpret_cast<ref::Tensor*>(addr) = out0_;
     }
 
-    int validate(int verbose) override {
+    int validate(BenchOpts const& opts) override {
       memset(x0_, 0, sizeof(T) * szOut_);
       memset(x1_, 0, sizeof(T) * szOut_);
       run();
       ref::tile_dim5_11<float>(out1_, in_);
-      return check(x0_, x1_, szOut_, verbose);
+      return check(x0_, x1_, szOut_, opts);
     }
 
     int run() override {
@@ -714,36 +815,36 @@ class TransposeOpBench : public Bench
                      T const* y,
                      size_t dims[4], std::vector<int> perm) 
       : Bench(name), ref_op_(ref_op), y_(y) {
-      int ndims = 4;
-      nelems_ = 1;
-      for (size_t i = 0; i < ndims; ++i) {
-        args_.dim_size[i] = dims[i];
-        args_.perm[i] = perm[i];
-        nelems_ *= dims[i];
-      }
+        int ndims = 4;
+        nelems_ = 1;
+        for (size_t i = 0; i < ndims; ++i) {
+          args_.dim_size[i] = dims[i];
+          args_.perm[i] = perm[i];
+          nelems_ *= dims[i];
+        }
 
-      x0_ = new T[nelems_];
-      x1_ = new T[nelems_];
+        x0_ = new T[nelems_];
+        x1_ = new T[nelems_];
 #if 0
-      y_ = new T[nelems_];
+        y_ = new T[nelems_];
 
-      for (size_t i = 0; i < nelems_; ++i)
-        y_[i] = T(drand48());
+        for (size_t i = 0; i < nelems_; ++i)
+          y_[i] = T(drand48());
 #endif
 
-      args_.dtype = to_dtype<T>::val;
-      args_.in = reinterpret_cast<uint64_t>(y_);
-      args_.out = reinterpret_cast<uint64_t>(x0_);
-      args_.size = ndims;
-    }
+        args_.dtype = to_dtype<T>::val;
+        args_.in = reinterpret_cast<uint64_t>(y_);
+        args_.out = reinterpret_cast<uint64_t>(x0_);
+        args_.size = ndims;
+      }
 
-    int validate(int verbose) override {
+    int validate(BenchOpts const& opts) override {
       memset(x0_, 0, sizeof(T) * nelems_);
       memset(x1_, 0, sizeof(T) * nelems_);
       run();
       ref_op_(reinterpret_cast<uint64_t>(x1_),
               reinterpret_cast<uint64_t>(y_), args_.dim_size);
-      return check(x0_, x1_, nelems_);
+      return check(x0_, x1_, nelems_, opts);
     }
 
     int run() override {
@@ -803,7 +904,10 @@ int main(int argc, char* argv[])
   size_t n = 20000000;
   size_t nchw[4] = {256, 16, 64, 64};
   int repeat = 10;
-  int verbose = 0;
+
+  BenchOpts opts;
+  opts.verbose = 0;
+  opts.threshold = 1e-6;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0) {
@@ -811,18 +915,17 @@ int main(int argc, char* argv[])
     } else if (strcmp(argv[i], "--nchw") == 0) {
       const char* tmp0 = argv[++i];
       char* tmp1;
-      nchw[0] = strtoul(tmp0, &tmp1, 0);
-      tmp0 = ++tmp1;
-      nchw[1] = strtoul(tmp0, &tmp1, 0);
-      tmp0 = ++tmp1;
-      nchw[2] = strtoul(tmp0, &tmp1, 0);
-      tmp0 = ++tmp1;
-      nchw[3] = strtoul(tmp0, &tmp1, 0);
+      for (int j = 0; j < 4; ++j) {
+        nchw[j] = strtoul(tmp0, &tmp1, 0);
+        tmp0 = ++tmp1;
+      }
       fprintf(stderr, "nchw=%lu,%lu,%lu,%lu\n", nchw[0], nchw[1], nchw[2], nchw[3]);
     } else if (strcmp(argv[i], "-r") == 0) {
       repeat = atoi(argv[++i]);
     } else if (strcmp(argv[i], "-v") == 0) {
-      ++verbose;
+      ++opts.verbose;
+    } else if (strcmp(argv[i], "--threshold") == 0) {
+      opts.threshold = strtod(argv[++i], NULL);
     }
   }
 
@@ -844,13 +947,14 @@ int main(int argc, char* argv[])
 
   add_bench<float>(v, n);
   v.push_back(new BiasAddOpBench<float>(y, nchw));
+  v.push_back(new BiasAddGradOpBench<float>(y, nchw));
   v.push_back(new TileOpBench<float>());
   v.push_back(new TransposeOpBench<float>("Transpose(0231)", ref::transpose4_0231<float>, y, nchw, {0, 2, 3, 1}));
   v.push_back(new TransposeOpBench<float>("Transpose(0312)", ref::transpose4_0312<float>, y, nchw, {0, 3, 1, 2}));
 
   int flag = 1;
   for (Bench* b : v) {
-    int tmp = b->validate(verbose);
+    int tmp = b->validate(opts);
     flag &= tmp;
     fprintf(stderr, "Validation: %-20s %s\n", b->name(), tmp ? "OK" : "NG");
   }
