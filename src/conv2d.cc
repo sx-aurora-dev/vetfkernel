@@ -86,6 +86,7 @@ int conv2d(const void* arg, size_t len)
         }
       }
 #else
+#pragma omp parallel for
       for(int n=0; n<N ; n++) {
         for(int c=0; c<C ; c++) {
           for(int hw=0; hw<H*W ; hw++) {
