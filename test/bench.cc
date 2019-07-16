@@ -25,6 +25,7 @@ extern "C" {
   int op_Sub(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Tile(const void* args, size_t len);
+  int op_Transpose(const void* args, size_t len);
 }
 
 static double second()
@@ -190,21 +191,9 @@ int sum_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
     return 0;
 }
 
-#if 0
-template <typename T>
-int sum_d2a0(T* x, T const* y, size_t m, size_t n)
-{
-#pragma _NEC novector
-  for (size_t i = 0; i < m; ++i) {
-    T s = T(0);
-#pragma _NEC novector
-    for (size_t j = 0; j < n; ++j)
-      s += y[i * n + j];
-    x[i] = s;
-  }
-  return 0;
-}
-#endif
+//
+// BiasAdd
+//
 
 template<typename T>
 int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias,
@@ -294,6 +283,66 @@ int tile_dim5_11(Tensor const& X, Tensor const& Y)
     }
 
     return 0;
+}
+
+//
+// Transpopse
+//
+
+template<typename Tin, typename Tout = Tin>
+int transpose4_0231(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  uint64_t si2 = dim_size[3];
+  uint64_t si1 = si2 * dim_size[2];
+  uint64_t si0 = si1 * dim_size[1];
+
+  uint64_t so2 = dim_size[1];
+  uint64_t so1 = so2 * dim_size[3];
+  uint64_t so0 = so1 * dim_size[2];
+
+  for (int64_t i0 = 0; i0 < dim_size[0]; ++i0) {
+    for (int64_t i1 = 0; i1 < dim_size[2]; ++i1) {
+      for (int64_t i2 = 0; i2 < dim_size[3]; ++i2) {
+	for (int64_t i3 = 0; i3 < dim_size[1]; ++i3) {
+	  po[i0 * so0 + i1 * so1 + i2 * so2 + i3]
+	    = pi[i0 * si0 + i1 * si2 + i2 + i3 * si1];
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose4_0312(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  uint64_t si2 = dim_size[3];
+  uint64_t si1 = si2 * dim_size[2];
+  uint64_t si0 = si1 * dim_size[1];
+
+  uint64_t so2 = dim_size[2];
+  uint64_t so1 = so2 * dim_size[1];
+  uint64_t so0 = so1 * dim_size[3];
+
+  for (int64_t i0 = 0; i0 < dim_size[0]; ++i0) {
+    for (int64_t i1 = 0; i1 < dim_size[3]; ++i1) {
+      for (int64_t i2 = 0; i2 < dim_size[1]; ++i2) {
+	for (int64_t i3 = 0; i3 < dim_size[2]; ++i3) {
+	  po[i0 * so0 + i1 * so1 + i2 * so2 + i3]
+	    = pi[i0 * si0 + i1 + i2 * si1 + i3 * si2];
+	}
+      }
+    }
+  }
+
+  return 0;
 }
 
 } // namespace ref
@@ -508,20 +557,16 @@ template <typename T>
 class BiasAddOpBench : public Bench
 {
   public:
-    BiasAddOpBench(size_t nchw[4]) : Bench("BiasAdd") {
+    BiasAddOpBench(T const* in, size_t nchw[4]) : Bench("BiasAdd"), in_(in) {
       memcpy(nchw_, nchw, sizeof(size_t) * 4);
       size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
       size_t szb = nchw[1];
       this->data_size_ =  (szio * 2 + szb) * sizeof(T);
       this->flop_count_ = szio;
 
-      in_ = new T[szio];
       out0_ = new T[szio];
       out1_ = new T[szio];
       bias_ = new T[szb];
-
-      for (size_t i = 0; i < szio; ++i)
-        in_[i] = T(drand48());
 
       for (size_t i = 0; i < szb; ++i)
         bias_[i] = T(drand48());
@@ -570,7 +615,7 @@ class BiasAddOpBench : public Bench
     size_t nchw_[4];
     size_t szio_;
 
-    T* in_;
+    T const* in_;
     T* bias_;
     T* out0_;
     T* out1_;
@@ -648,36 +693,6 @@ class TileOpBench : public Bench
   private:
     void* buf_;
     size_t len_;
-#if 0
-    struct Tensor {
-      int32_t dtype;
-      uint64_t addr;
-      int32_t dims;
-      int64_t nelems;
-      int64_t dim_size[1];
-
-      size_t size() const {
-        return sizeof(Tensor) + sizeof(int64_t) * (dims - 1);
-      }
-
-      std::string to_s() const {
-        std::stringstream s;
-
-        s << "[dtype=" << dtype
-          << ",dims=" << dims
-          << ",nelems=" << nelems
-          << ",dim_size=[";
-
-        for (size_t i = 0; i < dims; ++i) {
-          s << dim_size[i];
-          if (i < dims - 1)
-            s << ",";
-        }
-        s << "]]";
-        return s.str();
-      }
-    } __attribute__((__packed__));
-#endif
 
     T* x0_;
     T* x1_;
@@ -688,6 +703,69 @@ class TileOpBench : public Bench
     ref::Tensor in_;
     ref::Tensor out0_;
     ref::Tensor out1_;
+};
+
+template <typename T>
+class TransposeOpBench : public Bench
+{
+  public:
+    TransposeOpBench(std::string name, 
+                     int (*ref_op)(uint64_t, uint64_t, const int32_t*),
+                     T const* y,
+                     size_t dims[4], std::vector<int> perm) 
+      : Bench(name), ref_op_(ref_op), y_(y) {
+      int ndims = 4;
+      nelems_ = 1;
+      for (size_t i = 0; i < ndims; ++i) {
+        args_.dim_size[i] = dims[i];
+        args_.perm[i] = perm[i];
+        nelems_ *= dims[i];
+      }
+
+      x0_ = new T[nelems_];
+      x1_ = new T[nelems_];
+#if 0
+      y_ = new T[nelems_];
+
+      for (size_t i = 0; i < nelems_; ++i)
+        y_[i] = T(drand48());
+#endif
+
+      args_.dtype = to_dtype<T>::val;
+      args_.in = reinterpret_cast<uint64_t>(y_);
+      args_.out = reinterpret_cast<uint64_t>(x0_);
+      args_.size = ndims;
+    }
+
+    int validate(int verbose) override {
+      memset(x0_, 0, sizeof(T) * nelems_);
+      memset(x1_, 0, sizeof(T) * nelems_);
+      run();
+      ref_op_(reinterpret_cast<uint64_t>(x1_),
+              reinterpret_cast<uint64_t>(y_), args_.dim_size);
+      return check(x0_, x1_, nelems_);
+    }
+
+    int run() override {
+      return op_Transpose(reinterpret_cast<const void*>(&args_), sizeof(Args));
+    }
+
+  private:
+    struct Args {
+      int dtype;
+      uint64_t in;
+      uint64_t out;
+      int size;
+      int32_t dim_size[4]; // in
+      int32_t perm[4];
+    } args_;
+
+    int (*ref_op_)(uint64_t, uint64_t, const int32_t*);
+
+    T* x0_;
+    T* x1_;
+    T const* y_;
+    size_t nelems_;
 };
 
 template <typename T>
@@ -754,9 +832,21 @@ int main(int argc, char* argv[])
 
   std::vector<Bench*> v;
 
+  size_t nchw_elems = 1;
+  for (int i = 0; i < 4; ++i)
+    nchw_elems *= nchw[i];
+
+  float* y = new float[nchw_elems];
+
+  for (size_t i = 0; i < nchw_elems; ++i)
+    y[i] = (float)drand48();
+
+
   add_bench<float>(v, n);
-  v.push_back(new BiasAddOpBench<float>(nchw));
+  v.push_back(new BiasAddOpBench<float>(y, nchw));
   v.push_back(new TileOpBench<float>());
+  v.push_back(new TransposeOpBench<float>("Transpose(0231)", ref::transpose4_0231<float>, y, nchw, {0, 2, 3, 1}));
+  v.push_back(new TransposeOpBench<float>("Transpose(0312)", ref::transpose4_0312<float>, y, nchw, {0, 3, 1, 2}));
 
   int flag = 1;
   for (Bench* b : v) {
