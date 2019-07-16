@@ -324,7 +324,7 @@ int tile_dim5_11(Tensor const& X, Tensor const& Y)
 template<>
 int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(3) << __FUNCTION__ << "(intrinsic)";
     float* px = (float*)(X.addr);
     float const* py = (float*)(Y.addr);
 
