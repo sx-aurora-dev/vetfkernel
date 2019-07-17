@@ -9,6 +9,7 @@
 #include <sys/time.h>
 
 enum {
+  FORMAT_NHWC = 0,
   FORMAT_NCHW = 1,
 };
 
@@ -45,9 +46,48 @@ struct BenchOpts
   double threshold;
 };
 
+template <typename T>
+int check(T const* a, T const* b, size_t n,
+                BenchOpts const& opts, double threshold)
+{
+  int flag = 1;
+  for (int i = 0; i < n; ++i) {
+    double diff = a[i] - b[i];
+    if (diff != 0.0) {
+      double err;
+      if (a[i] == 0.0 && b[i] == 0.0) {
+        err = diff;
+      } else {
+        err = std::sqrt(diff * diff / (a[i] * a[i] + b[i] * b[i]));
+      }
+
+      if (err > threshold) {
+        flag = 0;
+        if (opts.verbose > 1) {
+          fprintf(stderr, "a[%d] %18.12e b[%d] %18.12e diff %18.12e err %18.12e\n", 
+                  i, a[i], i, b[i], diff, err);
+        }
+      }
+    }
+  }
+  return flag;
+}
+
+template <typename T>
+int check_exact(T const* a, T const* b, size_t n, BenchOpts const& opts)
+{
+  return check(a, b, n, opts, 0.0);
+}
 
 template <typename T>
 int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
+{
+  return check(a, b, n, opts, opts.threshold);
+}
+
+#if 0
+template <typename T>
+int check_exact(T const* a, T const* b, size_t n, BenchOpts const& opts)
 {
   int flag = 1;
   for (int i = 0; i < n; ++i) {
@@ -61,8 +101,8 @@ int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
       }
 
       if (err > opts.threshold) {
-        flag = 1;
-        if (opts.verbose) {
+        flag = 0;
+        if (opts.verbose > 1) {
           fprintf(stderr, "a[%d] %18.12e b[%d] %18.12e diff %18.12e err %18.12e\n", 
                   i, a[i], i, b[i], diff, err);
         }
@@ -71,6 +111,7 @@ int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
   }
   return flag;
 }
+#endif
 
 struct Bench
 {
@@ -214,6 +255,30 @@ int sum_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 //
 
 template<typename T>
+int BiasAdd_NHWC(uint64_t out, uint64_t in, uint64_t bias, int batch, int width, int height, int channel)
+{
+  T* pout = reinterpret_cast<T*>(out);
+  const T* pin = reinterpret_cast<const T*>(in);
+  const T* pbias = reinterpret_cast<const T*>(bias);
+
+  for (int b = 0; b < batch; ++b) {
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        for (int c = 0; c < channel; ++c) {
+          int i
+            = b * height * width * channel
+            + y * width * channel
+            + x * channel;
+          pout[i + c] = pin[i + c] + pbias[c];
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename T>
 int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias,
                  int batch, int width, int height, int channel)
 {
@@ -228,6 +293,36 @@ int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias,
           = b * height * width * channel
           + c * height * width ;
         pout[i + xy] = pin[i + xy] + pbias[c];
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename T>
+int BiasAddGrad_NHWC(uint64_t output, uint64_t output_backprop,
+                     int batch, int width, int height, int channel)
+{
+  T* pout = reinterpret_cast<T*>(output);
+  const T* pin = reinterpret_cast<const T*>(output_backprop);
+
+  memset(pout, 0, sizeof(T) * channel);
+
+#pragma _NEC novector
+  for (int b = 0; b < batch; ++b) {
+#pragma _NEC novector
+    for (int y = 0; y < height; ++y) {
+#pragma _NEC novector
+      for (int x = 0; x < width; ++x) {
+#pragma _NEC novector
+        for (int c = 0; c < channel; ++c) {
+          int i
+            = b * height * width * channel
+            + y * width * channel
+            + x * channel;
+          pout[c] += pin[i + c];
+        }
       }
     }
   }
@@ -420,7 +515,7 @@ class UnaryOpBench : public Bench
       memset(x1_, 0, sizeof(T) * n_);
       run();
       ref_op_(x1_, y_, n_);
-      return check(x0_, x1_, n_, opts);
+      return check_exact(x0_, x1_, n_, opts);
     }
 
     int run() {
@@ -478,7 +573,7 @@ class BinaryOpBench : public Bench
       if (ret != 0)
         fprintf(stderr, "ret=%d\n", ret);
       ref_op_(x1_, y_, z_, n_);
-      return check(x0_, x1_, n_, opts);
+      return check_exact(x0_, x1_, n_, opts);
     }
 
     int run() override {
@@ -570,7 +665,7 @@ class ReductionOpBench : public Bench
       run();
       ref_op_(reinterpret_cast<uint64_t>(x1_), 
               reinterpret_cast<uint64_t>(y_), 1, n_);
-      return check(x0_, x1_, 1, opts);
+      return check_exact(x0_, x1_, 1, opts);
     }
 
   private:
@@ -596,7 +691,11 @@ template <typename T>
 class BiasAddOpBench : public Bench
 {
   public:
-    BiasAddOpBench(T const* in, size_t nchw[4]) : Bench("BiasAdd"), in_(in) {
+    BiasAddOpBench(std::string name, int data_format, 
+                   int (*ref_op)(uint64_t out, uint64_t in, 
+                                 uint64_t bias, int batch, int width, int height, int channel),
+                   T const* in, size_t nchw[4])
+      : Bench(name), ref_op_(ref_op), in_(in) {
       memcpy(nchw_, nchw, sizeof(size_t) * 4);
       size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
       size_t szb = nchw[1];
@@ -613,7 +712,7 @@ class BiasAddOpBench : public Bench
       szio_ = szio;
 
       args_.dtype = to_dtype<float>::val;
-      args_.data_format = FORMAT_NCHW;
+      args_.data_format = data_format;
       args_.in = reinterpret_cast<uint64_t>(in_);
       args_.bias = reinterpret_cast<uint64_t>(bias_);
       args_.out = reinterpret_cast<uint64_t>(out0_);
@@ -627,11 +726,11 @@ class BiasAddOpBench : public Bench
       memset(out0_, 0, sizeof(T) * szio_);
       memset(out1_, 0, sizeof(T) * szio_);
       run();
-      ref::BiasAdd_NCHW<float>(reinterpret_cast<uint64_t>(out1_),
-                               reinterpret_cast<uint64_t>(in_),
-                               reinterpret_cast<uint64_t>(bias_),
-                               nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
-      return check(out0_, out1_, szio_, opts);
+      ref_op_(reinterpret_cast<uint64_t>(out1_),
+              reinterpret_cast<uint64_t>(in_),
+              reinterpret_cast<uint64_t>(bias_),
+              nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
+      return check_exact(out0_, out1_, szio_, opts);
     }
 
     int run() override {
@@ -658,18 +757,22 @@ class BiasAddOpBench : public Bench
     T* bias_;
     T* out0_;
     T* out1_;
+
+    int (*ref_op_)(uint64_t out, uint64_t in, 
+                   uint64_t bias, int batch, int width, int height, int channel);
 };
 
 template <typename T>
 class BiasAddGradOpBench : public Bench
 {
   public:
-    BiasAddGradOpBench(T const* in, size_t nchw[4]) : Bench("BiasAddGrad"), in_(in) {
+    BiasAddGradOpBench(std::string name, int data_format,
+                       int (*ref_op)(uint64_t output, uint64_t output_backprop,
+                                     int batch, int width, int height, int channel),
+                       T const* in, size_t nchw[4]) 
+      : Bench(name), ref_op_(ref_op), in_(in) {
       memcpy(nchw_, nchw, sizeof(size_t) * 4);
-      //size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
       size_t szb = nchw[1];
-      //this->data_size_ =  (szio * 2 + szb) * sizeof(T);
-      //this->flop_count_ = szio;
 
       output0_ = new T[szb];
       output1_ = new T[szb];
@@ -677,7 +780,7 @@ class BiasAddGradOpBench : public Bench
       szb_ = szb;
 
       args_.dtype = to_dtype<T>::val;
-      args_.data_format = FORMAT_NCHW;
+      args_.data_format = data_format;
       args_.output_backprop = reinterpret_cast<uint64_t>(in_);
       args_.output = reinterpret_cast<uint64_t>(output0_);
       args_.batch = nchw[0];
@@ -690,9 +793,9 @@ class BiasAddGradOpBench : public Bench
       memset(output0_, 0, sizeof(T) * szb_);
       memset(output1_, 0, sizeof(T) * szb_);
       run();
-      ref::BiasAddGrad_NCHW<float>(reinterpret_cast<uint64_t>(output1_),
-                                   reinterpret_cast<uint64_t>(in_),
-                                   nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
+      ref_op_(reinterpret_cast<uint64_t>(output1_),
+              reinterpret_cast<uint64_t>(in_),
+              nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
       //fprintf(stderr, "%f %f\n", output0_[0], output1_[0]);
       return check(output0_, output1_, szb_, opts);
     }
@@ -719,6 +822,9 @@ class BiasAddGradOpBench : public Bench
     T const* in_;
     T* output0_;
     T* output1_;
+
+    int (*ref_op_)(uint64_t output, uint64_t output_backprop,
+                   int batch, int width, int height, int channel);
 };
 
 
@@ -784,7 +890,7 @@ class TileOpBench : public Bench
       memset(x1_, 0, sizeof(T) * szOut_);
       run();
       ref::tile_dim5_11<float>(out1_, in_);
-      return check(x0_, x1_, szOut_, opts);
+      return check_exact(x0_, x1_, szOut_, opts);
     }
 
     int run() override {
@@ -825,12 +931,6 @@ class TransposeOpBench : public Bench
 
         x0_ = new T[nelems_];
         x1_ = new T[nelems_];
-#if 0
-        y_ = new T[nelems_];
-
-        for (size_t i = 0; i < nelems_; ++i)
-          y_[i] = T(drand48());
-#endif
 
         args_.dtype = to_dtype<T>::val;
         args_.in = reinterpret_cast<uint64_t>(y_);
@@ -844,7 +944,7 @@ class TransposeOpBench : public Bench
       run();
       ref_op_(reinterpret_cast<uint64_t>(x1_),
               reinterpret_cast<uint64_t>(y_), args_.dim_size);
-      return check(x0_, x1_, nelems_, opts);
+      return check_exact(x0_, x1_, nelems_, opts);
     }
 
     int run() override {
@@ -907,7 +1007,7 @@ int main(int argc, char* argv[])
 
   BenchOpts opts;
   opts.verbose = 0;
-  opts.threshold = 1e-6;
+  opts.threshold = 1e-4;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0) {
@@ -926,9 +1026,13 @@ int main(int argc, char* argv[])
       ++opts.verbose;
     } else if (strcmp(argv[i], "--threshold") == 0) {
       opts.threshold = strtod(argv[++i], NULL);
+    } else {
+      fprintf(stderr, "unknown option: %s\n", argv[i]);
+      return 1;
     }
   }
 
+  fprintf(stderr, "threshold=%e\n", opts.threshold);
   fprintf(stderr, "n=%lu\n", n);
   fprintf(stderr, "nchw=%lu,%lu,%lu,%lu(%lu)\n", 
           nchw[0], nchw[1], nchw[2], nchw[3], nchw[0] * nchw[1] * nchw[2] * nchw[3]);
@@ -946,17 +1050,29 @@ int main(int argc, char* argv[])
 
 
   add_bench<float>(v, n);
-  v.push_back(new BiasAddOpBench<float>(y, nchw));
-  v.push_back(new BiasAddGradOpBench<float>(y, nchw));
+
+  v.push_back(new BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, 
+                                        ref::BiasAdd_NHWC<float>, y, nchw));
+  v.push_back(new BiasAddOpBench<float>("BiasAdd(NCHW)", FORMAT_NCHW, 
+                                        ref::BiasAdd_NCHW<float>, y, nchw));
+  v.push_back(new BiasAddGradOpBench<float>("BiasAddGrad(NHWC)", FORMAT_NHWC, 
+                                            ref::BiasAddGrad_NHWC<float>, y, nchw));
+  v.push_back(new BiasAddGradOpBench<float>("BiasAddGrad(NCHW)", FORMAT_NCHW, 
+                                            ref::BiasAddGrad_NCHW<float>, y, nchw));
+
   v.push_back(new TileOpBench<float>());
-  v.push_back(new TransposeOpBench<float>("Transpose(0231)", ref::transpose4_0231<float>, y, nchw, {0, 2, 3, 1}));
-  v.push_back(new TransposeOpBench<float>("Transpose(0312)", ref::transpose4_0312<float>, y, nchw, {0, 3, 1, 2}));
+
+  v.push_back(new TransposeOpBench<float>("Transpose(0231)",
+                                          ref::transpose4_0231<float>, y, nchw, {0, 2, 3, 1}));
+  v.push_back(new TransposeOpBench<float>("Transpose(0312)",
+                                          ref::transpose4_0312<float>, y, nchw, {0, 3, 1, 2}));
 
   int flag = 1;
   for (Bench* b : v) {
     int tmp = b->validate(opts);
     flag &= tmp;
-    fprintf(stderr, "Validation: %-20s %s\n", b->name(), tmp ? "OK" : "NG");
+    if (opts.verbose > 0 || !tmp)
+      fprintf(stderr, "Validation: %-20s %s\n", b->name().c_str(), tmp ? "OK" : "NG");
   }
 
   fprintf(stderr, "flag=%d\n", flag);
