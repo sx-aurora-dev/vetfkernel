@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -report-all -assembly-list")
 
 set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 
-add_library(vetfkernel STATIC
+set(SOURCES
   asl.cc
   libvetfkernel.cc
   conv2d.cc
@@ -33,7 +33,10 @@ add_library(vetfkernel STATIC
   cwise_ops_gradients.cc
   fused_batch_norm.cc
   reverse.cc
-  revision.h
+  revision.h)
+
+add_library(vetfkernel STATIC
+  ${SOURCES}
   $<TARGET_OBJECTS:vetfkernel_intrinsic>)
 
 target_compile_options(vetfkernel PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
@@ -52,3 +55,19 @@ add_custom_target(check_revision
         COMMAND ${CMAKE_COMMAND} -DTOPDIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/revision.cmake)
 
 add_dependencies(vetfkernel check_revision)
+
+add_library(vetfkernel_oldintrin STATIC
+  ${SOURCES}
+  $<TARGET_OBJECTS:vetfkernel_old_intrinsic>)
+
+target_compile_options(vetfkernel_oldintrin PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
+if (USE_INTRINSIC)
+        target_compile_definitions(vetfkernel_oldintrin PRIVATE LIBVETF_INTRINSIC)
+endif()
+
+target_include_directories(vetfkernel_oldintrin PRIVATE ${VEDNN_PATH}/src)
+target_include_directories(vetfkernel_oldintrin PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/intrinsic)
+target_include_directories(vetfkernel_oldintrin PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+add_dependencies(vetfkernel_oldintrin check_revision)
+
