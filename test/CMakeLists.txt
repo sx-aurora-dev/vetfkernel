@@ -21,3 +21,16 @@ target_link_libraries(test01 PRIVATE
         -pthread
         -ldl)
 
+add_executable(bench bench.cc)
+target_link_libraries(bench PRIVATE
+        vetfkernel
+        vednn_openmp
+        ${BLAS}
+        ${ASL}
+        ${CLANG_RUNTIME}
+        -fopenmp
+        -lveio
+        -pthread
+        -ldl)
+
+

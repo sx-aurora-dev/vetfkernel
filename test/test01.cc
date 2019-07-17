@@ -144,7 +144,10 @@ extern "C" {
 
 template<typename T>
 bool test_BinaryOp(TestParam const& param,
-                   Tensor<T>& out, Tensor<T> const& in0, Tensor<T> const& in1, Tensor<T> const& exp,
+                   Tensor<T>& out,
+                   Tensor<T> const& in0,
+                   Tensor<T> const& in1,
+                   Tensor<T> const& exp,
                    int (*op)(const void* args, size_t len))
 {
     BinaryOpArgs args;
@@ -599,14 +602,8 @@ struct Test
     bool (*func)(TestParam const&);
 };
 
-extern "C" {
-    int get_num_kernels();
-}
-
 int main(int argc, char* argv[])
 {
-    fprintf(stderr, "num_kernels=%d\n", get_num_kernels());
-
     Test tests[] = {
         "op_Add_01", test_Add_01,
         "op_Add_02", test_Add_02,
