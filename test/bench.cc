@@ -15,6 +15,7 @@ enum {
 
 extern "C" {
   int op_Add(const void* args, size_t len);
+  int op_ApplyAdam(const void* args, size_t len);
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
   int op_Div(const void* args, size_t len);
@@ -48,7 +49,7 @@ struct BenchOpts
 
 template <typename T>
 int check(T const* a, T const* b, size_t n,
-                BenchOpts const& opts, double threshold)
+          BenchOpts const& opts, double threshold)
 {
   int flag = 1;
   for (int i = 0; i < n; ++i) {
@@ -478,6 +479,84 @@ int transpose4_0312(uint64_t out, uint64_t in, const int32_t* dim_size)
 
   return 0;
 }
+
+template <typename T>
+int apply_adam(bool use_nesterov, int64_t num_elements,
+               uint64_t var_ptr, uint64_t m_ptr, uint64_t v_ptr,
+               uint64_t beta1_power_ptr, uint64_t beta2_power_ptr,
+               uint64_t lr_ptr,
+               uint64_t beta1_ptr, uint64_t beta2_ptr, uint64_t epsilon_ptr,
+               uint64_t grd_ptr )
+{
+  T* var = reinterpret_cast<T*>(var_ptr);
+  T* m   = reinterpret_cast<T*>(m_ptr);
+  T* v   = reinterpret_cast<T*>(v_ptr);
+
+  const T* grd = reinterpret_cast<const T*>(grd_ptr);
+
+  const T beta1_power = reinterpret_cast<const T*>(beta1_power_ptr)[0];
+  const T beta2_power = reinterpret_cast<const T*>(beta2_power_ptr)[0];
+  const T lr = reinterpret_cast<const T*>(lr_ptr)[0];
+  const T beta1 = reinterpret_cast<const T*>(beta1_ptr)[0];
+  const T beta2 = reinterpret_cast<const T*>(beta2_ptr)[0];
+  const T epsilon = reinterpret_cast<const T*>(epsilon_ptr)[0];
+
+  const T one = T(1.) ; 
+
+#if 0 // optimized
+ 
+  const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
+
+#pragma omp parallel
+  { 
+    int64_t nthreads = omp_get_num_threads() ;
+    int64_t threadid = omp_get_thread_num() ;
+
+    int64_t eachNElement = num_elements / nthreads ;
+    int64_t remain       = num_elements % nthreads ;
+
+    int64_t elementBegin = eachNElement * threadid + ( threadid < remain ? threadid : remain ) ;
+    int64_t myElement    = eachNElement + ( threadid < remain ? 1 : 0 ) ;
+
+    if( use_nesterov ) {
+      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
+        m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
+        v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
+        var[i] -= k * ( m[i] * beta1 + (one-beta1) * grd[i] ) / ( epsilon + std::sqrt(v[i])) ;
+      }
+    }
+    else {
+      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
+        m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
+        v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
+        var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
+      }
+    }
+  }
+#else // original
+  for(int64_t i=0; i<num_elements; i++) {
+    m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
+  }
+  for(int64_t i=0; i<num_elements; i++) {
+    v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
+  }
+  
+  const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
+  if( use_nesterov ) {
+    for(int64_t i=0; i<num_elements; i++) {
+      var[i] -= k * ( m[i] * beta1 + (one-beta1) * grd[i] ) / ( epsilon + std::sqrt(v[i])) ;
+    }
+  }
+  else {
+    for(int64_t i=0; i<num_elements; i++) {
+      var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
+    }
+  }
+#endif
+
+  return 0 ;
+}
+
 
 } // namespace ref
 
@@ -970,6 +1049,119 @@ class TransposeOpBench : public Bench
 };
 
 template <typename T>
+class ApplyAdamOpBench : public Bench
+{
+  public:
+    ApplyAdamOpBench(std::string name, size_t n) : Bench(name), n_(n) {
+      // output
+      var0_ = new T[n];
+      var1_ = new T[n];
+
+      // input & output
+      m0_ = new T[n];
+      m1_ = new T[n];
+      v0_ = new T[n];
+      v1_ = new T[n];
+
+      // input
+      beta1_power = new T[1];
+      beta2_power = new T[1];
+      lr = new T[1];
+      beta1 = new T[1];
+      beta2 = new T[1];
+      epsilon = new T[1];
+      grad = new T[n];
+
+      for (size_t i = 0; i < n; ++i) {
+        m0_[i] = T(drand48());
+        v0_[i] = T(drand48());
+        m1_[i] = T(drand48());
+        v1_[i] = T(drand48());
+        grad[i] = T(drand48());
+      }
+
+      beta1_power[0] = T(drand48());
+      beta2_power[0] = T(drand48());
+      lr[0] = T(drand48());
+      beta1[0] = T(drand48());
+      beta1[0] = T(drand48());
+      epsilon[0] = T(drand48());
+      grad[0] = T(drand48());
+
+#define C(p) reinterpret_cast<uint64_t>(p);
+      args_.dtype = 1; // DT_FLOAT
+      args_.use_nesterov_ = false;
+      args_.num_elements = n;
+      args_.var_ptr = C(var0_);
+      args_.m_ptr = C(m0_);
+      args_.v_ptr = C(v0_);
+      args_.beta1_power_ptr = C(beta1_power);
+      args_.beta2_power_ptr = C(beta2_power);
+      args_.lr = C(lr);
+      args_.beta1_ptr = C(beta1);
+      args_.beta2_ptr = C(beta2);
+      args_.epsilon_ptr = C(epsilon);
+      args_.grad_ptr = C(grad);
+#undef C
+    }
+
+    int run() override {
+      return op_ApplyAdam(reinterpret_cast<void const*>(&args_), sizeof(Args));
+    }
+
+    int validate(BenchOpts const& opts) override {
+      memset(var0_, 0, sizeof(T) * n_);
+      memset(var1_, 0, sizeof(T) * n_);
+      memset(m0_, 0, sizeof(T) * n_);
+      memset(v0_, 0, sizeof(T) * n_);
+      memset(m1_, 0, sizeof(T) * n_);
+      memset(v1_, 0, sizeof(T) * n_);
+      run();
+      ref::apply_adam<float>(false, n_,
+                             reinterpret_cast<uint64_t>(var1_),
+                             reinterpret_cast<uint64_t>(m1_),
+                             reinterpret_cast<uint64_t>(v1_),
+                             args_.beta1_power_ptr, args_.beta2_power_ptr,
+                             args_.lr,
+                             args_.beta1_ptr, args_.beta2_ptr, args_.epsilon_ptr,
+                             args_.grad_ptr);
+
+      int flag = 1;
+      flag &= check(var0_, var1_, n_, opts);
+      flag &= check(m0_, m1_, n_, opts);
+      flag &= check(v0_, v1_, n_, opts);
+      return flag;
+    }
+
+  private:
+    struct Args {
+      int dtype;
+      bool use_nesterov_ ;
+      int64_t num_elements ;
+      uint64_t var_ptr, m_ptr, v_ptr ;
+      uint64_t beta1_power_ptr, beta2_power_ptr ;
+      uint64_t lr ;
+      uint64_t beta1_ptr, beta2_ptr, epsilon_ptr ;
+      uint64_t grad_ptr;
+    } args_;
+
+    size_t n_;
+    T* var0_;
+    T* var1_;
+    T* m0_;
+    T* m1_;
+    T* v0_;
+    T* v1_;
+    T* beta1_power;
+    T* beta2_power;
+    T* lr;
+    T* beta1;
+    T* beta2;
+    T* epsilon;
+    T* grad;
+};
+
+template <typename T>
 void add_bench(std::vector<Bench*>& v, size_t n)
 {
   T* y = new T[n];
@@ -1008,6 +1200,8 @@ int main(int argc, char* argv[])
   BenchOpts opts;
   opts.verbose = 0;
   opts.threshold = 1e-4;
+  bool opt_force_bench = false;
+  char const* filter = nullptr;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0) {
@@ -1020,6 +1214,10 @@ int main(int argc, char* argv[])
         tmp0 = ++tmp1;
       }
       fprintf(stderr, "nchw=%lu,%lu,%lu,%lu\n", nchw[0], nchw[1], nchw[2], nchw[3]);
+    } else if (strcmp(argv[i], "--filter") == 0) {
+      filter = argv[++i];
+    } else if (strcmp(argv[i], "-f") == 0) {
+      opt_force_bench = true;
     } else if (strcmp(argv[i], "-r") == 0) {
       repeat = atoi(argv[++i]);
     } else if (strcmp(argv[i], "-v") == 0) {
@@ -1048,7 +1246,6 @@ int main(int argc, char* argv[])
   for (size_t i = 0; i < nchw_elems; ++i)
     y[i] = (float)drand48();
 
-
   add_bench<float>(v, n);
 
   v.push_back(new BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, 
@@ -1063,9 +1260,12 @@ int main(int argc, char* argv[])
   v.push_back(new TileOpBench<float>());
 
   v.push_back(new TransposeOpBench<float>("Transpose(0231)",
-                                          ref::transpose4_0231<float>, y, nchw, {0, 2, 3, 1}));
+                                          ref::transpose4_0231<float>, y, nchw,
+                                          {0, 2, 3, 1}));
   v.push_back(new TransposeOpBench<float>("Transpose(0312)",
-                                          ref::transpose4_0312<float>, y, nchw, {0, 3, 1, 2}));
+                                          ref::transpose4_0312<float>, y, nchw,
+                                          {0, 3, 1, 2}));
+  v.push_back(new ApplyAdamOpBench<float>("ApplyAdam", n));
 
   int flag = 1;
   for (Bench* b : v) {
@@ -1075,13 +1275,12 @@ int main(int argc, char* argv[])
       fprintf(stderr, "Validation: %-20s %s\n", b->name().c_str(), tmp ? "OK" : "NG");
   }
 
-  fprintf(stderr, "flag=%d\n", flag);
-
-  if (!flag)
+  if (!flag && !opt_force_bench)
     return 1;
 
   for (Bench* b : v) {
-    run_bench(*b, repeat);
+    if (!filter || b->name() == filter)
+      run_bench(*b, repeat);
   }
 
   return 0;
