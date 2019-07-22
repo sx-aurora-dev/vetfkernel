@@ -56,6 +56,7 @@ add_custom_target(check_revision
 
 add_dependencies(vetfkernel check_revision)
 
+# Obosolete
 add_library(vetfkernel_oldintrin STATIC
   ${SOURCES}
   $<TARGET_OBJECTS:vetfkernel_old_intrinsic>)

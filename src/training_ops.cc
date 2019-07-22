@@ -166,6 +166,7 @@ int apply_adam(bool use_nesterov, int64_t num_elements,
   return 0 ;
 }
 
+#ifdef LIBVETF_INTRINSIC
 template <>
 int apply_adam<float>(bool use_nesterov, int64_t num_elements,
                       uint64_t var_ptr, uint64_t m_ptr, uint64_t v_ptr,
@@ -216,6 +217,7 @@ int apply_adam<float>(bool use_nesterov, int64_t num_elements,
   }
   return 0 ;
 }
+#endif
 
 }
 
