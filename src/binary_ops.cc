@@ -1065,177 +1065,6 @@ int op_mul(const BinaryOpArgs& args) {
   return 1;
 }
 
-// Equal
-
-template <typename T>
-int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  T i1 = *reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = (pi0[i] == i1);
-  }
-  return 0;
-}
-
-template <typename T>
-int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  const T* pi1 = reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = (pi0[i] == pi1[i]);
-  }
-  return 0;
-}
-
-int op_equal(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                             args.in0.nelems);
-    }
-    else if( args.in0.nelems == args.in1.nelems ) {
-      return equal_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    else if (IsSameDims(args)) {
-      return binop_dimN<bool, float>(args.out, args.in0, args.in1,
-              [](float y, float z) -> bool { return y == z; });
-    }
-  }
-  else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<double>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    else if( args.in0.nelems == args.in1.nelems ) {
-      return equal_nn<double>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-  }
-  else if (CheckTypes(args, DT_INT64, DT_INT64, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    else if( args.in0.nelems == args.in1.nelems ) {
-      return equal_nn<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-  }
-
-  return 1;
-}
-
-// NotEqual
-
-template <typename T>
-int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  T i1 = *reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = (pi0[i] != i1);
-  }
-  return 0;
-}
-
-template <typename T>
-int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  const T* pi1 = reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = (pi0[i] != pi1[i]);
-  }
-  return 0;
-}
-
-int op_notEqual(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in0.nelems == 1) {
-      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                             args.in1.nelems);
-    } else if (args.in1.nelems == 1) {
-      return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                             args.in0.nelems);
-    }
-    else if( args.in0.nelems == args.in1.nelems ) {
-      return notEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    else if (args.in0.nelems == 1 ) {
-      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                             args.in1.nelems);
-    }
-    else {
-      LOG(2) << __FUNCTION__ << " parameter combination not supported on VE.";
-      return 1;
-    }
-  }
-
-  return 1;
-}
-
-// Less
-
-template <typename T>
-int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  T i1 = *reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = pi0[i] < i1;
-  }
-  return 0;
-}
-
-int op_less(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return less_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			    args.in0.nelems);
-    }
-  }
-  return 1;
-}
-
-// LessEqual
-
-template <typename T>
-int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
-{
-  bool* po = reinterpret_cast<bool*>(out);
-  const T* pi0 = reinterpret_cast<const T*>(in0);
-  T i1 = *reinterpret_cast<const T*>(in1);
-
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = pi0[i] <= i1;
-  }
-  return 0;
-}
-
-int op_lessEqual(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return lessEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                                 args.in0.nelems);
-    }
-  }
-  return 1;
-}
-
 // Div
 
 template <typename T>
@@ -1771,7 +1600,181 @@ int op_maximum(const BinaryOpArgs& args)
   return 1;
 }
 
-// GreaterEqual
+// Equal
+
+template <typename T>
+int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = (pi0[i] == i1);
+  }
+  return 0;
+}
+
+template <typename T>
+int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = (pi0[i] == pi1[i]);
+  }
+  return 0;
+}
+
+int op_equal(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return equal_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+                             args.in0.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return equal_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+    else if (IsSameDims(args)) {
+      return binop_dimN<bool, float>(args.out, args.in0, args.in1,
+              [](float y, float z) -> bool { return y == z; });
+    }
+  }
+  else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return equal_n1<double>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return equal_nn<double>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+  }
+  else if (CheckTypes(args, DT_INT64, DT_INT64, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return equal_n1<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return equal_nn<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+  }
+
+  return 1;
+}
+
+// NotEqual
+
+template <typename T>
+int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = (pi0[i] != i1);
+  }
+  return 0;
+}
+
+template <typename T>
+int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = (pi0[i] != pi1[i]);
+  }
+  return 0;
+}
+
+int op_notEqual(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in0.nelems == 1) {
+      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+                             args.in1.nelems);
+    } else if (args.in1.nelems == 1) {
+      return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+                             args.in0.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return notEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+                              args.in0.nelems);
+    }
+    else if (args.in0.nelems == 1 ) {
+      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+                             args.in1.nelems);
+    }
+    else {
+      LOG(2) << __FUNCTION__ << " parameter combination not supported on VE.";
+      return 1;
+    }
+  }
+
+  return 1;
+}
+
+
+// Compaire operation
+
+template <typename T>
+int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] < i1;
+  }
+  return 0;
+}
+
+template <typename T>
+int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] < pi1[i];
+  }
+  return 0;
+}
+
+template <typename T>
+int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] <= i1;
+  }
+  return 0;
+}
+
+template <typename T>
+int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] <= pi1[i];
+  }
+  return 0;
+}
 
 template <typename T>
 int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1812,17 +1815,18 @@ int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-int op_greater(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return greater_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			       args.in0.nelems);
-    }
-  }
-  return 1;
-}
+template <typename T>
+int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
 
-// GreaterEqual
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] > pi1[i];
+  }
+  return 0;
+}
 
 template <typename T>
 int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1863,11 +1867,94 @@ int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+template <typename T>
+int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] >= pi1[i];
+  }
+  return 0;
+}
+
+
+
+// Less
+int op_less(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return less_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+			    args.in0.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return greaterEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+				    args.in1.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return less_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+			    args.in0.nelems);
+    }
+  }
+  return 1;
+}
+
+
+
+// LessEqual
+int op_lessEqual(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return lessEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+                                 args.in0.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return greater_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+			       args.in1.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return lessEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+				 args.in0.nelems);
+    }
+  }
+  return 1;
+}
+
+// Greater
+int op_greater(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return greater_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+			       args.in0.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return lessEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+				 args.in1.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return greater_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+			       args.in0.nelems);
+    }
+  }
+  return 1;
+}
+
+// GreaterEqual
 int op_greaterEqual(const BinaryOpArgs& args) {
   if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
     if (args.in1.nelems == 1) {
       return greaterEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                                     args.in0.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return less_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+			    args.in1.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return greaterEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
+				    args.in0.nelems);
     }
   }
   return 1;
