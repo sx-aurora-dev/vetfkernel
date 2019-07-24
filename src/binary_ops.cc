@@ -52,6 +52,7 @@ extern "C" {
   int op_NotEqual(const void* arg, size_t len);
   int op_Less(const void* arg, size_t len);
   int op_LessEqual(const void* arg, size_t len);
+  int op_Greater(const void* arg, size_t len);
   int op_GreaterEqual(const void* arg, size_t len);
 }
 
@@ -1773,6 +1774,57 @@ int op_maximum(const BinaryOpArgs& args)
 // GreaterEqual
 
 template <typename T>
+int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+#if 0 // original ( partialy vectorized )
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] > i1;
+  }
+#else
+  const size_t vloop_begin =  out & 0x3 ;
+  const size_t vloop_end   =  n   & 0xFFFFFFFFFFFFFFFC ;
+
+#pragma novector
+  for(size_t i=0; i < vloop_begin ; i++) {
+    po[i] = pi0[i] > i1;
+  }
+
+  int*  po_i = reinterpret_cast<int*>(&po[vloop_begin]);
+  for(size_t j=0; j < (vloop_end - vloop_begin)>>2 ; j++) {
+    const int32_t b0 = pi0[vloop_begin+4*j+0] > i1 ? 1 : 0 ;
+    const int32_t b1 = pi0[vloop_begin+4*j+1] > i1 ? 1 : 0 ;
+    const int32_t b2 = pi0[vloop_begin+4*j+2] > i1 ? 1 : 0 ;
+    const int32_t b3 = pi0[vloop_begin+4*j+3] > i1 ? 1 : 0 ;
+
+    const int32_t b  = (b3 << 24) | (b2 << 16) | (b1 <<8) | b0 ;
+    po_i[j] = b ;
+  }
+
+#pragma novector
+  for(size_t i=vloop_end; i < n ; i++) {
+    po[i] = pi0[i] > i1;
+  }
+#endif
+  return 0;
+}
+
+int op_greater(const BinaryOpArgs& args) {
+  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return greater_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+			       args.in0.nelems);
+    }
+  }
+  return 1;
+}
+
+// GreaterEqual
+
+template <typename T>
 int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
   bool* po = reinterpret_cast<bool*>(out);
@@ -1892,6 +1944,11 @@ int op_Less(const void* args, size_t len)
 int op_LessEqual(const void* args, size_t len)
 {
   return op_Binary(args, len, op_lessEqual, "op_LessEqual");
+}
+
+int op_Greater(const void* args, size_t len)
+{
+  return op_Binary(args, len, op_greater, "op_Greater");
 }
 
 int op_GreaterEqual(const void* args, size_t len)
