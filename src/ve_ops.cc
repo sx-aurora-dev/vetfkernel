@@ -10,6 +10,23 @@
 
 namespace {
 
+
+std::string TensorToString(const Tensor *t)
+{
+    std::stringstream s;
+
+    s << "[dtype=" << t->dtype
+      << ",dims=" << t->dims
+      << "[";
+    for (int i = 0; i < t->dims; ++i) {
+        s << " " << t->dim_size[i];
+    }
+    s  << " ],nelems=" << t->nelems
+      << "]";
+    return s.str();
+}
+
+
 template <typename T>
 int op_select_nn(uint64_t out,
                  uint64_t cond,
@@ -39,12 +56,11 @@ int op_select(const VEOpArgs& args)
     const Tensor *t2 = args.arg<Tensor>(2) ;
     const Tensor *t3 = args.arg<Tensor>(3) ;
 
-#if 0
-    fprintf(stderr, "%s: input(0).dtype=%d\n", __FUNCTION__, t0->dtype);
-    fprintf(stderr, "%s: input(1).dtype=%d\n", __FUNCTION__, t1->dtype);
-    fprintf(stderr, "%s: input(2).dtype=%d\n", __FUNCTION__, t2->dtype);
-    fprintf(stderr, "%s: output(0).dtype=%d\n", __FUNCTION__, t3->dtype);
-#endif
+    LOG(1) << __FUNCTION__ << "::"
+	   << " in0=" << TensorToString(t0)
+	   << " in1=" << TensorToString(t1)
+	   << " in2=" << TensorToString(t2)
+	   << " out=" << TensorToString(t3);
 
     if (t0->dtype == DT_BOOL) {
         if (t1->dtype == DT_FLOAT && t2->dtype == DT_FLOAT &&
