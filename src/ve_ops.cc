@@ -46,17 +46,28 @@ int op_select(const VEOpArgs& args)
     fprintf(stderr, "%s: output(0).dtype=%d\n", __FUNCTION__, t3->dtype);
 #endif
 
-    if (t0->dtype == DT_BOOL
-            && t1->dtype == DT_FLOAT
-            && t2->dtype == DT_FLOAT
-            && t3->dtype == DT_FLOAT) {
-        if (t0->nelems == t1->nelems
-                && t0->nelems == t2->nelems) {
-            return op_select_nn<float>(t3->addr,
-                                       t0->addr,
-                                       t1->addr,
-                                       t2->addr,
-                                       t0->nelems);
+    if (t0->dtype == DT_BOOL) {
+        if (t1->dtype == DT_FLOAT && t2->dtype == DT_FLOAT &&
+	    t3->dtype == DT_FLOAT) {
+	    if (t0->nelems == t1->nelems && t0->nelems == t2->nelems) {
+	        return op_select_nn<float>(t3->addr, t0->addr,
+					   t1->addr, t2->addr,
+					   t0->nelems);
+	    }
+        } else if (t1->dtype == DT_DOUBLE && t2->dtype == DT_DOUBLE &&
+		   t3->dtype == DT_DOUBLE) {
+	    if (t0->nelems == t1->nelems && t0->nelems == t2->nelems) {
+	        return op_select_nn<double>(t3->addr, t0->addr,
+					   t1->addr, t2->addr,
+					   t0->nelems);
+	    }
+        } else if (t1->dtype == DT_INT32 && t2->dtype == DT_INT32 &&
+		   t3->dtype == DT_INT32) {
+	    if (t0->nelems == t1->nelems && t0->nelems == t2->nelems) {
+	        return op_select_nn<int32_t>(t3->addr, t0->addr,
+					     t1->addr, t2->addr,
+					     t0->nelems);
+	    }
         }
     }
 
