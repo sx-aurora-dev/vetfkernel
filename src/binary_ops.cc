@@ -35,6 +35,7 @@ REGISTER_KERNEL("Equal", "op_Equal");
 REGISTER_KERNEL("NotEqual", "op_NotEqual");
 REGISTER_KERNEL("Less", "op_Less");
 REGISTER_KERNEL("LessEqual", "op_LessEqual");
+REGISTER_KERNEL("Greater", "op_Greater");
 REGISTER_KERNEL("GreaterEqual", "op_GreaterEqual");
 
 extern "C" {
@@ -1565,11 +1566,31 @@ int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+template <typename T>
+int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] < pi1[i] ? pi0[i] : pi1[i];
+  }
+  return 0;
+}
+
+
 int op_minimum(const BinaryOpArgs& args)
 {
   if (CheckTypesAll(args, DT_FLOAT)) {
     if (args.in1.nelems == 1) {
       return minimum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return minimum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return minimum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
   }
   return 1;
@@ -1590,11 +1611,30 @@ int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+template <typename T>
+int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] > pi1[i] ? pi0[i] : pi1[i];
+  }
+  return 0;
+}
+
 int op_maximum(const BinaryOpArgs& args)
 {
   if (CheckTypesAll(args, DT_FLOAT)) {
     if (args.in1.nelems == 1) {
       return maximum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+    }
+    else if (args.in0.nelems == 1) {
+      return maximum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+    }
+    else if( args.in0.nelems == args.in1.nelems ) {
+      return maximum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
   }
   return 1;
