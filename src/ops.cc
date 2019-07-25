@@ -1212,7 +1212,8 @@ int op_Transpose(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << " size=" << p->size
+  LOG(3) << __FUNCTION__ << " type=" << p->dtype
+    << " size=" << p->size
     << " perm=(" << p->perm[0]
     << " " << p->perm[1]
     << " " << p->perm[2]
