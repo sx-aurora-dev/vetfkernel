@@ -202,6 +202,8 @@ int op_ZerosLike(const void* args, size_t len)
 
   if (dtype == DT_FLOAT) {
     return zeroslike<float>(args, len);
+  } else if (dtype == DT_DOUBLE) {
+    return zeroslike<double>(args, len);
   } else {
     return 1;
   }
@@ -261,7 +263,7 @@ int op_AddN(const void* args, size_t len)
   LOG(2) << __FUNCTION__ << "num_elems=" << p->num_elems << " num_inputs=" << p->num_inputs;
 
   if (p->output_type == DT_FLOAT) {
-    AddNOp<float>((float*)p-> out, (float**)p->in, p->num_elems, p->num_inputs);
+    AddNOp<float>((float*)p->out, (float**)p->in, p->num_elems, p->num_inputs);
   } else {
     return 1;
   }
