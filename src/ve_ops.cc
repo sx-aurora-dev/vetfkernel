@@ -56,7 +56,7 @@ int op_select(const VEOpArgs& args)
     const Tensor *t2 = args.arg<Tensor>(2) ;
     const Tensor *t3 = args.arg<Tensor>(3) ;
 
-    LOG(1) << __FUNCTION__ << "::"
+    LOG(1) << __FUNCTION__ << ":"
 	   << " in0=" << TensorToString(t0)
 	   << " in1=" << TensorToString(t1)
 	   << " in2=" << TensorToString(t2)
@@ -81,6 +81,13 @@ int op_select(const VEOpArgs& args)
 		   t3->dtype == DT_INT32) {
 	    if (t0->nelems == t1->nelems && t0->nelems == t2->nelems) {
 	        return op_select_nn<int32_t>(t3->addr, t0->addr,
+					     t1->addr, t2->addr,
+					     t0->nelems);
+	    }
+        } else if (t1->dtype == DT_INT64 && t2->dtype == DT_INT64 &&
+		   t3->dtype == DT_INT64) {
+	    if (t0->nelems == t1->nelems && t0->nelems == t2->nelems) {
+	        return op_select_nn<int64_t>(t3->addr, t0->addr,
 					     t1->addr, t2->addr,
 					     t0->nelems);
 	    }
