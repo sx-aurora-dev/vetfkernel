@@ -1302,6 +1302,34 @@ int op_divnonan(const BinaryOpArgs& args) {
 
 // Pow
 template <typename T>
+int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  T i0 = *reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = std::pow(i0, pi1[i]);
+  }
+
+  return 0;
+}
+
+template <typename T>
+int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = std::pow(pi0[i], i1);
+  }
+
+  return 0;
+}
+
+template <typename T>
 int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
   T* po = reinterpret_cast<T*>(out);
@@ -1309,7 +1337,7 @@ int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
   for (size_t i = 0; i < n; ++i) {
-    po[i] = std::pow(pi0[i],pi1[i]) ;
+    po[i] = std::pow(pi0[i], pi1[i]) ;
   }
 
   return 0;
@@ -1322,19 +1350,20 @@ int op_pow(const BinaryOpArgs& args) {
 //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
 //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
+  int r=1;
+
   if (CheckTypesAll(args, DT_FLOAT)) {
-
-    int r=1;
-
     // TODO : impl other patterns
-    if (args.in0.nelems == args.in1.nelems) {
-     r = pow_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.in0.nelems);
+    if (args.in0.nelems == 1) {
+      r = pow_1n<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+    } else if (args.in1.nelems == 1) {
+      r = pow_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+    } else if (args.in0.nelems == args.in1.nelems) {
+      r = pow_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
     }
-
-    return r;
   }
-  return 1;
+  
+  return r;
 }
 
 
