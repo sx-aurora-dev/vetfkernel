@@ -1229,14 +1229,14 @@ int op_Transpose(const void* args, size_t len)
   if (p->dtype == DT_FLOAT) {
     switch(p->size) {
     case 1 :
-      notranspose_copy<float>(p->out, p->in, p->dim_size[0]) ;
+      ret = notranspose_copy<float>(p->out, p->in, p->dim_size[0]) ;
       break ;
     case 2 :
       if ( p->perm[0] == 1 && p->perm[1] == 0 ) {
-	transpose2_10<float>(p->out, p->in, p->dim_size) ;
+	ret = transpose2_10<float>(p->out, p->in, p->dim_size) ;
       }
       else {
-	notranspose_copy<float>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
+	ret = notranspose_copy<float>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
       }
       break ;
     case 3 :
