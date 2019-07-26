@@ -1699,7 +1699,10 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
 int op_equal(const BinaryOpArgs& args) {
   if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
+    if (args.in0.nelems == 1) {
+      return equal_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+			     args.in1.nelems);
+    } else if (args.in1.nelems == 1) {
       return equal_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                              args.in0.nelems);
     }
@@ -1713,7 +1716,10 @@ int op_equal(const BinaryOpArgs& args) {
     }
   }
   else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
+    if (args.in0.nelems == 1) {
+      return equal_n1<double>(args.out.addr, args.in1.addr, args.in0.addr,
+                              args.in1.nelems);
+    } else if (args.in1.nelems == 1) {
       return equal_n1<double>(args.out.addr, args.in0.addr, args.in1.addr,
                               args.in0.nelems);
     }
@@ -1724,6 +1730,9 @@ int op_equal(const BinaryOpArgs& args) {
   }
   else if (CheckTypes(args, DT_INT64, DT_INT64, DT_BOOL)) {
     if (args.in1.nelems == 1) {
+      return equal_n1<int64_t>(args.out.addr, args.in1.addr, args.in0.addr,
+                              args.in1.nelems);
+    } else if (args.in1.nelems == 1) {
       return equal_n1<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
                               args.in0.nelems);
     }
