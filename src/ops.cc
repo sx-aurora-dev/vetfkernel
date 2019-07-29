@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cassert>
 #include <algorithm>
+#include <complex.h>
 #include "kernel.h"
 #include "types.h"
 #include "log.h"
@@ -1196,9 +1197,10 @@ int transpose4(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t
 }
 }
 
-int op_Transpose(const void* args, size_t len)
+template<typename T>
+int op_TransposeBase(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  //  LOG(2) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -1212,39 +1214,39 @@ int op_Transpose(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << " type=" << p->dtype
-    << " size=" << p->size
-    << " perm=(" << p->perm[0]
-    << " " << p->perm[1]
-    << " " << p->perm[2]
-    << " " << p->perm[3]
-    << ") dim=(" << p->dim_size[0]
-    << " " << p->dim_size[1]
-    << " " << p->dim_size[2]
-    << " " << p->dim_size[3]
-    << ")";
+  //  LOG(3) << __FUNCTION__ << " type=" << p->dtype
+  //    << " size=" << p->size
+  //    << " perm=(" << p->perm[0]
+  //    << " " << p->perm[1]
+  //    << " " << p->perm[2]
+  //    << " " << p->perm[3]
+  //    << ") dim=(" << p->dim_size[0]
+  //    << " " << p->dim_size[1]
+  //    << " " << p->dim_size[2]
+  //    << " " << p->dim_size[3]
+  //    << ")";
 
   int ret = 1;
 
-  if (p->dtype == DT_FLOAT) {
+  //  if (p->dtype == DT_FLOAT) {
     switch(p->size) {
     case 1 :
-      ret = notranspose_copy<float>(p->out, p->in, p->dim_size[0]) ;
+      ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]) ;
       break ;
     case 2 :
       if ( p->perm[0] == 1 && p->perm[1] == 0 ) {
-	ret = transpose2_10<float>(p->out, p->in, p->dim_size) ;
+	ret = transpose2_10<T>(p->out, p->in, p->dim_size) ;
       }
       else {
-	ret = notranspose_copy<float>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
+	ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
       }
       break ;
     case 3 :
       if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
-	ret = transpose3_102<float>(p->out, p->in, p->dim_size) ;
+	ret = transpose3_102<T>(p->out, p->in, p->dim_size) ;
       }
       else {
-	ret = transpose3<float>(p->out, p->in, p->dim_size, p->perm) ;
+	ret = transpose3<T>(p->out, p->in, p->dim_size, p->perm) ;
       }
       break ;
     case 4 :
@@ -1262,14 +1264,11 @@ int op_Transpose(const void* args, size_t len)
 	  int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
 	  int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
 
-	  int64_t offset    = chunkBegin * sizeof(float) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
+	  int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
 
 	  if( myChunk > 0 ) {
 	    int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
-	    ret = transpose4_0231<float>(p->out+offset, p->in+offset, dim_size) ;
-	  }
-	  else {
-	    ret |= 0 ;
+	    ret |= transpose4_0231<T>(p->out+offset, p->in+offset, dim_size) ;
 	  }
 	}
 
@@ -1287,28 +1286,85 @@ int op_Transpose(const void* args, size_t len)
 	  int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
 	  int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
 
-	  int64_t offset    = chunkBegin * sizeof(float) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
+	  int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
 
 	  if( myChunk > 0 ) {
 	    int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
-	    ret = transpose4_0312<float>(p->out+offset, p->in+offset, dim_size) ;
-	  }
-	  else {
-	    ret |= 0 ;
+	    ret |= transpose4_0312<T>(p->out+offset, p->in+offset, dim_size) ;
 	  }
 	}
       } else if (p->perm[0] == 1 && p->perm[1] == 0
                  && p->perm[2] == 2 && p->perm[3] == 3) {
-	ret = transpose4_1023<float>(p->out, p->in, p->dim_size) ;
+	ret = transpose4_1023<T>(p->out, p->in, p->dim_size) ;
       }
       else
       {
-	ret = transpose4<float>(p->out, p->in, p->dim_size, p->perm) ;
+	ret = transpose4<T>(p->out, p->in, p->dim_size, p->perm) ;
       }
       break ;
     default :
       break ;
     }
+  //  }
+
+  //  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
+}
+
+int op_Transpose(const void* args, size_t len)
+{
+  LOG(2) << __FUNCTION__ << " begin";
+
+  struct Args {
+    int dtype;
+    uint64_t in;
+    uint64_t out;
+    int size;
+    int32_t dim_size[4]; // in
+    int32_t perm[4];
+  } const* p;
+
+  CHECK_ARG_LEN(len, sizeof(Args));
+  p = reinterpret_cast<const Args*>(args);
+
+  LOG(3) << __FUNCTION__ << " dtype=" << p->dtype
+    << " size=" << p->size
+    << " perm=(" << p->perm[0]
+    << " " << p->perm[1]
+    << " " << p->perm[2]
+    << " " << p->perm[3]
+    << ") dim=(" << p->dim_size[0]
+    << " " << p->dim_size[1]
+    << " " << p->dim_size[2]
+    << " " << p->dim_size[3]
+    << ")";
+
+  int ret = 1;
+
+  if (p->dtype == DT_FLOAT) {
+    ret = op_TransposeBase<float>(args, len);
+  } else if (p->dtype == DT_DOUBLE) {
+    ret = op_TransposeBase<double>(args, len);
+  } else if (p->dtype == DT_INT32) {
+    ret = op_TransposeBase<int32_t>(args, len);
+  } else if (p->dtype == DT_UINT8) {
+    ret = op_TransposeBase<uint8_t>(args, len);
+  } else if (p->dtype == DT_INT16) {
+    ret = op_TransposeBase<int16_t>(args, len);
+  } else if (p->dtype == DT_INT8) {
+    ret = op_TransposeBase<int8_t>(args, len);
+  } else if (p->dtype == DT_COMPLEX64) {
+    ret = op_TransposeBase<float _Complex>(args, len);
+  } else if (p->dtype == DT_INT64) {
+    ret = op_TransposeBase<int64_t>(args, len);
+  } else if (p->dtype == DT_BOOL) {
+    ret = op_TransposeBase<bool>(args, len);
+  } else if (p->dtype == DT_UINT16) {
+    ret = op_TransposeBase<uint16_t>(args, len);
+  } else if (p->dtype == DT_COMPLEX128) {
+    ret = op_TransposeBase<double _Complex>(args, len);
+  } else if (p->dtype == DT_HALF) {
+    ret = op_TransposeBase<uint16_t>(args, len);
   }
 
   LOG(2) << __FUNCTION__ << " end. ret=" << ret;
