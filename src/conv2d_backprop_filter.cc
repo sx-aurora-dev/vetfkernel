@@ -112,8 +112,8 @@ int conv2d_backprop_filter(const void* arg, size_t len)
     ParamConv.group          = 1 ;
     ParamConv.strideWidth    = p.col_stride ; 
     ParamConv.strideHeight   = p.row_stride ; 
-    ParamConv.padWidth       = p.col_padding / 2 ; 
-    ParamConv.padHeight      = p.row_padding / 2 ; 
+    ParamConv.padWidth       = p.col_padding ;
+    ParamConv.padHeight      = p.row_padding ;
     ParamConv.dilationWidth  = p.col_dilation ; 
     ParamConv.dilationHeight = p.row_dilation ; 
 
