@@ -86,8 +86,8 @@ int maxpooling(const void* arg, size_t len)
       ParamPool.windowHeight = p.row_window ; 
       ParamPool.strideWidth  = p.col_stride ; 
       ParamPool.strideHeight = p.row_stride ; 
-      ParamPool.padWidth     = p.col_padding / 2 ; 
-      ParamPool.padHeight    = p.row_padding / 2 ; 
+      ParamPool.padWidth     = p.col_padding ;
+      ParamPool.padHeight    = p.row_padding ;
 
       vednnMaxPoolingForward(&ParamIn,     pIn,
                        	     &ParamOut,    pOut, 
