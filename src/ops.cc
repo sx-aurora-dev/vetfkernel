@@ -353,6 +353,85 @@ inline int BiasAdd_NCHW<float>(uint64_t out, uint64_t in, uint64_t bias, int bat
 #endif
 };
 
+template<typename T>
+int op_BiasAdd(const void* args, size_t len)
+{
+  // LOG(2) << __FUNCTION__ << " begin";
+  struct Args {
+    int dtype;
+    int data_format;
+    uint64_t in;
+    uint64_t bias;
+    uint64_t out;
+    int batch;
+    int width;
+    int height;
+    int channel;
+  } const* p;
+
+  CHECK_ARG_LEN(len, sizeof(Args));
+
+  p = reinterpret_cast<const Args*>(args);
+
+  //LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+
+  int ret = 1 ;
+
+  if (p->data_format == FORMAT_NHWC) {
+    if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
+      ret = 0 ;
+#pragma omp parallel reduction(|:ret)
+      {
+	int64_t nthreads = omp_get_num_threads() ;
+	int64_t threadid = omp_get_thread_num() ;
+
+	int64_t chunkSize = p->batch / nthreads ;
+	int64_t remain    = p->batch % nthreads ;
+
+	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+	int64_t offset    = chunkBegin * sizeof(T) *  p->width * p->height * p->channel ;
+
+	if( myChunk > 0 ) {
+	  ret |= BiasAdd_NHWC<T>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
+	}
+      }
+    }
+    else {
+      ret = BiasAdd_NHWC<T>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
+    }
+
+  } else if (p->data_format == FORMAT_NCHW) {
+    if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
+      ret = 0 ;
+#pragma omp parallel reduction(|:ret)
+      {
+	int64_t nthreads = omp_get_num_threads() ;
+	int64_t threadid = omp_get_thread_num() ;
+
+	int64_t chunkSize = p->batch / nthreads ;
+	int64_t remain    = p->batch % nthreads ;
+
+	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+	int64_t offset    = chunkBegin * sizeof(T) *  p->width * p->height * p->channel ;
+
+	if( myChunk > 0 ) {
+	  ret |= BiasAdd_NCHW<T>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
+	}
+      }
+    }
+    else {
+      ret = BiasAdd_NCHW<T>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
+    }
+  }
+
+  // LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
+}
+
 int op_BiasAdd(const void* args, size_t len)
 {
   LOG(2) << __FUNCTION__ << " begin";
@@ -376,54 +455,10 @@ int op_BiasAdd(const void* args, size_t len)
 
   int ret = 1 ;
 
-  if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NHWC) {
-    if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
-      ret = 0 ;
-#pragma omp parallel reduction(|:ret)
-      {
-	int64_t nthreads = omp_get_num_threads() ;
-	int64_t threadid = omp_get_thread_num() ;
-
-	int64_t chunkSize = p->batch / nthreads ;
-	int64_t remain    = p->batch % nthreads ;
-
-	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
-
-	int64_t offset    = chunkBegin * sizeof(float) *  p->width * p->height * p->channel ;
-
-	if( myChunk > 0 ) {
-	  ret |= BiasAdd_NHWC<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
-	}
-      }
-    }
-    else {
-      ret = BiasAdd_NHWC<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
-    }
-  } else if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NCHW) {
-    if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
-      ret = 0 ;
-#pragma omp parallel reduction(|:ret)
-      {
-	int64_t nthreads = omp_get_num_threads() ;
-	int64_t threadid = omp_get_thread_num() ;
-
-	int64_t chunkSize = p->batch / nthreads ;
-	int64_t remain    = p->batch % nthreads ;
-
-	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
-
-	int64_t offset    = chunkBegin * sizeof(float) *  p->width * p->height * p->channel ;
-
-	if( myChunk > 0 ) {
-	  ret |= BiasAdd_NCHW<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
-	}
-      }
-    }
-    else {
-      ret = BiasAdd_NCHW<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
-    }
+  if (p->dtype == DT_FLOAT) {
+    ret = op_BiasAdd<float>(args, len);
+  } else if (p->dtype == DT_DOUBLE) {
+    ret = op_BiasAdd<double>(args, len);
   }
 
   LOG(2) << __FUNCTION__ << " end. ret=" << ret;
