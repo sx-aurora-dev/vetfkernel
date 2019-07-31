@@ -11,6 +11,7 @@ namespace {
 template<typename T>
 int avgpool_nchw_1133_1111_same(T* out, T const* in, int64_t const* dim_size)
 {
+  //LOG(0) << __FUNCTION__;
   size_t N = dim_size[0];
   size_t C = dim_size[1];
   size_t H = dim_size[2];
@@ -152,7 +153,6 @@ int avgpool(vml::Tensor const& out, vml::Tensor const& in,
     << "(rows=" << param.pad_rows 
     << ",cols=" << param.pad_cols 
     << ")";
-  LOG(3)  << __FUNCTION__ << ": &param=" << &param;
 
   if (in.dtype == DT_FLOAT && out.dtype == DT_FLOAT
       && param.ksize[0] == 1 && param.ksize[1] == 1

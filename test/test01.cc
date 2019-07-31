@@ -649,6 +649,69 @@ bool test_AvgPool_01(TestParam const& param)
   return flag;
 }
 
+template <typename T>
+bool test_AvgPool(TestParam const& param,
+                  vml::Tensor& out,
+                  vml::Tensor const& in,
+                  vml::PoolingParam const& p,
+                  T const* expected,
+                  size_t nelems)
+{
+  if (vml::avgpool(out, in, p) != 0)
+    return false;
+  float* pout = reinterpret_cast<float*>(out.addr);
+
+  bool flag = true;
+  for (int i = 0; i < nelems; ++i) {
+    bool tmp = pout[i] == expected[i];
+    flag &= tmp;
+    if (!tmp && param.verbose > 0) {
+      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
+    }
+  }
+
+  return flag;
+}
+
+bool test_AvgPool_02(TestParam const& param)
+{
+  vml::Tensor out = makeTensor<float>(4, {1, 1, 3, 3});
+  vml::Tensor in = makeTensor<float>(4, {1, 1, 3, 3});
+#if 0
+  vml::PoolingParam p = {
+    .ksize = {1, 1, 3, 3},
+    .stride = {1, 1, 1, 1},
+    .data_format = FORMAT_NCHW,
+    .padding = SAME,
+    .pad_rows = 0,
+    .pad_cols = 0,
+  };
+#else
+  vml::PoolingParam p;
+  p.ksize[0] = 1;
+  p.ksize[1] = 1;
+  p.ksize[2] = 3;
+  p.ksize[3] = 3;
+  p.stride[0] = 1;
+  p.stride[1] = 1;
+  p.stride[2] = 1;
+  p.stride[3] = 1;
+  p.data_format = FORMAT_NCHW;
+  p.padding = SAME;
+  p.pad_rows = 1;
+  p.pad_cols = 1;
+#endif
+
+  float expected[9] = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+
+  float* pin = reinterpret_cast<float*>(in.addr);
+  for (int i = 0; i < 9; ++i)
+    pin[i] = i + 1.0;
+
+  return test_AvgPool(param, out, in, p, expected, 9);
+}
+
+
 struct Test
 {
     std::string name;
@@ -681,6 +744,7 @@ int main(int argc, char* argv[])
         { "op_SquaredDifference_05", test_SquaredDifference_05 },
 
         { "op_AvgPool_01", test_AvgPool_01 },
+        { "op_AvgPool_02", test_AvgPool_02 },
     };
 
     TestParam param;
@@ -696,7 +760,7 @@ int main(int argc, char* argv[])
     int ok = 0;
     for (size_t i = 0; i < ntests; ++i) {
         bool flag = tests[i].func(param);
-        fprintf(stderr, "%-20s %s\n", tests[i].name.c_str(), flag ? "OK" : "NG");
+        fprintf(stderr, "%-30s %s\n", tests[i].name.c_str(), flag ? "OK" : "NG");
         if (flag)
             ++ok;
     }
