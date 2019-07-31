@@ -78,7 +78,7 @@ struct _Tensor {
       << "]";
     return s.str();
   }
-};
+} __attribute__((__packed__));
 
 struct BinaryOpArgs {
   _Tensor in0;
