@@ -23,6 +23,7 @@ target_link_libraries(test01 PRIVATE
   -ldl)
 
 add_executable(bench bench.cc)
+target_include_directories(bench PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(bench PRIVATE
   vetfkernel
   vednn_openmp
@@ -35,6 +36,7 @@ target_link_libraries(bench PRIVATE
   -ldl)
 
 add_executable(bench_oldintrin bench.cc)
+target_include_directories(bench_oldintrin PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(bench_oldintrin PRIVATE
   vetfkernel_oldintrin
   vednn_openmp
