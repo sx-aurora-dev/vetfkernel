@@ -6,3 +6,7 @@ See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/d
     % ./build/test/test
     % ./build/test/bench
     % python test/python/avgpoolgrad.py
+
+or
+
+    % ./test.sh [BUILD_DIR]
