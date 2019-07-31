@@ -982,7 +982,7 @@ int op_Sigmoid(const void* args, size_t len)
   int ret = 1;
 
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_sigmoid<float, float>(p->out.addr, p->in.addr, p->in.nelems);
+    ret = op_sigmoid<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
   LOG(2) << __FUNCTION__ << " end. ret=" << ret;
