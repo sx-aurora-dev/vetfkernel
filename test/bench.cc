@@ -8,6 +8,8 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include <vml.h>
+
 enum {
   FORMAT_NHWC = 0,
   FORMAT_NCHW = 1,
@@ -668,37 +670,15 @@ class BinaryOpBench : public Bench
     int (*op_)(const void* args, size_t len);
     int (*ref_op_)(T*, T const*, T const*, size_t);
 
-    // copy from src/binary_ops.cc
-    struct _Tensor {
-      int dtype;
-      uint64_t addr;
-      int32_t dims;
-      int64_t nelems;
-      int64_t dim_size[8];
-
-      std::string to_s() const {
-        std::stringstream s;
-
-        s << "[dtype=" << dtype
-          << ",dims=" << dims
-          << "[";
-        for (int i = 0; i < dims; ++i)
-          s << " " << dim_size[i];
-        s  << " ],nelems=" << nelems
-          << "]";
-        return s.str();
-      }
-    };
-
     struct BinaryOpArgs {
-      _Tensor in0;
-      _Tensor in1;
-      _Tensor out;
+      vml::Tensor in0;
+      vml::Tensor in1;
+      vml::Tensor out;
     };
 
-    _Tensor mktensor(float const* x, int n)
+    vml::Tensor mktensor(float const* x, int n)
     {
-      _Tensor t;
+      vml::Tensor t;
       t.dtype = to_dtype<T>::val;
       t.addr = reinterpret_cast<uint64_t>(x);
       t.dims = 1;

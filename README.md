@@ -3,8 +3,10 @@ See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/d
 
 ## test
 
-    ./build/test/test
+    % ./build/test/test
+    % ./build/test/bench
+    % python test/python/avgpoolgrad.py
 
-## test & bench
+or
 
-    ./build/test/bench
+    % ./test.sh [BUILD_DIR]

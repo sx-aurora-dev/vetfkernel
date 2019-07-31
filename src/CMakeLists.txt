@@ -13,6 +13,7 @@ set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 
 set(SOURCES
   asl.cc
+  avgpooling.cc
   libvetfkernel.cc
   conv2d.cc
   conv2d_backprop_filter.cc

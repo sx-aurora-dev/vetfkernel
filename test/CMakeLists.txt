@@ -10,6 +10,7 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0")
 set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 
 add_executable(test01 test01.cc)
+target_include_directories(test01 PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(test01 PRIVATE 
   vetfkernel
   vednn_openmp
@@ -22,6 +23,7 @@ target_link_libraries(test01 PRIVATE
   -ldl)
 
 add_executable(bench bench.cc)
+target_include_directories(bench PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(bench PRIVATE
   vetfkernel
   vednn_openmp
@@ -34,6 +36,7 @@ target_link_libraries(bench PRIVATE
   -ldl)
 
 add_executable(bench_oldintrin bench.cc)
+target_include_directories(bench_oldintrin PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(bench_oldintrin PRIVATE
   vetfkernel_oldintrin
   vednn_openmp

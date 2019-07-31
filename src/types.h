@@ -70,4 +70,10 @@ enum TensorFormat {
   FORMAT_HWCN = 5,
 };
 
+enum Padding {
+  VALID = 1,
+  SAME = 2,
+  EXPLICIT = 3,
+};
+
 #endif

@@ -15,12 +15,13 @@
 
 namespace {
 
+// FIXME: removed and use vml::Tensor
 struct Tensor {
   int32_t dtype;
   uint64_t addr;
   int32_t dims;
   int64_t nelems;
-  int64_t dim_size[1];
+  int64_t dim_size[8];
 
   size_t size() const {
     return sizeof(Tensor) + sizeof(int64_t) * (dims - 1);

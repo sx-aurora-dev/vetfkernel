@@ -3,6 +3,7 @@
 #include "types.h"
 #include "log.h"
 #include <sstream>
+#include "vml.h"
 
 REGISTER_KERNEL("SigmoidGrad", "op_SigmoidGrad");
 REGISTER_KERNEL("TanhGrad",    "op_TanhGrad");
@@ -16,28 +17,10 @@ int op_TanhGrad(const void* arg, size_t len);
 
 namespace {
 
-struct _Tensor {
-  int dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-
-  std::string to_s() const {
-    std::stringstream s;
-
-    s << "[dtype=" << dtype
-      << ",dims=" << dims
-      << ",nelems=" << nelems
-      << "]";
-    return s.str();
-  }
-};
-
 struct BinaryOpArgs {
-  _Tensor in0;
-  _Tensor in1;
-  _Tensor out;
+  vml::Tensor in0;
+  vml::Tensor in1;
+  vml::Tensor out;
 };
 
 static inline

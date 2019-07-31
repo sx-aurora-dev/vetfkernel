@@ -5,8 +5,12 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <vml.h>
+#include <types.h>
+
+#if 0
 // copy from src/binary_ops.cc
-struct _Tensor {
+struct vml::Tensor {
     int dtype;
     uint64_t addr;
     int32_t dims;
@@ -26,20 +30,21 @@ struct _Tensor {
         return s.str();
     }
 };
+#endif
 
 struct BinaryOpArgs {
-    _Tensor in0;
-    _Tensor in1;
-    _Tensor out;
+    vml::Tensor in0;
+    vml::Tensor in1;
+    vml::Tensor out;
 };
 
 template<typename T> struct dypte_s {};
 template<> struct dypte_s<float> { static const int type = 1; };
 
 template <typename T>
-_Tensor makeTensor(size_t dims, std::vector<size_t> const& dim_size)
+vml::Tensor makeTensor(size_t dims, std::vector<size_t> const& dim_size)
 {
-    _Tensor t;
+    vml::Tensor t;
 
     t.dtype = dypte_s<T>::type;
     t.dims = dims;
@@ -76,10 +81,10 @@ class Tensor {
         size_t dim_size(size_t i) const { return t.dim_size[i]; }
         size_t stride(size_t i) const { return stride_[i]; }
 
-        _Tensor tensor() const { return t; }
+        vml::Tensor tensor() const { return t; }
 
     private:
-        _Tensor t;
+        vml::Tensor t;
         std::vector<size_t> stride_;
         std::vector<size_t> shape_;
 };
@@ -586,13 +591,124 @@ bool test_Mul_12(TestParam const& param)
   return test_BinaryOp_12<float>(param, ref_Mul<float>, op_Mul);
 }
 
-
-
-
 bool test_SquaredDifference_05(TestParam const& param)
 {
   return test_BinaryOp_05<float>(param, ref_SquaredDifference<float>, 
           op_SquaredDifference);
+}
+
+bool test_AvgPool_01(TestParam const& param)
+{
+  vml::Tensor out = makeTensor<float>(4, {1, 1, 2, 2});
+  vml::Tensor in = makeTensor<float>(4, {1, 1, 2, 2});
+#if 0
+  vml::PoolingParam p = {
+    .ksize = {1, 1, 1, 2},
+    .stride = {1, 1, 1, 1},
+    .data_format = FORMAT_NCHW,
+    .padding = SAME,
+    .pad_rows = 0,
+    .pad_cols = 0,
+  };
+#else
+  vml::PoolingParam p;
+  p.ksize[0] = 1;
+  p.ksize[1] = 1;
+  p.ksize[2] = 1;
+  p.ksize[3] = 2;
+  p.stride[0] = 1;
+  p.stride[1] = 1;
+  p.stride[2] = 1;
+  p.stride[3] = 1;
+  p.data_format = FORMAT_NCHW;
+  p.padding = SAME;
+  p.pad_rows = 0;
+  p.pad_cols = 0;
+#endif
+
+  float expected[4] = {1.5, 2.0, 3.5, 4.0};
+
+  float* pin = reinterpret_cast<float*>(in.addr);
+  for (int i = 0; i < 4; ++i)
+    pin[i] = i + 1.0;
+
+
+  if (vml::avgpool(out, in, p) != 0)
+    return false;
+  float* pout = reinterpret_cast<float*>(out.addr);
+
+  bool flag = true;
+  for (int i = 0; i < 4; ++i) {
+    bool tmp = pout[i] == expected[i];
+    flag &= tmp;
+    if (!tmp && param.verbose > 0) {
+      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
+    }
+  }
+
+  return flag;
+}
+
+template <typename T>
+bool test_AvgPool(TestParam const& param,
+                  vml::Tensor& out,
+                  vml::Tensor const& in,
+                  vml::PoolingParam const& p,
+                  T const* expected,
+                  size_t nelems)
+{
+  if (vml::avgpool(out, in, p) != 0)
+    return false;
+  float* pout = reinterpret_cast<float*>(out.addr);
+
+  bool flag = true;
+  for (int i = 0; i < nelems; ++i) {
+    bool tmp = pout[i] == expected[i];
+    flag &= tmp;
+    if (!tmp && param.verbose > 0) {
+      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
+    }
+  }
+
+  return flag;
+}
+
+bool test_AvgPool_02(TestParam const& param)
+{
+  vml::Tensor out = makeTensor<float>(4, {1, 1, 3, 3});
+  vml::Tensor in = makeTensor<float>(4, {1, 1, 3, 3});
+#if 0
+  vml::PoolingParam p = {
+    .ksize = {1, 1, 3, 3},
+    .stride = {1, 1, 1, 1},
+    .data_format = FORMAT_NCHW,
+    .padding = SAME,
+    .pad_rows = 0,
+    .pad_cols = 0,
+  };
+#else
+  vml::PoolingParam p;
+  p.ksize[0] = 1;
+  p.ksize[1] = 1;
+  p.ksize[2] = 3;
+  p.ksize[3] = 3;
+  p.stride[0] = 1;
+  p.stride[1] = 1;
+  p.stride[2] = 1;
+  p.stride[3] = 1;
+  p.data_format = FORMAT_NCHW;
+  p.padding = SAME;
+  p.pad_rows = 1;
+  p.pad_cols = 1;
+#endif
+
+  float expected[9] = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+
+  float* pin = reinterpret_cast<float*>(in.addr);
+  for (int i = 0; i < 9; ++i)
+    pin[i] = i + 1.0;
+
+  return test_AvgPool(param, out, in, p, expected, 9);
 }
 
 
@@ -605,27 +721,30 @@ struct Test
 int main(int argc, char* argv[])
 {
     Test tests[] = {
-        "op_Add_01", test_Add_01,
-        "op_Add_02", test_Add_02,
-        "op_Add_03", test_Add_03,
-        "op_Add_04", test_Add_04,
-        "op_Add_05", test_Add_05,
-        "op_Add_06", test_Add_06,
+        { "op_Add_01", test_Add_01 },
+        { "op_Add_02", test_Add_02 },
+        { "op_Add_03", test_Add_03 },
+        { "op_Add_04", test_Add_04 },
+        { "op_Add_05", test_Add_05 },
+        { "op_Add_06", test_Add_06 },
 
-        "op_Sub_04", test_Sub_04,
-        "op_Sub_05", test_Sub_05,
+        { "op_Sub_04", test_Sub_04 },
+        { "op_Sub_05", test_Sub_05 },
 
-        "op_Mul_04", test_Mul_04,
-        "op_Mul_05", test_Mul_05,
-        "op_Mul_06", test_Mul_06,
-        "op_Mul_07", test_Mul_07,
-        "op_Mul_08", test_Mul_08,
-        "op_Mul_09", test_Mul_09,
-        "op_Mul_10", test_Mul_10,
-        "op_Mul_11", test_Mul_11,
-        "op_Mul_12", test_Mul_12,
+        { "op_Mul_04", test_Mul_04 },
+        { "op_Mul_05", test_Mul_05 },
+        { "op_Mul_06", test_Mul_06 },
+        { "op_Mul_07", test_Mul_07 },
+        { "op_Mul_08", test_Mul_08 },
+        { "op_Mul_09", test_Mul_09 },
+        { "op_Mul_10", test_Mul_10 },
+        { "op_Mul_11", test_Mul_11 },
+        { "op_Mul_12", test_Mul_12 },
 
-        "op_SquaredDifference_05", test_SquaredDifference_05,
+        { "op_SquaredDifference_05", test_SquaredDifference_05 },
+
+        { "op_AvgPool_01", test_AvgPool_01 },
+        { "op_AvgPool_02", test_AvgPool_02 },
     };
 
     TestParam param;
@@ -641,7 +760,7 @@ int main(int argc, char* argv[])
     int ok = 0;
     for (size_t i = 0; i < ntests; ++i) {
         bool flag = tests[i].func(param);
-        fprintf(stderr, "%-20s %s\n", tests[i].name.c_str(), flag ? "OK" : "NG");
+        fprintf(stderr, "%-30s %s\n", tests[i].name.c_str(), flag ? "OK" : "NG");
         if (flag)
             ++ok;
     }
