@@ -136,7 +136,7 @@ int op_Max(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -166,7 +166,6 @@ int op_Max(const void* args, size_t len)
             ret = max_d3a02<double>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }
-
 
     LOG(2) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
@@ -289,7 +288,7 @@ int op_Sum(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -323,7 +322,6 @@ int op_Sum(const void* args, size_t len)
             ret = sum_d3a02<double>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }
-
 
     LOG(2) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
@@ -429,7 +427,7 @@ int op_Prod(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -600,10 +598,7 @@ int op_Mean(const void* args, size_t len)
 
     int ret = 0;
 
-    LOG(3) << __FUNCTION__
-           << ": dtype=" << p->dtype
-           << " ndims=" << p->ndims
-           << " axis=" << p->axis;
+    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     //    printf("mean ve\n");
 

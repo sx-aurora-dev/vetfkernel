@@ -65,6 +65,8 @@ int op_ApplyGradientDescent(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {
@@ -239,6 +241,8 @@ int op_ApplyAdam(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {
@@ -319,6 +323,8 @@ int op_ApplyMomentum(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   int ret = 1;
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     ret = apply_momentum<float> (p->use_nesterov_, p->num_elements,

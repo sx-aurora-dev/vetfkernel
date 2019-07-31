@@ -56,7 +56,7 @@ int op_select(const VEOpArgs& args)
     const Tensor *t2 = args.arg<Tensor>(2) ;
     const Tensor *t3 = args.arg<Tensor>(3) ;
 
-    LOG(1) << __FUNCTION__ << ":"
+    LOG(3) << __FUNCTION__ << ":"
 	   << " in0=" << TensorToString(t0)
 	   << " in1=" << TensorToString(t1)
 	   << " in2=" << TensorToString(t2)
@@ -107,7 +107,7 @@ int op_randomUniform(const VEOpArgs& args)
 
     const Tensor* t = args.arg<Tensor>(0);
 
-    LOG(3) << "op_RandomUniform: nelems=" << t->nelems;
+    LOG(3) << __FUNCTION__ << ": dtype=" << t->dtype << " nelems=" << t->nelems;
 
     if (t->dtype == DT_FLOAT) {
         float* p = reinterpret_cast<float*>(t->addr);
@@ -372,7 +372,7 @@ int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
 template<typename T>
 int tile_dim5(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(4) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -412,9 +412,7 @@ int op_tile(const VEOpArgs& args)
     const Tensor* ti = args.arg<Tensor>(0);
     const Tensor* to = args.arg<Tensor>(1);
 
-    LOG(3) << __FUNCTION__
-           << " ti=" << ti->to_s()
-           << " to=" << to->to_s();
+    LOG(3) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
 
     int rc = 1 ;
 
@@ -664,8 +662,6 @@ int concat(uint64_t n, uint64_t dim0, uint64_t out,
 namespace {
 int op_Concat(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     int ret=1;
 
     int narg = 0 ;
@@ -673,6 +669,8 @@ int op_Concat(const VEOpArgs& args)
     const uint64_t n_input           = *args.arg<uint64_t>(narg++) ;
     const uint64_t outputs_flat_dim0 = *args.arg<uint64_t>(narg++) ;
     const uint64_t output_ptr        = *args.arg<uint64_t>(narg++) ;
+
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
 
     uint64_t ins[n_input] ;
     uint64_t dim1_offset[n_input+1] ;
@@ -692,8 +690,6 @@ int op_Concat(const VEOpArgs& args)
     else if (dtype == DT_DOUBLE) {
         ret = concat<double>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }
@@ -732,8 +728,6 @@ int split(const int64_t  num_split,
 namespace {
 int op_Split(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     int ret=1;
 
     int narg = 0 ;
@@ -753,6 +747,8 @@ int op_Split(const VEOpArgs& args)
 
     const int dtype = input_tensor->dtype ;
 
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
     if (dtype == DT_FLOAT) {
         ret = split<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
                            input_addr, output_addrs) ;
@@ -761,8 +757,6 @@ int op_Split(const VEOpArgs& args)
         ret = split<double>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
                             input_addr, output_addrs) ;
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }
@@ -804,8 +798,6 @@ int split_v(const int64_t  num_split,
 namespace {
 int op_SplitV(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     int ret=1;
 
     int narg = 0 ;
@@ -827,6 +819,8 @@ int op_SplitV(const VEOpArgs& args)
 
     const int dtype = input_tensor->dtype ;
 
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
     if (dtype == DT_FLOAT) {
         ret = split_v<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
                              split_sizes, input_addr, output_addrs) ;
@@ -835,8 +829,6 @@ int op_SplitV(const VEOpArgs& args)
         ret = split_v<double>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
                               split_sizes, input_addr, output_addrs) ;
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }
@@ -920,8 +912,6 @@ int strided_slice3(const int64_t* begin_di,
 namespace {
 int op_StridedSlice(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     int ret=1;
 
     int narg = 0 ;
@@ -945,6 +935,8 @@ int op_StridedSlice(const VEOpArgs& args)
     }
 
     const int dtype = input_tensor->dtype ;
+
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
@@ -976,8 +968,6 @@ int op_StridedSlice(const VEOpArgs& args)
             break ;
         }
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }
@@ -1068,8 +1058,6 @@ int strided_slice_grad3(const int64_t* begin_di,
 namespace {
 int op_StridedSliceGrad(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     int ret=1;
 
     int narg = 0 ;
@@ -1093,6 +1081,8 @@ int op_StridedSliceGrad(const VEOpArgs& args)
     }
 
     const int dtype = dy_tensor->dtype ;
+
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
@@ -1124,8 +1114,6 @@ int op_StridedSliceGrad(const VEOpArgs& args)
             break ;
         }
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }
@@ -1159,8 +1147,6 @@ int l2loss(const int64_t  input_length,
 namespace {
 int op_L2Loss(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
-
     if (args.nVariables() != 2)
         return 1 ;
 
@@ -1176,14 +1162,14 @@ int op_L2Loss(const VEOpArgs& args)
     const int64_t input_addr  = input_tensor->addr  ;
     const int64_t output_addr = output_tensor->addr ;
 
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
     if (dtype == DT_FLOAT) {
         ret = l2loss<float>(input_length, input_addr, output_addr) ;
     }
     else if (dtype == DT_DOUBLE) {
         ret = l2loss<double>(input_length, input_addr, output_addr) ;
     }
-
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }

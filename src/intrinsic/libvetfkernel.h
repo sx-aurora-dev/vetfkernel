@@ -32,7 +32,7 @@ int sqrt_(uint64_t out, uint64_t in, size_t n);
 int rsqrt(uint64_t out, uint64_t in, size_t n);
 int square(uint64_t out, uint64_t in, size_t n);
 
-void neg(uint64_t out, uint64_t in, size_t n);
+int neg(uint64_t out, uint64_t in, size_t n);
 
 void _apply_adam_f32(float* var, float* m, float *v,
                      const float beta1, const float beta2, 

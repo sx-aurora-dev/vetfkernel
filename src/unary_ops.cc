@@ -50,14 +50,14 @@ int unary_op(const void* args, size_t len,
   if (sizeof(UnaryOpArgs) == len) {
     const UnaryOpArgs* p = reinterpret_cast<const UnaryOpArgs*>(args);
 
-    LOG(1) << __FUNCTION__ << "::" << name << ":"
+    LOG(3) << __FUNCTION__ << "::" << name << ":"
         << " dtype=" << p->in.dtype << " nelems=" << p->in.nelems;
 
     if (func) {
       ret = func(*p);
     }
   } else {
-    LOG(3) << name << ": illegal args size " << len
+    LOG(4) << name << ": illegal args size " << len
       << " bytes. but " << sizeof(UnaryOpArgs) << " bytes expected";
   }
 

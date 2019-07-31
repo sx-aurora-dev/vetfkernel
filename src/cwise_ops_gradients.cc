@@ -59,7 +59,7 @@ int op_CwiseGradients(const void* args, size_t len,
                       int (*func)(const BinaryOpArgs&),
 		      const char* name)
 {
-  LOG(2) << name << ": begin";
+  LOG(2) << __FUNCTION__ << "::" << name << " begin";
   int ret = 1;
 
   if (sizeof(BinaryOpArgs) == len) {
@@ -73,11 +73,11 @@ int op_CwiseGradients(const void* args, size_t len,
     if (func)
       ret = func(*p);
   } else {
-    LOG(3) << name << ": illegal args size " << len
+    LOG(4) << name << ": illegal args size " << len
       << " bytes. but " << sizeof(BinaryOpArgs) << " bytes expected";
   }
 
-  LOG(2) << name << ": end. ret=" << ret;
+  LOG(2) << __FUNCTION__ << "::" << name << " end. ret=" << ret;
   return ret;
 }
 

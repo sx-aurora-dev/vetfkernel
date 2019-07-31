@@ -188,7 +188,7 @@ int argmax_43(const T* in, Index* out, const int64_t* dim_size)
   int64_t osize = d0*d1*d2 ;
   T omax[MAXSTRIP];
 
-  LOG(2) << "argmax_43" << " begin";
+  LOG(4) << "argmax_43" << " begin";
   for (int64_t i=0; i<osize; i+=MAXSTRIP) {
     for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
       omax[j] = in[(i+j)*d3] ;
@@ -205,7 +205,7 @@ int argmax_43(const T* in, Index* out, const int64_t* dim_size)
       }
     }
   }
-  LOG(2) << "argmax_43" << " end";
+  LOG(4) << "argmax_43" << " end";
   return 0 ;
 }
 #undef MAXSTRIP
@@ -273,6 +273,8 @@ int op_ArgMax(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   int ret = 1;
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     if ( p->idxtype == DT_INT32 ) {
@@ -546,6 +548,8 @@ int op_ArgMin(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   int ret = 1;
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     if ( p->idxtype == DT_INT32 ) {

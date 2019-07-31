@@ -130,7 +130,7 @@ int op_Binary(const void* args, size_t len,
   if (sizeof(BinaryOpArgs) == len) {
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
-    LOG(1) << __FUNCTION__ << "::" << name << ":"
+    LOG(3) << __FUNCTION__ << "::" << name << ":"
       << " in0=" << p->in0.to_s()
       << " in1=" << p->in1.to_s()
       << " out=" << p->out.to_s();
@@ -146,7 +146,7 @@ int op_Binary(const void* args, size_t len,
 #endif
     }
   } else {
-    LOG(3) << name << ": illegal args size " << len
+    LOG(4) << name << ": illegal args size " << len
       << " bytes. but " << sizeof(BinaryOpArgs) << " bytes expected";
   }
 
@@ -222,7 +222,7 @@ int add2_nn_1n(uint64_t out,
 template<typename T0, typename T1, typename F>
 int binop_dim3(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(4) << __FUNCTION__;
     T0* px = reinterpret_cast<T0*>(X.addr);
     T1 const* py = reinterpret_cast<T1*>(Y.addr);
     T1 const* pz = reinterpret_cast<T1*>(Z.addr);
@@ -257,7 +257,7 @@ int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
     if (X.dims == 3)
         return binop_dim3<TO,TI>(X, Y, Z, op);
 
-    LOG(3) << __FUNCTION__
+    LOG(4) << __FUNCTION__
         << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
 
     size_t dims = X.dims;
@@ -271,7 +271,7 @@ int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 
 #ifdef DEBUG
     for (int dim = 0; dim < dims; ++dim)
-      LOG(3) << __FUNCTION__ << " stX[" << dim << "]=" << stX[dim];
+      LOG(4) << __FUNCTION__ << " stX[" << dim << "]=" << stX[dim];
 #endif
 
     for (size_t ix = 0; ix < X.nelems; ++ix) {
@@ -287,7 +287,7 @@ int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
       }
       px[ix] = op(py[iy], pz[iz]);
 #ifdef DEBUG
-      LOG(3) << __FUNCTION__ << " ix=" << ix << " iy=" << iy << " iz=" << iz;
+      LOG(4) << __FUNCTION__ << " ix=" << ix << " iy=" << iy << " iz=" << iz;
 #endif
     }
 
@@ -318,7 +318,7 @@ bool check_binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 template<typename T, typename F>
 int binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 {
-  LOG(3) << __FUNCTION__
+  LOG(4) << __FUNCTION__
       << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
 
   size_t n = X.dim_size[3] * X.dim_size[4];
@@ -383,7 +383,7 @@ template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -397,7 +397,7 @@ int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
       pX[i] = pY[i] + pZ[i / 64];
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -405,7 +405,7 @@ template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -419,7 +419,7 @@ int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
       pX[i] = pY[i] + pZ[(i % (64 * 8 * 8)) / 64];
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -579,7 +579,7 @@ int sub2_nn_1n(uint64_t out,
 template <typename T, int M, int N>
 int sub_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(3) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* x = reinterpret_cast<T*>(X.addr);
   T const* y = reinterpret_cast<T const*>(Y.addr);
   T const* z = reinterpret_cast<T const*>(Z.addr);
@@ -594,7 +594,7 @@ template <typename T>
 int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -608,7 +608,7 @@ int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
       pX[i] = pY[i] - pZ[i / 64];
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -782,7 +782,7 @@ int mul2_nn_1n(uint64_t out,
 template <typename T, int M, int N>
 int mul_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* x = reinterpret_cast<T*>(X.addr);
   T const* y = reinterpret_cast<T const*>(Y.addr);
   T const* z = reinterpret_cast<T const*>(Z.addr);
@@ -798,7 +798,7 @@ template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -812,7 +812,7 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
       pX[i] = pY[i] * pZ[i / 64];
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -820,7 +820,7 @@ template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -834,7 +834,7 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
       pX[i] = pY[i] * pZ[(i % (64 * 8 * 8)) / 64];
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -842,7 +842,7 @@ template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
   T const* pZ0 = reinterpret_cast<T const*>(Z.addr);
@@ -860,7 +860,7 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
       }
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -868,7 +868,7 @@ template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
   T const* pZ0 = reinterpret_cast<T const*>(Z.addr);
@@ -893,7 +893,7 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
 #endif
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -901,7 +901,7 @@ template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
   T const* pZ0 = reinterpret_cast<T const*>(Z.addr);
@@ -920,7 +920,7 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
       }
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -928,7 +928,7 @@ template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
   T const* pZ0 = reinterpret_cast<T const*>(Z.addr);
@@ -947,7 +947,7 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
       }
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -1443,7 +1443,7 @@ template <typename T>
 int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(4) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
   T* pX0 = reinterpret_cast<T*>(X.addr);
   T const* pY0 = reinterpret_cast<T const*>(Y.addr);
@@ -1458,7 +1458,7 @@ int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
       pX[i] = diff * diff;
     }
   }
-  LOG(3) << __FUNCTION__ << ": done";
+  LOG(4) << __FUNCTION__ << ": done";
   return 0;
 }
 
@@ -1791,7 +1791,7 @@ int op_notEqual(const BinaryOpArgs& args) {
                              args.in1.nelems);
     }
     else {
-      LOG(2) << __FUNCTION__ << " parameter combination not supported on VE.";
+      LOG(4) << __FUNCTION__ << " parameter combination not supported on VE.";
       return 1;
     }
   }

@@ -110,61 +110,65 @@ template <typename T, typename U> int FusedBatchNorm(
 
 int op_FusedBatchNorm(VEOpArgs const& args) 
 {
-  //LOG(2) << __FUNCTION__ << ": begin";
+  LOG(2) << __FUNCTION__ << ": begin";
   //LOG(2) << __FUNCTION__ << ": args.nVariables=" << args.nVariables();
 
+  int ret = 1;
+
   if (args.nVariables() != 14) {
-    LOG(1) << __FUNCTION__ << ": nVariables should be 14. But "
+    LOG(4) << __FUNCTION__ << ": nVariables should be 14. But "
         << args.nVariables();
-    return 1;
+    goto error_exit;
   }
 
-  // dimensions are checked in TF
-  Tensor const* x_input = args.arg<Tensor>(0); // 4D
-  Tensor const* scale_input = args.arg<Tensor>(1); // 1D
-  Tensor const* offset_input = args.arg<Tensor>(2); // 1D
-  Tensor const* estimated_mean_input = args.arg<Tensor>(3); // 1D
-  Tensor const* estimated_variance_input = args.arg<Tensor>(4); // 1D
-  Tensor const* y_output = args.arg<Tensor>(5); // 4D
-  Tensor const* batch_mean_output = args.arg<Tensor>(6); // 1D
-  Tensor const* saved_mean_output = args.arg<Tensor>(7); // 1D
-  Tensor const* batch_var_output = args.arg<Tensor>(8); // 1D
-  Tensor const* saved_var_output = args.arg<Tensor>(9); // 1D
-  // epsilon(10)
-  bool is_training = *args.arg<bool>(11);
-  int Ttype = *args.arg<int64_t>(12);
-  int Utype = *args.arg<int64_t>(13);
+  {  
+    // dimensions are checked in TF
+    Tensor const* x_input = args.arg<Tensor>(0); // 4D
+    Tensor const* scale_input = args.arg<Tensor>(1); // 1D
+    Tensor const* offset_input = args.arg<Tensor>(2); // 1D
+    Tensor const* estimated_mean_input = args.arg<Tensor>(3); // 1D
+    Tensor const* estimated_variance_input = args.arg<Tensor>(4); // 1D
+    Tensor const* y_output = args.arg<Tensor>(5); // 4D
+    Tensor const* batch_mean_output = args.arg<Tensor>(6); // 1D
+    Tensor const* saved_mean_output = args.arg<Tensor>(7); // 1D
+    Tensor const* batch_var_output = args.arg<Tensor>(8); // 1D
+    Tensor const* saved_var_output = args.arg<Tensor>(9); // 1D
+    // epsilon(10)
+    bool is_training = *args.arg<bool>(11);
+    int Ttype = *args.arg<int64_t>(12);
+    int Utype = *args.arg<int64_t>(13);
 
 #define PT(T) \
-  LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
-  PT(x_input);
-  PT(scale_input);
-  PT(offset_input);
-  PT(estimated_mean_input);
-  PT(estimated_variance_input);
-  PT(y_output);
-  PT(batch_mean_output);
-  PT(saved_mean_output);
-  PT(batch_var_output);
-  PT(saved_var_output);
-  LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
-  LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
-  LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+    LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    PT(x_input);
+    PT(scale_input);
+    PT(offset_input);
+    PT(estimated_mean_input);
+    PT(estimated_variance_input);
+    PT(y_output);
+    PT(batch_mean_output);
+    PT(saved_mean_output);
+    PT(batch_var_output);
+    PT(saved_var_output);
+    LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
+    LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
+    LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
 
-  int ret = 1;
-  if (Ttype == DT_FLOAT && Utype == DT_FLOAT) {
-    float epsilon = *args.arg<float>(10);
-    LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
-    return FusedBatchNorm<float, float>(
+    if (Ttype == DT_FLOAT && Utype == DT_FLOAT) {
+      float epsilon = *args.arg<float>(10);
+      LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
+      ret = FusedBatchNorm<float, float>(
             x_input, scale_input, offset_input,
             estimated_mean_input, estimated_variance_input,
             y_output,
             batch_mean_output, saved_mean_output,
             batch_var_output, saved_var_output,
             epsilon, is_training);
+    }
   }
 
-  //LOG(3) << __FUNCTION__ << ": end";
+ error_exit:
+  LOG(2) << __FUNCTION__ << ": end";
   return ret;
 }
 } // namespace
@@ -336,65 +340,72 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
 
 int op_FusedBatchNormGrad(VEOpArgs const& args)
 {
-  if (args.nVariables() != 15) {
-    LOG(1) << __FUNCTION__ << ": nVariables should be 15. But "
-        << args.nVariables();
-    return 1;
-  }
-
-  // dimensions are checked in TF
-  // input tensors
-  Tensor const* y_backprop = args.arg<Tensor>(0); // 4D
-  Tensor const* x = args.arg<Tensor>(1); // 4D
-  Tensor const* scale = args.arg<Tensor>(2); // 1D
-  Tensor const* saved_mean_or_pop_mean = args.arg<Tensor>(3); // 1D
-  Tensor const* saved_maybe_inv_var_or_pop_var = args.arg<Tensor>(4); // 1D
-  // output tensors
-  Tensor const* x_backprop = args.arg<Tensor>(5); // 4D
-  Tensor const* scale_backprop = args.arg<Tensor>(6); // 1D
-  Tensor const* offset_backprop = args.arg<Tensor>(7); // 1D
-  Tensor const* placeholder_1 = args.arg<Tensor>(8);
-  Tensor const* placeholder_2 = args.arg<Tensor>(9);
-  // epsilon(10)
-  int32_t tensor_format = *args.arg<int32_t>(11);
-  bool is_training = *args.arg<bool>(12);
-  int Ttype = *args.arg<int64_t>(13);
-  int Utype = *args.arg<int64_t>(14);
-
-#define PT(T) \
-  LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
-  PT(y_backprop);
-  PT(x);
-  PT(scale);
-  PT(saved_mean_or_pop_mean);
-  PT(saved_maybe_inv_var_or_pop_var);
-  PT(x_backprop);
-  PT(scale_backprop);
-  PT(offset_backprop);
-  PT(placeholder_1);
-  PT(placeholder_2);
-  LOG(3) << __FUNCTION__ << ": tensor_format=" << tensor_format;
-  LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
-  LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
-  LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+  LOG(2) << __FUNCTION__ << ": begin";
 
   int ret = 1;
-  if (Ttype == DT_FLOAT && Utype == DT_FLOAT && tensor_format == FORMAT_NCHW) {
-    float epsilon = *args.arg<float>(10);
-    LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
 
-    memset(reinterpret_cast<void*>(placeholder_1->addr), 0,
-            sizeof(float) * placeholder_1->nelems);
-    memset(reinterpret_cast<void*>(placeholder_2->addr), 0,
-            sizeof(float) * placeholder_2->nelems);
+  if (args.nVariables() != 15) {
+    LOG(4) << __FUNCTION__ << ": nVariables should be 15. But "
+        << args.nVariables();
+    goto error_exit;
+  }
 
-    return FusedBatchNormGrad_NCHW<float, float>(
+  {
+    // dimensions are checked in TF
+    // input tensors
+    Tensor const* y_backprop = args.arg<Tensor>(0); // 4D
+    Tensor const* x = args.arg<Tensor>(1); // 4D
+    Tensor const* scale = args.arg<Tensor>(2); // 1D
+    Tensor const* saved_mean_or_pop_mean = args.arg<Tensor>(3); // 1D
+    Tensor const* saved_maybe_inv_var_or_pop_var = args.arg<Tensor>(4); // 1D
+    // output tensors
+    Tensor const* x_backprop = args.arg<Tensor>(5); // 4D
+    Tensor const* scale_backprop = args.arg<Tensor>(6); // 1D
+    Tensor const* offset_backprop = args.arg<Tensor>(7); // 1D
+    Tensor const* placeholder_1 = args.arg<Tensor>(8);
+    Tensor const* placeholder_2 = args.arg<Tensor>(9);
+    // epsilon(10)
+    int32_t tensor_format = *args.arg<int32_t>(11);
+    bool is_training = *args.arg<bool>(12);
+    int Ttype = *args.arg<int64_t>(13);
+    int Utype = *args.arg<int64_t>(14);
+
+#define PT(T) \
+    LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    PT(y_backprop);
+    PT(x);
+    PT(scale);
+    PT(saved_mean_or_pop_mean);
+    PT(saved_maybe_inv_var_or_pop_var);
+    PT(x_backprop);
+    PT(scale_backprop);
+    PT(offset_backprop);
+    PT(placeholder_1);
+    PT(placeholder_2);
+    LOG(3) << __FUNCTION__ << ": tensor_format=" << tensor_format;
+    LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
+    LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
+    LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+
+    if (Ttype == DT_FLOAT && Utype == DT_FLOAT && tensor_format == FORMAT_NCHW) {
+      float epsilon = *args.arg<float>(10);
+      LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
+
+      memset(reinterpret_cast<void*>(placeholder_1->addr), 0,
+	     sizeof(float) * placeholder_1->nelems);
+      memset(reinterpret_cast<void*>(placeholder_2->addr), 0,
+	     sizeof(float) * placeholder_2->nelems);
+
+      ret = FusedBatchNormGrad_NCHW<float, float>(
             y_backprop, x, scale, 
             saved_mean_or_pop_mean, saved_maybe_inv_var_or_pop_var,
             x_backprop, scale_backprop, offset_backprop,
             epsilon, is_training);
+    }
   }
 
+ error_exit:
+  LOG(2) << __FUNCTION__ << ": end";
   return ret;
 }
 

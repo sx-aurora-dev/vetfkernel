@@ -92,19 +92,19 @@ int op_Kernel(const void* args, size_t len,
               int (*func)(const VEOpArgs&),
               const char* name)
 {
-  LOG(2) << name << ": begin";
+  LOG(2) << name << " begin";
   int ret = 1;
 
   VEOpArgs tmp(args);
 
-  LOG(2) << name << ": nVariable=" << tmp.nVariables();
+  LOG(3) << name << ": nVariable=" << tmp.nVariables();
 
   // TODO: check length
 
   if (func)
     ret = func(tmp);
 
-  LOG(2) << name << ": end. ret=" << ret;
+  LOG(2) << name << " end. ret=" << ret;
   return ret;
 }
 

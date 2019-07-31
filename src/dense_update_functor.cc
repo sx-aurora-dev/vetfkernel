@@ -59,6 +59,8 @@ int op_DenseUpdateAssign(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {
@@ -111,6 +113,8 @@ int op_DenseUpdateAssignAdd(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {
@@ -162,6 +166,8 @@ int op_DenseUpdateAssignSub(const void* args, size_t len)
 
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 

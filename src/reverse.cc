@@ -2,6 +2,7 @@
 #include <sstream>
 #include "types.h"
 #include "ve_ops_common.h"
+#include "log.h"
 
 
 //
@@ -522,6 +523,8 @@ int op_Reverse(const VEOpArgs& args)
 
     const int dtype  = input_tensor->dtype ;
     const int indims = input_tensor->dims ;
+
+    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
 
     if( dtype == DT_FLOAT ) {
       ret = reverse<float>(input_tensor, output_tensor, axes) ;

@@ -103,7 +103,7 @@ namespace {
 template <typename T>
   int fill(const void* args, size_t len)
   {
-    LOG(2) << __PRETTY_FUNCTION__;
+    // LOG(4) << __PRETTY_FUNCTION__;
     struct Args {
       int data_type;
       uint64_t in;
@@ -119,19 +119,19 @@ template <typename T>
 
     p = reinterpret_cast<const Args*>(args);
 #if 0
-    LOG(2, "%s: data_type=%d out=%016lx num_elems=%lu\n",
+    LOG(4, "%s: data_type=%d out=%016lx num_elems=%lu\n",
           __FUNCTION__, p->data_type, p->out, p->num_elems);
 #endif
 
     const T* in = (T*)p->in;
     T* out = (T*)p->out;
 
-    LOG(2) << __FUNCTION__ << ": value=" << *in;
+    // LOG(4) << __FUNCTION__ << ": value=" << *in;
 
     for (size_t i = 0; i < p->num_elems; ++i)
       out[i] = *in;
 
-    LOG(2) << __PRETTY_FUNCTION__ << ": done";
+    // LOG(4) << __PRETTY_FUNCTION__ << ": done";
     return 0;
   }
 }
@@ -140,22 +140,24 @@ template <typename T>
 
 int op_fill(const void* args, size_t len)
 {
-  LOG(1) << __FUNCTION__;
-  int dtype = DATA_TYPE(args);
-  LOG(2) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(2) << __FUNCTION__ << " begin";
 
+  int dtype = DATA_TYPE(args);
+  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
+  int ret = 1;
   if (dtype == DT_FLOAT) {
-    return fill<float>(args, len);
+    ret = fill<float>(args, len);
   }
   else if (dtype == DT_DOUBLE) {
-    return fill<double>(args, len);
+    ret = fill<double>(args, len);
   }
   else if (dtype == DT_INT64) {
-    return fill<int64_t>(args, len);
+    ret = fill<int64_t>(args, len);
   }
-  else {
-    return 1;
-  }
+
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -166,7 +168,7 @@ namespace {
 template <typename T>
   int zeroslike(const void* args, size_t len)
   {
-    LOG(2) << __PRETTY_FUNCTION__;
+    // LOG(4) << __PRETTY_FUNCTION__;
     struct Args {
       int data_type;
       uint64_t out;
@@ -183,12 +185,12 @@ template <typename T>
 
     T* out = (T*)p->out;
 
-    LOG(2) << __FUNCTION__ ;
+    // LOG(4) << __FUNCTION__ ;
 
     for (size_t i = 0; i < p->num_elems; ++i)
       out[i] = T(0.);
 
-    LOG(2) << __PRETTY_FUNCTION__ << ": done";
+    // LOG(4) << __PRETTY_FUNCTION__ << ": done";
     return 0;
   }
 }
@@ -197,22 +199,25 @@ template <typename T>
 
 int op_ZerosLike(const void* args, size_t len)
 {
-  LOG(1) << __FUNCTION__;
-  int dtype = DATA_TYPE(args);
-  LOG(2) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(2) << __FUNCTION__ << " begin";
 
+  int dtype = DATA_TYPE(args);
+  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
+  int ret = 1;
   if (dtype == DT_FLOAT) {
-    return zeroslike<float>(args, len);
+    ret = zeroslike<float>(args, len);
   } else if (dtype == DT_DOUBLE) {
-    return zeroslike<double>(args, len);
-  } else {
-    return 1;
+    ret = zeroslike<double>(args, len);
   }
+
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 namespace {
 template <typename T>
-void AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
+int AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
 {
   switch( num_inputs ) {
   case 0 :
@@ -239,12 +244,15 @@ void AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
      }
      break ;
   }
+
+  return 0;
 }
 };
 
 int op_AddN(const void* args, size_t len)
 {
-  LOG(1) << __FUNCTION__;
+  LOG(2) << __FUNCTION__ << " begin";
+
 #define MAX_INPUTS 32
   struct Args {
     int output_type;
@@ -254,22 +262,25 @@ int op_AddN(const void* args, size_t len)
     uint64_t in[MAX_INPUTS];
   } const* p;
 
+  int ret = 1;
   if (len != sizeof(*p)) {
       fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n", sizeof(*p), len);
-      return 1;
+      goto error_exit;
   }
 
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(2) << __FUNCTION__ << "num_elems=" << p->num_elems << " num_inputs=" << p->num_inputs;
+  LOG(3) << __FUNCTION__
+	 << ": dtype=" << p->output_type
+	 << " num_elems=" << p->num_elems << " num_inputs=" << p->num_inputs;
 
   if (p->output_type == DT_FLOAT) {
-    AddNOp<float>((float*)p->out, (float**)p->in, p->num_elems, p->num_inputs);
-  } else {
-    return 1;
+    ret = AddNOp<float>((float*)p->out, (float**)p->in, p->num_elems, p->num_inputs);
   }
 
-  return 0;
+ error_exit:
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 namespace {
@@ -344,7 +355,7 @@ inline int BiasAdd_NCHW<float>(uint64_t out, uint64_t in, uint64_t bias, int bat
 
 int op_BiasAdd(const void* args, size_t len)
 {
-  LOG(1) << __FUNCTION__;
+  LOG(2) << __FUNCTION__ << " begin";
   struct Args {
     int dtype;
     int data_format;
@@ -361,12 +372,14 @@ int op_BiasAdd(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  int r = 1 ;
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+
+  int ret = 1 ;
 
   if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NHWC) {
     if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
-      r = 0 ;
-#pragma omp parallel reduction(|:r)
+      ret = 0 ;
+#pragma omp parallel reduction(|:ret)
       {
 	int64_t nthreads = omp_get_num_threads() ;
 	int64_t threadid = omp_get_thread_num() ;
@@ -380,20 +393,17 @@ int op_BiasAdd(const void* args, size_t len)
 	int64_t offset    = chunkBegin * sizeof(float) *  p->width * p->height * p->channel ;
 
 	if( myChunk > 0 ) {
-	  r |= BiasAdd_NHWC<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
-	}
-	else {
-	  r |= 0 ;
+	  ret |= BiasAdd_NHWC<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
 	}
       }
     }
     else {
-      r = BiasAdd_NHWC<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
+      ret = BiasAdd_NHWC<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
     }
   } else if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NCHW) {
     if ( p->batch > 1 && p->batch * p->channel * p->height * p->width > 8192 ) {
-      r = 0 ;
-#pragma omp parallel reduction(|:r)
+      ret = 0 ;
+#pragma omp parallel reduction(|:ret)
       {
 	int64_t nthreads = omp_get_num_threads() ;
 	int64_t threadid = omp_get_thread_num() ;
@@ -407,19 +417,17 @@ int op_BiasAdd(const void* args, size_t len)
 	int64_t offset    = chunkBegin * sizeof(float) *  p->width * p->height * p->channel ;
 
 	if( myChunk > 0 ) {
-	  r |= BiasAdd_NCHW<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
-	}
-	else {
-	  r |= 0 ;
+	  ret |= BiasAdd_NCHW<float>(p->out+offset, p->in+offset, p->bias, myChunk, p->width, p->height, p->channel);
 	}
       }
     }
     else {
-      r = BiasAdd_NCHW<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
+      ret = BiasAdd_NCHW<float>(p->out, p->in, p->bias, p->batch, p->width, p->height, p->channel);
     }
   }
 
-  return r;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 #ifndef LIBVETF_INTRINSIC
@@ -480,7 +488,8 @@ int BiasAddGrad_NCHW(uint64_t output, uint64_t output_backprop, int batch, int w
 #endif
 int op_BiasAddGrad(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(2) << __FUNCTION__ << " begin";
+
   struct Args{
     int dtype;
     int data_format;
@@ -501,38 +510,40 @@ int op_BiasAddGrad(const void* args, size_t len)
           __FUNCTION__, p->dtype, p->data_format, p->batch, p->width, p->height, p->channel);
 #endif
 
+  int ret = 1;
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+
 #ifndef LIBVETF_INTRINSIC
   if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NHWC) {
-    return BiasAddGrad_NHWC<float>(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
+    ret = BiasAddGrad_NHWC<float>(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
   } else if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NCHW) {
-    return BiasAddGrad_NCHW<float>(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
+    ret = BiasAddGrad_NCHW<float>(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
   }
 #else
-int r;
   if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NHWC) {
 #ifdef SET_TIMER
-  unsigned long long start = __veperf_get_stm();
+    unsigned long long start = __veperf_get_stm();
 #endif
-  r = BiasAddGrad_NHWC(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
+    ret = BiasAddGrad_NHWC(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
 #ifdef SET_TIMER
-  unsigned long long end = __veperf_get_stm();
-  printf("grad hwc, nchw %d %d %d %d:%lfms\n",p->batch,p->channel,p->width, p->height,(end-start)/(800e3));    
+    unsigned long long end = __veperf_get_stm();
+    printf("grad hwc, nchw %d %d %d %d:%lfms\n",p->batch,p->channel,p->width, p->height,(end-start)/(800e3));    
 #endif
   } else if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NCHW) {
 #ifdef SET_TIMER
-  unsigned long long start = __veperf_get_stm();
+    unsigned long long start = __veperf_get_stm();
 #endif
-    r =  BiasAddGrad_NCHW(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
+    ret =  BiasAddGrad_NCHW(p->output, p->output_backprop, p->batch, p->width, p->height, p->channel);
 #ifdef SET_TIMER
-  unsigned long long end = __veperf_get_stm();
-  printf("grad chw, nchw %d %d %d %d:%lfms\n",p->batch,p->channel,p->width, p->height,(end-start)/(800e3));
+    unsigned long long end = __veperf_get_stm();
+    printf("grad chw, nchw %d %d %d %d:%lfms\n",p->batch,p->channel,p->width, p->height,(end-start)/(800e3));
 #endif
   }
-  return r;
 #endif
 
-  LOG(2) << __FUNCTION__ << " done";
-  return 1;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -541,6 +552,8 @@ int r;
 
 int op_Relu(const void* args, size_t len)
 {
+  LOG(2) << __FUNCTION__ << " begin";
+
   struct Args {
     int dtype;
     uint64_t in;
@@ -551,19 +564,23 @@ int op_Relu(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  if (p->dtype == DT_FLOAT) {
-    return vednnActivationForward(
-      VEDNN_ACTIVATION_RELU,
-      (void*)(p->in), (void*)(p->out),
-      p->num_elems 
-    ) ;
+  int dtype = p->dtype;
+  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+
+  int ret = 1;
+
+  if (dtype == DT_FLOAT) {
+    ret = vednnActivationForward(VEDNN_ACTIVATION_RELU, (void*)(p->in), (void*)(p->out), p->num_elems);
   }
-  return 1;
+
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 int op_ReluGrad(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(2) << __FUNCTION__ << " begin";
+
   struct Args {
     int dtype;
     uint64_t g;
@@ -575,21 +592,24 @@ int op_ReluGrad(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  if (p->dtype == DT_FLOAT) {
-    return vednnActivationBackward(
-      VEDNN_ACTIVATION_RELU,
-      (void*)(p->g), (void*)(p->a), (void*)(p->output),
-      p->num_elems 
-    ) ;
+  int dtype = p->dtype;
+  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
 
+  int ret = 1;
+
+  if (p->dtype == DT_FLOAT) {
+    ret = vednnActivationBackward(VEDNN_ACTIVATION_RELU, (void*)(p->g), (void*)(p->a), (void*)(p->output), p->num_elems);
   }
-  return 1;
+
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 
 int op_Snapshot(const void* arg, size_t len)
 {
-  LOG(2) << __FUNCTION__;
+  LOG(2) << __FUNCTION__ << " begin";
+
   struct Arg {
     uint64_t dst;
     uint64_t src;
@@ -599,14 +619,13 @@ int op_Snapshot(const void* arg, size_t len)
   CHECK_ARG_LEN(len, sizeof(Arg));
   p = reinterpret_cast<const Arg*>(arg);
 
-  LOG(3) << __FUNCTION__ 
-    << " dst=" << p->dst << " src=" << p->src << " size=" << p->size; 
+  LOG(3) << __FUNCTION__ << ": dst=" << p->dst << " src=" << p->src << " size=" << p->size; 
 
   memcpy(reinterpret_cast<void*>(p->dst),
          reinterpret_cast<const void*>(p->src),
          p->size);
-  LOG(2) << __FUNCTION__ << ": done";
 
+  LOG(2) << __FUNCTION__ << " end. ret=0";
   return 0;
 }
 
@@ -615,8 +634,8 @@ int op_Snapshot(const void* arg, size_t len)
 //
 #ifndef LIBVETF_INTRINSIC
 namespace {
-template<typename Tin, typename Tout>
-  void neg(uint64_t out, uint64_t in, size_t nelems)
+  template<typename Tin, typename Tout>
+  int neg(uint64_t out, uint64_t in, size_t nelems)
   {
     Tout* po = reinterpret_cast<Tout*>(out);
     const Tin* pi = reinterpret_cast<Tin*>(in);
@@ -624,9 +643,12 @@ template<typename Tin, typename Tout>
     for (int64_t i = 0; i < nelems; ++i) {
       po[i] = - pi[i];
     }
+
+    return 0;
   }
 }
 #endif
+
 int op_Neg(const void* args, size_t len)
 {
   LOG(2) << __FUNCTION__ << " begin";
@@ -648,27 +670,27 @@ int op_Neg(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
 #ifdef SET_TIMER
-  unsigned long long start = __veperf_get_stm();
+    unsigned long long start = __veperf_get_stm();
 #endif
 #ifndef LIBVETF_INTRINSIC
-    neg<float, float>(p->out.addr, p->in.addr, p->in.nelems);
+    ret = neg<float, float>(p->out.addr, p->in.addr, p->in.nelems);
 #else
-    neg(p->out.addr, p->in.addr, p->in.nelems);
+    ret = neg(p->out.addr, p->in.addr, p->in.nelems);
 #endif
 #ifdef SET_TIMER
-  unsigned long long end = __veperf_get_stm();
-  printf("neg, len %d:%lfms\n",p->in.nelems,(end-start)/(800e3));
+    unsigned long long end = __veperf_get_stm();
+    printf("neg, len %d:%lfms\n",p->in.nelems,(end-start)/(800e3));
 #endif
-
-
-  } else {
-    return 1;
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -676,8 +698,8 @@ int op_Neg(const void* args, size_t len)
 //
 
 namespace {
-template<typename Tin, typename Tout>
-  void op_floor(uint64_t out, uint64_t in, size_t nelems)
+  template<typename Tin, typename Tout>
+  int op_floor(uint64_t out, uint64_t in, size_t nelems)
   {
     Tout* po = reinterpret_cast<Tout*>(out);
     const Tin* pi = reinterpret_cast<Tin*>(in);
@@ -685,6 +707,8 @@ template<typename Tin, typename Tout>
     for (int64_t i = 0; i < nelems; ++i) {
       po[i] = std::floor(pi[i]);
     }
+
+    return 0;
   }
 }
 
@@ -709,14 +733,16 @@ int op_Floor(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_floor<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
+    ret = op_floor<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -725,7 +751,7 @@ int op_Floor(const void* args, size_t len)
 
 namespace {
 template<typename Tin, typename Tout>
-  void op_reciprocal(uint64_t out, uint64_t in, size_t nelems)
+  int op_reciprocal(uint64_t out, uint64_t in, size_t nelems)
   {
     Tout* po = reinterpret_cast<Tout*>(out);
     const Tin* pi = reinterpret_cast<Tin*>(in);
@@ -733,6 +759,8 @@ template<typename Tin, typename Tout>
     for (int64_t i = 0; i < nelems; ++i) {
       po[i] = Tin(1) / pi[i] ;
     }
+
+    return 0;
   }
 }
 
@@ -757,14 +785,16 @@ int op_Reciprocal(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_reciprocal<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
+    ret = op_reciprocal<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -772,8 +802,8 @@ int op_Reciprocal(const void* args, size_t len)
 //
 
 namespace {
-template<typename Tin, typename Tout>
-  void op_log(uint64_t out, uint64_t in, size_t nelems)
+  template<typename Tin, typename Tout>
+  int op_log(uint64_t out, uint64_t in, size_t nelems)
   {
     Tout* po = reinterpret_cast<Tout*>(out);
     const Tin* pi = reinterpret_cast<Tin*>(in);
@@ -781,6 +811,8 @@ template<typename Tin, typename Tout>
     for (int64_t i = 0; i < nelems; ++i) {
       po[i] = std::log(pi[i]) ;
     }
+
+    return 0;
   }
 }
 
@@ -805,14 +837,16 @@ int op_Log(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_log<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
+    ret = op_log<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 
@@ -821,8 +855,8 @@ int op_Log(const void* args, size_t len)
 //
 
 namespace {
-template<typename Tin, typename Tout>
-  void op_exp(uint64_t out, uint64_t in, size_t nelems)
+  template<typename Tin, typename Tout>
+  int op_exp(uint64_t out, uint64_t in, size_t nelems)
   {
     Tout* po = reinterpret_cast<Tout*>(out);
     const Tin* pi = reinterpret_cast<Tin*>(in);
@@ -830,6 +864,8 @@ template<typename Tin, typename Tout>
     for (int64_t i = 0; i < nelems; ++i) {
       po[i] = std::exp(pi[i]) ;
     }
+
+    return 0;
   }
 }
 
@@ -854,14 +890,16 @@ int op_Exp(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_exp<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
+    ret = op_exp<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 
@@ -904,14 +942,16 @@ int op_Sigmoid(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
     op_sigmoid<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -952,14 +992,16 @@ int op_Tanh(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+
+  int ret = 1;
+
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
-    op_tanh<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-  } else {
-    return 1;
+    ret = op_tanh<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end";
-  return 0;
+  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  return ret;
 }
 
 //
@@ -1200,8 +1242,6 @@ int transpose4(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t
 template<typename T>
 int op_TransposeBase(const void* args, size_t len)
 {
-  //  LOG(2) << __FUNCTION__ << " begin";
-
   struct Args {
     int dtype;
     uint64_t in;
@@ -1214,100 +1254,85 @@ int op_TransposeBase(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  //  LOG(3) << __FUNCTION__ << " type=" << p->dtype
-  //    << " size=" << p->size
-  //    << " perm=(" << p->perm[0]
-  //    << " " << p->perm[1]
-  //    << " " << p->perm[2]
-  //    << " " << p->perm[3]
-  //    << ") dim=(" << p->dim_size[0]
-  //    << " " << p->dim_size[1]
-  //    << " " << p->dim_size[2]
-  //    << " " << p->dim_size[3]
-  //    << ")";
-
   int ret = 1;
 
-  //  if (p->dtype == DT_FLOAT) {
-    switch(p->size) {
-    case 1 :
-      ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]) ;
-      break ;
-    case 2 :
-      if ( p->perm[0] == 1 && p->perm[1] == 0 ) {
-	ret = transpose2_10<T>(p->out, p->in, p->dim_size) ;
-      }
-      else {
-	ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
-      }
-      break ;
-    case 3 :
-      if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
-	ret = transpose3_102<T>(p->out, p->in, p->dim_size) ;
-      }
-      else {
-	ret = transpose3<T>(p->out, p->in, p->dim_size, p->perm) ;
-      }
-      break ;
-    case 4 :
-      if (p->perm[0] == 0 && p->perm[1] == 2
-          && p->perm[2] == 3 && p->perm[3] == 1) {
-	ret = 0 ;
+  switch(p->size) {
+  case 1 :
+    ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]) ;
+    break ;
+  case 2 :
+    if ( p->perm[0] == 1 && p->perm[1] == 0 ) {
+      ret = transpose2_10<T>(p->out, p->in, p->dim_size) ;
+    }
+    else {
+      ret = notranspose_copy<T>(p->out, p->in, p->dim_size[0]*p->dim_size[1]) ;
+    }
+    break ;
+  case 3 :
+    if (p->perm[0] == 1 && p->perm[1] == 0 && p->perm[2] == 2) {
+      ret = transpose3_102<T>(p->out, p->in, p->dim_size) ;
+    }
+    else {
+      ret = transpose3<T>(p->out, p->in, p->dim_size, p->perm) ;
+    }
+    break ;
+  case 4 :
+    if (p->perm[0] == 0 && p->perm[1] == 2
+	&& p->perm[2] == 3 && p->perm[3] == 1) {
+      ret = 0 ;
 #pragma omp parallel reduction(|:ret)
-	{
-	  int64_t nthreads = omp_get_num_threads() ;
-	  int64_t threadid = omp_get_thread_num() ;
+      {
+	int64_t nthreads = omp_get_num_threads() ;
+	int64_t threadid = omp_get_thread_num() ;
 
-	  int64_t chunkSize = p->dim_size[0] / nthreads ;
-	  int64_t remain    = p->dim_size[0] % nthreads ;
+	int64_t chunkSize = p->dim_size[0] / nthreads ;
+	int64_t remain    = p->dim_size[0] % nthreads ;
 
-	  int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-	  int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
 
-	  int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
+	int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
 
-	  if( myChunk > 0 ) {
-	    int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
-	    ret |= transpose4_0231<T>(p->out+offset, p->in+offset, dim_size) ;
-	  }
+	if( myChunk > 0 ) {
+	  int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
+	  ret |= transpose4_0231<T>(p->out+offset, p->in+offset, dim_size) ;
 	}
-
-      } else if (p->perm[0] == 0 && p->perm[1] == 3
-                 && p->perm[2] == 1 && p->perm[3] == 2) {
-	ret = 0 ;
-#pragma omp parallel reduction(|:ret)
-	{
-	  int64_t nthreads = omp_get_num_threads() ;
-	  int64_t threadid = omp_get_thread_num() ;
-
-	  int64_t chunkSize = p->dim_size[0] / nthreads ;
-	  int64_t remain    = p->dim_size[0] % nthreads ;
-
-	  int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-	  int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
-
-	  int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
-
-	  if( myChunk > 0 ) {
-	    int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
-	    ret |= transpose4_0312<T>(p->out+offset, p->in+offset, dim_size) ;
-	  }
-	}
-      } else if (p->perm[0] == 1 && p->perm[1] == 0
-                 && p->perm[2] == 2 && p->perm[3] == 3) {
-	ret = transpose4_1023<T>(p->out, p->in, p->dim_size) ;
       }
-      else
+
+    } else if (p->perm[0] == 0 && p->perm[1] == 3
+	       && p->perm[2] == 1 && p->perm[3] == 2) {
+      ret = 0 ;
+#pragma omp parallel reduction(|:ret)
+      {
+	int64_t nthreads = omp_get_num_threads() ;
+	int64_t threadid = omp_get_thread_num() ;
+
+	int64_t chunkSize = p->dim_size[0] / nthreads ;
+	int64_t remain    = p->dim_size[0] % nthreads ;
+
+	int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+	int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+	int64_t offset    = chunkBegin * sizeof(T) *  p->dim_size[1] * p->dim_size[2] * p->dim_size[3] ;
+
+	if( myChunk > 0 ) {
+	  int32_t dim_size[4] = { (int32_t)myChunk, p->dim_size[1], p->dim_size[2], p->dim_size[3] } ;
+	  ret |= transpose4_0312<T>(p->out+offset, p->in+offset, dim_size) ;
+	}
+      }
+    } else if (p->perm[0] == 1 && p->perm[1] == 0
+	       && p->perm[2] == 2 && p->perm[3] == 3) {
+      ret = transpose4_1023<T>(p->out, p->in, p->dim_size) ;
+    }
+    else
       {
 	ret = transpose4<T>(p->out, p->in, p->dim_size, p->perm) ;
       }
-      break ;
-    default :
-      break ;
-    }
-  //  }
+    break ;
+  default :
+    break ;
+  }
 
-  //  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1327,7 +1352,7 @@ int op_Transpose(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << " dtype=" << p->dtype
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype
     << " size=" << p->size
     << " perm=(" << p->perm[0]
     << " " << p->perm[1]
@@ -1403,7 +1428,7 @@ template<> void blas_gemm<float>(GEMM_ARGS(float)) { sgemm_(GEMM_REAL_ARGS); }
 template<typename T, char TransA, char TransB>
   int matmul(uint64_t c, uint64_t a, uint64_t b, int M, int N, int K)
   {
-    LOG(3) << __FUNCTION__ << " begin: (" << M << "," << N << "," << K << ")";
+    LOG(4) << __FUNCTION__ << " begin: (" << M << "," << N << "," << K << ")";
     T* C = reinterpret_cast<T*>(c);
     const T* A = reinterpret_cast<const T*>(a);
     const T* B = reinterpret_cast<const T*>(b);
@@ -1434,7 +1459,7 @@ template<typename T, char TransA, char TransB>
       }
     }
 
-    LOG(2) << __FUNCTION__ << " end";
+    LOG(4) << __FUNCTION__ << " end";
     return 0;
   }
 }
@@ -1458,6 +1483,7 @@ int op_MatMul(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   LOG(3) << __FUNCTION__
+    << ": dtype=" << p->dtype
     << " a=(" << p->dim_size_a[0] << ", " << p->dim_size_a[1] << ")"
     << " b=(" << p->dim_size_b[0] << ", " << p->dim_size_b[1] << ")"
     << " transpose_a=" << p->transpose_a
@@ -1528,8 +1554,9 @@ int op_Softmax(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(2) << __FUNCTION__ << " dim[0]=" << p->batch_size \
-	  << " dim[1]=" << p->num_classes;
+  LOG(3) << __FUNCTION__
+	 << ": dtype=" << p->dtype
+	 << " dim[0]=" << p->batch_size << " dim[1]=" << p->num_classes;
 
   if (p->dtype == DT_FLOAT) {
     const float* in = reinterpret_cast<const float*>(p->in);
@@ -1537,9 +1564,7 @@ int op_Softmax(const void* args, size_t len)
 
     if( p->bool_log ) {
 #if 1	// use vednn
-      return vednnSoftmaxForward( VEDNN_SOFTMAX_LOG,
-                                 (void *)(p->in), (void*)(p->out),
-                                 p->batch_size, p->num_classes) ;
+      ret = vednnSoftmaxForward( VEDNN_SOFTMAX_LOG, (void *)(p->in), (void*)(p->out), p->batch_size, p->num_classes) ;
 #else
       // LogSoftmax
       for(uint64_t b=0; b<p->batch_size; b++) {
@@ -1563,13 +1588,12 @@ int op_Softmax(const void* args, size_t len)
         in  += p->num_classes ; 
         out += p->num_classes ; 
       }
+      ret = 0;
 #endif
     }
     else {
 #if 1	// use vednn
-      return vednnSoftmaxForward( VEDNN_SOFTMAX_ACCURATE,
-                                 (void *)(p->in), (void*)(p->out),
-                                 p->batch_size, p->num_classes) ;
+      ret = vednnSoftmaxForward( VEDNN_SOFTMAX_ACCURATE, (void *)(p->in), (void*)(p->out), p->batch_size, p->num_classes) ;
 #else
       // Softmax
       for(uint64_t b=0; b<p->batch_size; b++) {
@@ -1591,9 +1615,9 @@ int op_Softmax(const void* args, size_t len)
         in  += p->num_classes ; 
         out += p->num_classes ; 
       }
+      ret = 0 ;
 #endif
     }
-    ret = 0 ;
   }
   
   LOG(2) << __FUNCTION__ << " end. ret=" << ret;
@@ -1635,6 +1659,8 @@ int op_Pack(const void* args, size_t len)
   } const* p;
 
   p = reinterpret_cast<const Args*>(args);
+
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     ret = pack<float>(p->n, p->l, (uint64_t*)&p->in[0], p->out) ;
@@ -1784,6 +1810,8 @@ int op_Slice(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+
   if (p->dtype == DT_FLOAT) {
     ret = slice_handle<float>(p->input_dims, p->input_ptr, p->output_ptr, (uint64_t*) p->array) ;
   }
@@ -1823,6 +1851,8 @@ int unary_op(const void* args, size_t len,
 
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
+
+  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
   if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {

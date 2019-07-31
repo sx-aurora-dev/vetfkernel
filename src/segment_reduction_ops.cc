@@ -68,6 +68,8 @@ int op_UnsortedSegmentSum(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
+  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " idxtype=" << p->idxtype;
+
   int ret = 1;
 
   if (p->dtype == DT_FLOAT) {

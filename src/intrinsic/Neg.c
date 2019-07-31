@@ -11,7 +11,7 @@
 #define NCHW_IDX(n,c,h,w,cl,hl,wl) ((((n)*(cl)+(c))*(hl)+(h))*(wl)+(w))
 
 
-void neg(uint64_t out, uint64_t in, size_t n)
+int neg(uint64_t out, uint64_t in, size_t n)
 {
 
 	const float* pi = (const float*)(in);
@@ -50,7 +50,7 @@ void neg(uint64_t out, uint64_t in, size_t n)
 			po[i] = - pi[i];
 	}
 
-	return;
+	return 0;
 }
 
 
