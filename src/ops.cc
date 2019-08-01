@@ -709,7 +709,7 @@ int op_Neg(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
 #ifdef SET_TIMER
     unsigned long long start = __veperf_get_stm();
 #endif
@@ -772,7 +772,7 @@ int op_Floor(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_floor<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -824,7 +824,7 @@ int op_Reciprocal(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_reciprocal<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -876,7 +876,7 @@ int op_Log(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_log<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -929,7 +929,7 @@ int op_Exp(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_exp<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -981,7 +981,7 @@ int op_Sigmoid(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_sigmoid<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -1031,7 +1031,7 @@ int op_Tanh(const void* args, size_t len)
 
   int ret = 1;
 
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     ret = op_tanh<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
@@ -1890,7 +1890,7 @@ int unary_op(const void* args, size_t len,
   LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
-  if (p->in.dtype == DT_FLOAT || p->out.dtype == DT_FLOAT) {
+  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
     if( p->in.nelems >= 2048 ) {
 #pragma omp parallel
       {
