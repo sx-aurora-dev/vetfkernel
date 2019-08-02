@@ -49,7 +49,7 @@ int gather(int64_t outer_size, int64_t inner_size, int64_t nindex,
 
 int op_Gather(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype, idxtype;
@@ -62,7 +62,7 @@ int op_Gather(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " idxtype=" << p->idxtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " idxtype=" << p->idxtype;
 
   int ret = 1;
 
@@ -87,7 +87,7 @@ int op_Gather(const void* args, size_t len)
     }
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 

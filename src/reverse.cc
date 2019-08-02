@@ -501,7 +501,7 @@ int reverse(Tensor const *input,
 namespace {
 int op_Reverse(const VEOpArgs& args)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
     if (args.nVariables() != 10)
         return 1 ;
@@ -524,7 +524,7 @@ int op_Reverse(const VEOpArgs& args)
     const int dtype  = input_tensor->dtype ;
     const int indims = input_tensor->dims ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if( dtype == DT_FLOAT ) {
       ret = reverse<float>(input_tensor, output_tensor, axes) ;
@@ -533,7 +533,7 @@ int op_Reverse(const VEOpArgs& args)
       ret = reverse<double>(input_tensor, output_tensor, axes) ;
     }
 
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
 
     return ret;
 }

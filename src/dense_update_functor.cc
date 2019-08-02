@@ -48,7 +48,7 @@ int dense_update_assign(int64_t num_elements,
 
 int op_DenseUpdateAssign(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -59,7 +59,7 @@ int op_DenseUpdateAssign(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 
@@ -75,7 +75,7 @@ int op_DenseUpdateAssign(const void* args, size_t len)
                                        p->dst_ptr, p->src_ptr) ;
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -102,7 +102,7 @@ int dense_update_assign_add(int64_t num_elements,
 
 int op_DenseUpdateAssignAdd(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -113,7 +113,7 @@ int op_DenseUpdateAssignAdd(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 
@@ -129,7 +129,7 @@ int op_DenseUpdateAssignAdd(const void* args, size_t len)
                                            p->dst_ptr, p->src_ptr) ;
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -156,7 +156,7 @@ int dense_update_assign_sub(int64_t num_elements,
 
 int op_DenseUpdateAssignSub(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -167,7 +167,7 @@ int op_DenseUpdateAssignSub(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 
@@ -183,7 +183,7 @@ int op_DenseUpdateAssignSub(const void* args, size_t len)
                                            p->dst_ptr, p->src_ptr) ;
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 

@@ -26,10 +26,18 @@ class LogMessage : public std::basic_ostringstream<char> {
 
 /*
  * Log level
- * 1: Initialization, once per execution
- * 2: Kernel begin and end
- * 3 or more: Details
  */
+#define LOG_PROFILE	0
+#define LOG_TIMER	0
+#define LOG_MESSAGE	0	// starup message
+#define LOG_ERROR	1
+#define LOG_WARNING	2
+#define LOG_INFO	3
+#define LOG_TRACE	4	// kernel begin and end
+#define LOG_PARAM	5	// kernel parameter
+#define LOG_DETAIL	6	// more detail infomation
+#define LOG_DEBUG	7
+
 
 #ifndef NDEBUG
 #define LOG(lvl) \

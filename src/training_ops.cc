@@ -53,7 +53,7 @@ int apply_gradient_descent(int64_t num_elements,
 
 int op_ApplyGradientDescent(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -65,7 +65,7 @@ int op_ApplyGradientDescent(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 
@@ -80,7 +80,7 @@ int op_ApplyGradientDescent(const void* args, size_t len)
 					 p->alpha_ptr) ;
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -225,7 +225,7 @@ int apply_adam<float>(bool use_nesterov, int64_t num_elements,
 
 int op_ApplyAdam(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -241,7 +241,7 @@ int op_ApplyAdam(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   int ret = 1;
 
@@ -261,7 +261,7 @@ int op_ApplyAdam(const void* args, size_t len)
   }
 
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -308,7 +308,7 @@ int apply_momentum(bool use_nesterov, int64_t num_elements,
 
 int op_ApplyMomentum(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -324,7 +324,7 @@ int op_ApplyMomentum(const void* args, size_t len)
 
   int ret = 1;
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     ret = apply_momentum<float> (p->use_nesterov_, p->num_elements,
@@ -340,6 +340,6 @@ int op_ApplyMomentum(const void* args, size_t len)
   }
 
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }

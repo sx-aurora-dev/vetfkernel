@@ -188,7 +188,7 @@ int argmax_43(const T* in, Index* out, const int64_t* dim_size)
   int64_t osize = d0*d1*d2 ;
   T omax[MAXSTRIP];
 
-  LOG(4) << "argmax_43" << " begin";
+  LOG(LOG_DETAIL) << "argmax_43" << " begin";
   for (int64_t i=0; i<osize; i+=MAXSTRIP) {
     for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
       omax[j] = in[(i+j)*d3] ;
@@ -205,7 +205,7 @@ int argmax_43(const T* in, Index* out, const int64_t* dim_size)
       }
     }
   }
-  LOG(4) << "argmax_43" << " end";
+  LOG(LOG_DETAIL) << "argmax_43" << " end";
   return 0 ;
 }
 #undef MAXSTRIP
@@ -259,7 +259,7 @@ int argmax(uint64_t in_ptr, uint64_t out_ptr,
 
 int op_ArgMax(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype, idxtype ;
@@ -274,7 +274,7 @@ int op_ArgMax(const void* args, size_t len)
 
   int ret = 1;
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     if ( p->idxtype == DT_INT32 ) {
@@ -301,7 +301,7 @@ int op_ArgMax(const void* args, size_t len)
     }
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -534,7 +534,7 @@ int argmin(uint64_t in_ptr, uint64_t out_ptr,
 
 int op_ArgMin(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype, idxtype ;
@@ -549,7 +549,7 @@ int op_ArgMin(const void* args, size_t len)
 
   int ret = 1;
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     if ( p->idxtype == DT_INT32 ) {
@@ -576,7 +576,7 @@ int op_ArgMin(const void* args, size_t len)
     }
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 

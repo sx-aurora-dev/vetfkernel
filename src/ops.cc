@@ -103,7 +103,7 @@ namespace {
 template <typename T>
   int fill(const void* args, size_t len)
   {
-    // LOG(4) << __PRETTY_FUNCTION__;
+    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__;
     struct Args {
       int data_type;
       uint64_t in;
@@ -119,19 +119,19 @@ template <typename T>
 
     p = reinterpret_cast<const Args*>(args);
 #if 0
-    LOG(4, "%s: data_type=%d out=%016lx num_elems=%lu\n",
+    fprintf(stderr, "%s: data_type=%d out=%016lx num_elems=%lu\n",
           __FUNCTION__, p->data_type, p->out, p->num_elems);
 #endif
 
     const T* in = (T*)p->in;
     T* out = (T*)p->out;
 
-    // LOG(4) << __FUNCTION__ << ": value=" << *in;
+    // LOG(LOG_DETAIL) << __FUNCTION__ << ": value=" << *in;
 
     for (size_t i = 0; i < p->num_elems; ++i)
       out[i] = *in;
 
-    // LOG(4) << __PRETTY_FUNCTION__ << ": done";
+    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << ": done";
     return 0;
   }
 }
@@ -140,10 +140,10 @@ template <typename T>
 
 int op_fill(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   int dtype = DATA_TYPE(args);
-  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
   int ret = 1;
   if (dtype == DT_FLOAT) {
@@ -156,7 +156,7 @@ int op_fill(const void* args, size_t len)
     ret = fill<int64_t>(args, len);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -168,7 +168,7 @@ namespace {
 template <typename T>
   int zeroslike(const void* args, size_t len)
   {
-    // LOG(4) << __PRETTY_FUNCTION__;
+    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__;
     struct Args {
       int data_type;
       uint64_t out;
@@ -185,12 +185,12 @@ template <typename T>
 
     T* out = (T*)p->out;
 
-    // LOG(4) << __FUNCTION__ ;
+    // LOG(LOG_DETAIL) << __FUNCTION__ ;
 
     for (size_t i = 0; i < p->num_elems; ++i)
       out[i] = T(0.);
 
-    // LOG(4) << __PRETTY_FUNCTION__ << ": done";
+    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << ": done";
     return 0;
   }
 }
@@ -199,10 +199,10 @@ template <typename T>
 
 int op_ZerosLike(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   int dtype = DATA_TYPE(args);
-  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
   int ret = 1;
   if (dtype == DT_FLOAT) {
@@ -211,7 +211,7 @@ int op_ZerosLike(const void* args, size_t len)
     ret = zeroslike<double>(args, len);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -251,7 +251,7 @@ int AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
 
 int op_AddN(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
 #define MAX_INPUTS 32
   struct Args {
@@ -270,7 +270,7 @@ int op_AddN(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__
+  LOG(LOG_PARAM) << __FUNCTION__
 	 << ": dtype=" << p->output_type
 	 << " num_elems=" << p->num_elems << " num_inputs=" << p->num_inputs;
 
@@ -279,7 +279,7 @@ int op_AddN(const void* args, size_t len)
   }
 
  error_exit:
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -356,7 +356,7 @@ inline int BiasAdd_NCHW<float>(uint64_t out, uint64_t in, uint64_t bias, int bat
 template<typename T>
 int op_BiasAdd(const void* args, size_t len)
 {
-  // LOG(2) << __FUNCTION__ << " begin";
+  // LOG(LOG_DETAIL) << __FUNCTION__ << " begin";
   struct Args {
     int dtype;
     int data_format;
@@ -373,7 +373,7 @@ int op_BiasAdd(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  //LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
 
   int ret = 1 ;
 
@@ -428,13 +428,13 @@ int op_BiasAdd(const void* args, size_t len)
     }
   }
 
-  // LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  // LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
 int op_BiasAdd(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
   struct Args {
     int dtype;
     int data_format;
@@ -451,7 +451,7 @@ int op_BiasAdd(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
 
   int ret = 1 ;
 
@@ -461,7 +461,7 @@ int op_BiasAdd(const void* args, size_t len)
     ret = op_BiasAdd<double>(args, len);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -523,7 +523,7 @@ int BiasAddGrad_NCHW(uint64_t output, uint64_t output_backprop, int batch, int w
 #endif
 int op_BiasAddGrad(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args{
     int dtype;
@@ -547,7 +547,7 @@ int op_BiasAddGrad(const void* args, size_t len)
 
   int ret = 1;
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
 
 #ifndef LIBVETF_INTRINSIC
   if (p->dtype == DT_FLOAT && p->data_format == FORMAT_NHWC) {
@@ -577,7 +577,7 @@ int op_BiasAddGrad(const void* args, size_t len)
   }
 #endif
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -587,7 +587,7 @@ int op_BiasAddGrad(const void* args, size_t len)
 
 int op_Relu(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -600,7 +600,7 @@ int op_Relu(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   int dtype = p->dtype;
-  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
   int ret = 1;
 
@@ -608,13 +608,13 @@ int op_Relu(const void* args, size_t len)
     ret = vednnActivationForward(VEDNN_ACTIVATION_RELU, (void*)(p->in), (void*)(p->out), p->num_elems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
 int op_ReluGrad(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -628,7 +628,7 @@ int op_ReluGrad(const void* args, size_t len)
   p = reinterpret_cast<const Args*>(args);
 
   int dtype = p->dtype;
-  LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
   int ret = 1;
 
@@ -636,14 +636,14 @@ int op_ReluGrad(const void* args, size_t len)
     ret = vednnActivationBackward(VEDNN_ACTIVATION_RELU, (void*)(p->g), (void*)(p->a), (void*)(p->output), p->num_elems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
 
 int op_Snapshot(const void* arg, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Arg {
     uint64_t dst;
@@ -654,13 +654,13 @@ int op_Snapshot(const void* arg, size_t len)
   CHECK_ARG_LEN(len, sizeof(Arg));
   p = reinterpret_cast<const Arg*>(arg);
 
-  LOG(3) << __FUNCTION__ << ": dst=" << p->dst << " src=" << p->src << " size=" << p->size; 
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dst=" << p->dst << " src=" << p->src << " size=" << p->size; 
 
   memcpy(reinterpret_cast<void*>(p->dst),
          reinterpret_cast<const void*>(p->src),
          p->size);
 
-  LOG(2) << __FUNCTION__ << " end. ret=0";
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=0";
   return 0;
 }
 
@@ -686,7 +686,7 @@ namespace {
 
 int op_Neg(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -705,7 +705,7 @@ int op_Neg(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -724,7 +724,7 @@ int op_Neg(const void* args, size_t len)
 #endif
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -749,7 +749,7 @@ namespace {
 
 int op_Floor(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -768,7 +768,7 @@ int op_Floor(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -776,7 +776,7 @@ int op_Floor(const void* args, size_t len)
     ret = op_floor<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -801,7 +801,7 @@ template<typename Tin, typename Tout>
 
 int op_Reciprocal(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -820,7 +820,7 @@ int op_Reciprocal(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -828,7 +828,7 @@ int op_Reciprocal(const void* args, size_t len)
     ret = op_reciprocal<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -853,7 +853,7 @@ namespace {
 
 int op_Log(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -872,7 +872,7 @@ int op_Log(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -880,7 +880,7 @@ int op_Log(const void* args, size_t len)
     ret = op_log<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -906,7 +906,7 @@ namespace {
 
 int op_Exp(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -925,7 +925,7 @@ int op_Exp(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -933,7 +933,7 @@ int op_Exp(const void* args, size_t len)
     ret = op_exp<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -958,7 +958,7 @@ namespace {
 
 int op_Sigmoid(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -977,7 +977,7 @@ int op_Sigmoid(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -985,7 +985,7 @@ int op_Sigmoid(const void* args, size_t len)
     ret = op_sigmoid<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1008,7 +1008,7 @@ namespace {
 
 int op_Tanh(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -1027,7 +1027,7 @@ int op_Tanh(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
 
@@ -1035,7 +1035,7 @@ int op_Tanh(const void* args, size_t len)
     ret = op_tanh<float, float>(p->out.addr, p->in.addr, p->in.nelems);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1373,7 +1373,7 @@ int op_TransposeBase(const void* args, size_t len)
 
 int op_Transpose(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -1387,7 +1387,7 @@ int op_Transpose(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype
     << " size=" << p->size
     << " perm=(" << p->perm[0]
     << " " << p->perm[1]
@@ -1427,7 +1427,7 @@ int op_Transpose(const void* args, size_t len)
     ret = op_TransposeBase<uint16_t>(args, len);
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1463,7 +1463,7 @@ template<> void blas_gemm<float>(GEMM_ARGS(float)) { sgemm_(GEMM_REAL_ARGS); }
 template<typename T, char TransA, char TransB>
   int matmul(uint64_t c, uint64_t a, uint64_t b, int M, int N, int K)
   {
-    LOG(4) << __FUNCTION__ << " begin: (" << M << "," << N << "," << K << ")";
+    LOG(LOG_DETAIL) << __FUNCTION__ << " begin: (" << M << "," << N << "," << K << ")";
     T* C = reinterpret_cast<T*>(c);
     const T* A = reinterpret_cast<const T*>(a);
     const T* B = reinterpret_cast<const T*>(b);
@@ -1494,14 +1494,14 @@ template<typename T, char TransA, char TransB>
       }
     }
 
-    LOG(4) << __FUNCTION__ << " end";
+    LOG(LOG_DETAIL) << __FUNCTION__ << " end";
     return 0;
   }
 }
 
 int op_MatMul(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct Args {
     int dtype;
@@ -1517,7 +1517,7 @@ int op_MatMul(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__
+  LOG(LOG_PARAM) << __FUNCTION__
     << ": dtype=" << p->dtype
     << " a=(" << p->dim_size_a[0] << ", " << p->dim_size_a[1] << ")"
     << " b=(" << p->dim_size_b[0] << ", " << p->dim_size_b[1] << ")"
@@ -1563,7 +1563,7 @@ int op_MatMul(const void* args, size_t len)
     }
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1573,7 +1573,7 @@ int op_MatMul(const void* args, size_t len)
 
 int op_Softmax(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   int ret = 1 ;
 
@@ -1589,7 +1589,7 @@ int op_Softmax(const void* args, size_t len)
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__
+  LOG(LOG_PARAM) << __FUNCTION__
 	 << ": dtype=" << p->dtype
 	 << " dim[0]=" << p->batch_size << " dim[1]=" << p->num_classes;
 
@@ -1655,7 +1655,7 @@ int op_Softmax(const void* args, size_t len)
     }
   }
   
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 
@@ -1681,7 +1681,7 @@ template<typename T>
 
 int op_Pack(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   int ret=1;
 
@@ -1695,7 +1695,7 @@ int op_Pack(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     ret = pack<float>(p->n, p->l, (uint64_t*)&p->in[0], p->out) ;
@@ -1704,7 +1704,7 @@ int op_Pack(const void* args, size_t len)
     ret = pack<int32_t>(p->n, p->l, (uint64_t*)&p->in[0], p->out) ;
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
 
   return ret;
 }
@@ -1831,7 +1831,7 @@ int slice_handle(uint64_t input_dims, uint64_t input_ptr, uint64_t output_ptr, u
 //
 int op_Slice(const void* args, size_t len)
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   int ret=1;
 
@@ -1845,7 +1845,7 @@ int op_Slice(const void* args, size_t len)
 
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
 
   if (p->dtype == DT_FLOAT) {
     ret = slice_handle<float>(p->input_dims, p->input_ptr, p->output_ptr, (uint64_t*) p->array) ;
@@ -1858,7 +1858,7 @@ int op_Slice(const void* args, size_t len)
   }
   
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret ; 
 }
 
@@ -1868,7 +1868,7 @@ namespace {
 int unary_op(const void* args, size_t len,
              int (*func_f32_f32)(uint64_t, uint64_t, size_t))
 {
-  LOG(2) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
   struct _Tensor {
     int dtype;
@@ -1887,7 +1887,7 @@ int unary_op(const void* args, size_t len,
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
 
-  LOG(3) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
 
   int ret = 1;
   if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
@@ -1915,7 +1915,7 @@ int unary_op(const void* args, size_t len,
     }
   }
 
-  LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
 #ifndef LIBVETF_INTRINSIC

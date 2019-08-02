@@ -110,13 +110,13 @@ template <typename T, typename U> int FusedBatchNorm(
 
 int op_FusedBatchNorm(VEOpArgs const& args) 
 {
-  LOG(2) << __FUNCTION__ << ": begin";
-  //LOG(2) << __FUNCTION__ << ": args.nVariables=" << args.nVariables();
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nVariables=" << args.nVariables();
 
   int ret = 1;
 
   if (args.nVariables() != 14) {
-    LOG(4) << __FUNCTION__ << ": nVariables should be 14. But "
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nVariables should be 14. But "
         << args.nVariables();
     goto error_exit;
   }
@@ -139,7 +139,7 @@ int op_FusedBatchNorm(VEOpArgs const& args)
     int Utype = *args.arg<int64_t>(13);
 
 #define PT(T) \
-    LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T->to_s();
     PT(x_input);
     PT(scale_input);
     PT(offset_input);
@@ -150,13 +150,13 @@ int op_FusedBatchNorm(VEOpArgs const& args)
     PT(saved_mean_output);
     PT(batch_var_output);
     PT(saved_var_output);
-    LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
-    LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
-    LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": is_training=" << is_training;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": Ttype=" << Ttype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": Utype=" << Utype;
 
     if (Ttype == DT_FLOAT && Utype == DT_FLOAT) {
       float epsilon = *args.arg<float>(10);
-      LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
+      LOG(LOG_PARAM) << __FUNCTION__ << ": epsilon=" << epsilon;
       ret = FusedBatchNorm<float, float>(
             x_input, scale_input, offset_input,
             estimated_mean_input, estimated_variance_input,
@@ -168,7 +168,7 @@ int op_FusedBatchNorm(VEOpArgs const& args)
   }
 
  error_exit:
-  LOG(2) << __FUNCTION__ << ": end";
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
   return ret;
 }
 } // namespace
@@ -211,7 +211,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
   size_t sizeHW = sizeCHW / depth; // H*W
 
 #if 0
-  LOG(3) << __FUNCTION__ << ": "
+  LOG(LOG_PARAM) << __FUNCTION__ << ": "
       << " y_backprop=" << y_backprop
       << " x=" << x
       << " scale=" << scale
@@ -233,7 +233,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
     // offset_backprop = sum(y_backprop)
 
 #if 0
-    LOG(3) << __FUNCTION__ << ":"
+    LOG(LOG_PARAM) << __FUNCTION__ << ":"
         << " depth=" << depth;
 #endif
 #if 1 // optimized version
@@ -340,12 +340,12 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
 
 int op_FusedBatchNormGrad(VEOpArgs const& args)
 {
-  LOG(2) << __FUNCTION__ << ": begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
 
   int ret = 1;
 
   if (args.nVariables() != 15) {
-    LOG(4) << __FUNCTION__ << ": nVariables should be 15. But "
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nVariables should be 15. But "
         << args.nVariables();
     goto error_exit;
   }
@@ -371,7 +371,7 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
     int Utype = *args.arg<int64_t>(14);
 
 #define PT(T) \
-    LOG(3) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T->to_s();
     PT(y_backprop);
     PT(x);
     PT(scale);
@@ -382,14 +382,14 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
     PT(offset_backprop);
     PT(placeholder_1);
     PT(placeholder_2);
-    LOG(3) << __FUNCTION__ << ": tensor_format=" << tensor_format;
-    LOG(3) << __FUNCTION__ << ": is_training=" << is_training;
-    LOG(3) << __FUNCTION__ << ": Ttype=" << Ttype;
-    LOG(3) << __FUNCTION__ << ": Utype=" << Utype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": tensor_format=" << tensor_format;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": is_training=" << is_training;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": Ttype=" << Ttype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": Utype=" << Utype;
 
     if (Ttype == DT_FLOAT && Utype == DT_FLOAT && tensor_format == FORMAT_NCHW) {
       float epsilon = *args.arg<float>(10);
-      LOG(3) << __FUNCTION__ << ": epsilon=" << epsilon;
+      LOG(LOG_PARAM) << __FUNCTION__ << ": epsilon=" << epsilon;
 
       memset(reinterpret_cast<void*>(placeholder_1->addr), 0,
 	     sizeof(float) * placeholder_1->nelems);
@@ -405,7 +405,7 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
   }
 
  error_exit:
-  LOG(2) << __FUNCTION__ << ": end";
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
   return ret;
 }
 

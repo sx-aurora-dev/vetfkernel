@@ -45,7 +45,7 @@ struct PoolingGradParam {
 
 int maxpooling_backprop(const void* arg, size_t len)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
 #ifdef _DEBUG
     fprintf(stderr, "[start]maxpooling_backprop\n");
@@ -53,7 +53,7 @@ int maxpooling_backprop(const void* arg, size_t len)
     assert(len == sizeof(PoolingGradParam));
     const PoolingGradParam& p = *(PoolingGradParam*)arg;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
 
 #ifdef _DEBUG
     fprintf(stderr, "maxpooling_backprop: data_format=%d data_type=%d\n", p.data_format, p.data_type);
@@ -117,6 +117,6 @@ int maxpooling_backprop(const void* arg, size_t len)
 #ifdef _DEBUG
     fprintf(stderr, "[end]maxpooling_backprop\n");
 #endif
-    LOG(2) << __FUNCTION__ << " end. ret=0";
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=0";
     return 0;
 }

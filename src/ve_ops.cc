@@ -56,7 +56,7 @@ int op_select(const VEOpArgs& args)
     const Tensor *t2 = args.arg<Tensor>(2) ;
     const Tensor *t3 = args.arg<Tensor>(3) ;
 
-    LOG(3) << __FUNCTION__ << ":"
+    LOG(LOG_PARAM) << __FUNCTION__ << ":"
 	   << " in0=" << TensorToString(t0)
 	   << " in1=" << TensorToString(t1)
 	   << " in2=" << TensorToString(t2)
@@ -107,7 +107,7 @@ int op_randomUniform(const VEOpArgs& args)
 
     const Tensor* t = args.arg<Tensor>(0);
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << t->dtype << " nelems=" << t->nelems;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << t->dtype << " nelems=" << t->nelems;
 
     if (t->dtype == DT_FLOAT) {
         float* p = reinterpret_cast<float*>(t->addr);
@@ -186,12 +186,12 @@ int op_cast(const VEOpArgs& args)
     const Tensor* ti = args.arg<Tensor>(0);
     const Tensor* to = args.arg<Tensor>(1);
 
-    LOG(3) << __FUNCTION__ << " ti=" << ti << " to=" << to;
+    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti << " to=" << to;
 
     if (!ti || !to)
         return 1;
 
-    LOG(3) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
 
     if (ti->nelems != to->nelems)
         return 1;
@@ -228,7 +228,7 @@ namespace {
 template<typename T>
 int tile_dim3(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -258,7 +258,7 @@ int tile_dim3(Tensor const& X, Tensor const& Y)
 template<typename T>
 int tile_dim4_11(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -286,7 +286,7 @@ int tile_dim4_11(Tensor const& X, Tensor const& Y)
 template<typename T>
 int tile_dim4(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -322,7 +322,7 @@ int tile_dim4(Tensor const& X, Tensor const& Y)
 template<typename T>
 int tile_dim5_11(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__;
+    LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -358,7 +358,7 @@ int tile_dim5_11(Tensor const& X, Tensor const& Y)
 template<>
 int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
 {
-    LOG(3) << __FUNCTION__ << "(intrinsic)";
+    LOG(LOG_DETAIL) << __FUNCTION__ << "(intrinsic)";
     float* px = (float*)(X.addr);
     float const* py = (float*)(Y.addr);
 
@@ -372,7 +372,7 @@ int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
 template<typename T>
 int tile_dim5(Tensor const& X, Tensor const& Y)
 {
-    LOG(4) << __FUNCTION__;
+    LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
     T const* py = reinterpret_cast<T*>(Y.addr);
 
@@ -412,7 +412,7 @@ int op_tile(const VEOpArgs& args)
     const Tensor* ti = args.arg<Tensor>(0);
     const Tensor* to = args.arg<Tensor>(1);
 
-    LOG(3) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
 
     int rc = 1 ;
 
@@ -588,7 +588,7 @@ int op_softmax_xent_with_logits(const VEOpArgs& args)
     const Tensor* loss_out = args.arg<Tensor>(3);
     const Tensor* back_out = args.arg<Tensor>(4);
 
-    LOG(3) << __FUNCTION__
+    LOG(LOG_PARAM) << __FUNCTION__
            << " logits_in=" << logits_in->to_s()
            << " labels_in=" << labels_in->to_s()
            << " scratch="   << scratch->to_s()
@@ -670,7 +670,7 @@ int op_Concat(const VEOpArgs& args)
     const uint64_t outputs_flat_dim0 = *args.arg<uint64_t>(narg++) ;
     const uint64_t output_ptr        = *args.arg<uint64_t>(narg++) ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     uint64_t ins[n_input] ;
     uint64_t dim1_offset[n_input+1] ;
@@ -747,7 +747,7 @@ int op_Split(const VEOpArgs& args)
 
     const int dtype = input_tensor->dtype ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         ret = split<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
@@ -819,7 +819,7 @@ int op_SplitV(const VEOpArgs& args)
 
     const int dtype = input_tensor->dtype ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         ret = split_v<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
@@ -936,7 +936,7 @@ int op_StridedSlice(const VEOpArgs& args)
 
     const int dtype = input_tensor->dtype ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
@@ -1082,7 +1082,7 @@ int op_StridedSliceGrad(const VEOpArgs& args)
 
     const int dtype = dy_tensor->dtype ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
@@ -1162,7 +1162,7 @@ int op_L2Loss(const VEOpArgs& args)
     const int64_t input_addr  = input_tensor->addr  ;
     const int64_t output_addr = output_tensor->addr ;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << dtype;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
         ret = l2loss<float>(input_length, input_addr, output_addr) ;

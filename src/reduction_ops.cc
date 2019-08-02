@@ -120,7 +120,7 @@ int max_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
 
 int op_Max(const void* args, size_t len)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
     struct Args {
         int dtype;
@@ -136,7 +136,7 @@ int op_Max(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -167,7 +167,7 @@ int op_Max(const void* args, size_t len)
         }
     }
 
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
 }
 
@@ -272,7 +272,7 @@ int sum_d3a02<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t
 
 int op_Sum(const void* args, size_t len)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
     struct Args {
         int dtype;
@@ -288,7 +288,7 @@ int op_Sum(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -323,7 +323,7 @@ int op_Sum(const void* args, size_t len)
         }
     }
 
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
 }
 
@@ -411,7 +411,7 @@ int prod_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
 
 int op_Prod(const void* args, size_t len)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
     struct Args {
         int dtype;
@@ -427,7 +427,7 @@ int op_Prod(const void* args, size_t len)
 
     int ret = 1;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
@@ -473,7 +473,7 @@ int op_Prod(const void* args, size_t len)
     }
 
 
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
 }
 
@@ -582,7 +582,7 @@ int mean_d3a02<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_
 
 int op_Mean(const void* args, size_t len)
 {
-    LOG(2) << __FUNCTION__ << " begin";
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
     struct Args {
         int dtype;
@@ -598,7 +598,7 @@ int op_Mean(const void* args, size_t len)
 
     int ret = 0;
 
-    LOG(3) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
     //    printf("mean ve\n");
 
@@ -621,7 +621,7 @@ int op_Mean(const void* args, size_t len)
         }
     }
 
-    LOG(2) << __FUNCTION__ << " end. ret=" << ret;
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
     return ret;
 }
 

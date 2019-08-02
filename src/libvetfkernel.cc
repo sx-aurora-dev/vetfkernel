@@ -34,8 +34,9 @@ class InitVETFKernel
 {
 public :
   InitVETFKernel() {
-    LOG(1) << "vetfkernel revision: " << VETFKERNEL_REVISION;
-    LOG(1) << "vednn revision: " << VEDNN_REVISION;
+    LOG(LOG_TRACE) << "InitVETFKernel";
+    LOG(LOG_MESSAGE) << "vetfkernel revision: " << VETFKERNEL_REVISION;
+    LOG(LOG_MESSAGE) << "vednn revision: " << VEDNN_REVISION;
     setaffinity() ;
     ASL::initialize() ;
 
@@ -43,13 +44,13 @@ public :
     if (const char* tmp = getenv("VE_PROF")) {
       if (tmp[0] == '1')
         _is_profiler_enabled = true;
-      LOG(1) << "VE_PROF=" << tmp << " _is_profiler_enabled=" << _is_profiler_enabled;
+      LOG(LOG_PROFILE) << "VE_PROF=" << tmp << " _is_profiler_enabled=" << _is_profiler_enabled;
 #endif
     }
   }
 
   ~InitVETFKernel() {
-    LOG(1) << "~InitVETFKernel";
+    LOG(LOG_TRACE) << "~InitVETFKernel";
     ASL::finalize() ;
   }
 
@@ -135,7 +136,7 @@ uint64_t get_kernel_table_addr()
 void register_kernel(char const* name, char const* func)
 {
     // FIXME: check MAX_KERNEL
-  LOG(1) << __FUNCTION__ << ":"
+  LOG(LOG_INFO) << __FUNCTION__ << ":"
     << " kernel_index=" << kernel_index
     << " kernel_name=" << name
     << " func=" << func;
@@ -212,7 +213,7 @@ uint64_t vetfkl_entry(const void* arg, size_t len)
   int32_t num_kernels = *reinterpret_cast<int32_t*>(curr);
   curr += sizeof(int32_t);
 
-  LOG(2) << __FUNCTION__ << ": num_kernels=" << num_kernels;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": num_kernels=" << num_kernels;
 
 #if 0
   fprintf(stderr, "%s: num_kernels=%d\n", __FUNCTION__, num_kernels);
@@ -229,7 +230,7 @@ uint64_t vetfkl_entry(const void* arg, size_t len)
     const void* arg0 = reinterpret_cast<const void*>(curr);
     curr += len0;
 
-    LOG(2) << __FUNCTION__ << ": i=" << i << "/" << num_kernels;
+    LOG(LOG_TRACE) << __FUNCTION__ << ": i=" << i << "/" << num_kernels;
 #if 0
     fprintf(stderr, "vetfkl_entry: i=%d/%d func=%p args0=%p len=%lu\n",
             i, num_kernels, func, arg0, len0);
@@ -243,23 +244,23 @@ uint64_t vetfkl_entry(const void* arg, size_t len)
 #ifdef PROF
     if (_is_profiler_enabled) {
       uint64_t t1 = get_timestamp();
-      LOG(0) << __FUNCTION__ << ": profile" 
+      LOG(LOG_PROFILE) << __FUNCTION__ << ": profile" 
           << " " << (void*)func
           << " " << (t1 - t0);
     }
 #endif
-    LOG(2) <<  __FUNCTION__ << ": i=" << i << "/" << num_kernels << " ret=" << ret;
+    LOG(LOG_TRACE) <<  __FUNCTION__ << ": i=" << i << "/" << num_kernels << " ret=" << ret;
 #if 0
     fprintf(stderr, "vetfkl_entry: ret=%d\n", ret);
 #endif
     if (ret != 0) {
-      LOG(2) << __FUNCTION__ << ": return error. i=" << i << " ret=" << ret;
+      LOG(LOG_ERROR) << __FUNCTION__ << ": return error. i=" << i << " ret=" << ret;
       uint64_t retval = ((uint64_t)i) << 32 | ret;
       return retval;
     }
   }
 
-  LOG(2) << __FUNCTION__ << ": end. ret=0";
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end. ret=0";
 #if 0
   fprintf(stderr, "vetfkl_entry: end\n");
 #endif
@@ -280,7 +281,7 @@ uint64_t vehva_ve_;
 
 int dma_init(int32_t shmid, size_t size)
 {
-    LOG(1) << "dma_init: shmid=" << shmid << " size=" << size;
+    LOG(LOG_TRACE) << "dma_init: shmid=" << shmid << " size=" << size;
 
     void* buf;
     uint64_t vehva_ve;
@@ -292,9 +293,9 @@ int dma_init(int32_t shmid, size_t size)
         fprintf(stderr, "posix_memalign failed\n");
         return 1;
     }
-    LOG(2) << "dma_init: buf=" << buf;
+    LOG(LOG_DETAIL) << "dma_init: buf=" << buf;
     vehva_ve = ve_register_mem_to_dmaatb(buf, size);
-    LOG(2) << "dma_init: vehva_ve=" << (void*)vehva_ve;
+    LOG(LOG_DETAIL) << "dma_init: vehva_ve=" << (void*)vehva_ve;
     if (vehva_ve == (uint64_t)-1) {
         fprintf(stderr, "ve_register_mem_to_dmaatb failed\n");
         return 1;
@@ -333,7 +334,7 @@ int vetfkl_dma_read(void* arg, size_t len)
         uint64_t addr;
     } const* p = reinterpret_cast<tmp*>(arg);
 
-    LOG(2) << __FUNCTION__ << ": size=" << p->size
+    LOG(LOG_DETAIL) << __FUNCTION__ << ": size=" << p->size
         << " addr=" << reinterpret_cast<void const*>(p->addr);
 
     // TODO: 
@@ -352,7 +353,7 @@ int vetfkl_dma_read(void* arg, size_t len)
 
     while (size > 0) {
         size_t l = size > max_dma_size ? max_dma_size : size;
-        LOG(3) << __FUNCTION__ << ": call ve_dma_post_wait. transfer size is " 
+        LOG(LOG_DETAIL) << __FUNCTION__ << ": call ve_dma_post_wait. transfer size is " 
             << l << " bytes";
         int ret = ve_dma_post_wait(dst_hva, src_hva, l);
         if (ret != 0)

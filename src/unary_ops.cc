@@ -44,24 +44,24 @@ int unary_op(const void* args, size_t len,
              int (*func)(UnaryOpArgs const& args),
              char const* name)
 {
-  LOG(2) << __FUNCTION__ << "::" << name << ": begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": begin";
   int ret = 1;
 
   if (sizeof(UnaryOpArgs) == len) {
     const UnaryOpArgs* p = reinterpret_cast<const UnaryOpArgs*>(args);
 
-    LOG(3) << __FUNCTION__ << "::" << name << ":"
+    LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
         << " dtype=" << p->in.dtype << " nelems=" << p->in.nelems;
 
     if (func) {
       ret = func(*p);
     }
   } else {
-    LOG(4) << name << ": illegal args size " << len
+    LOG(LOG_ERROR) << name << ": illegal args size " << len
       << " bytes. but " << sizeof(UnaryOpArgs) << " bytes expected";
   }
 
-  LOG(2) << __FUNCTION__ << "::" << name << ": end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": end. ret=" << ret;
   return ret;
 }
 

@@ -42,13 +42,13 @@ int op_CwiseGradients(const void* args, size_t len,
                       int (*func)(const BinaryOpArgs&),
 		      const char* name)
 {
-  LOG(2) << __FUNCTION__ << "::" << name << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << " begin";
   int ret = 1;
 
   if (sizeof(BinaryOpArgs) == len) {
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
-    LOG(3) << name << ":"
+    LOG(LOG_PARAM) << name << ":"
       << " out="  << p->in0.to_s()
       << " gout=" << p->in1.to_s()
       << " gin="  << p->out.to_s();
@@ -56,11 +56,11 @@ int op_CwiseGradients(const void* args, size_t len,
     if (func)
       ret = func(*p);
   } else {
-    LOG(4) << name << ": illegal args size " << len
+    LOG(LOG_ERROR) << name << ": illegal args size " << len
       << " bytes. but " << sizeof(BinaryOpArgs) << " bytes expected";
   }
 
-  LOG(2) << __FUNCTION__ << "::" << name << " end. ret=" << ret;
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << " end. ret=" << ret;
   return ret;
 }
 
