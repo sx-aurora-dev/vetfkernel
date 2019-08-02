@@ -20,7 +20,7 @@ REGISTER_KERNEL("Mean", "op_Mean");
 
 #define CHECK_ARG_LEN(l0, l1) \
     if ((l0) != (l1)) { \
-    fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n", (l1), (l0)); \
+    LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << (l1) << " expected but " << (l0); \
     return 1; \
     }
 
@@ -292,19 +292,15 @@ int op_Sum(const void* args, size_t len)
 
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
-            //            printf("sum d2a1: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 2 && p->axis == 0) {
-            //            printf("sum d2a0: %d %d\n",p->dim_size[0], p->dim_size[1]);
             ret = sum_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 3 && p->axis == 1) {
-            //            printf("sum d3a1: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
         if (p->ndims == 3 && p->axis == 0) {
-            //            printf("sum d3a02: %d %d %d\n",p->dim_size[0], p->dim_size[1],p->dim_size[2]);
             ret = sum_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }
@@ -600,23 +596,17 @@ int op_Mean(const void* args, size_t len)
 
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
-    //    printf("mean ve\n");
-
     if (p->dtype == DT_FLOAT) {
         if (p->ndims == 2 && p->axis == 1) {
-            //            printf("mean ve d2a1\n");
             ret = mean_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 2 && p->axis == 0) {
-            //            printf("mean ve d2a0\n");
             ret = mean_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
         }
         if (p->ndims == 3 && p->axis == 1) {
-            //            printf("mean ve d3a1\n");
             ret = mean_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
         if (p->ndims == 3 && p->axis == 0) {
-            //            printf("mean ve d3a02\n");
             ret = mean_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
         }
     }

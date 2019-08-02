@@ -10,7 +10,7 @@ int64_t       ASL::asl_thread_num ;
 
 void ASL::initialize () {
   if (asl_library_initialize() != ASL_ERROR_OK) {
-    fprintf(stderr, "asl_library_initialize failed\n");
+    LOG(LOG_ERROR) << "asl_library_initialize failed\n";
     exit(1);
   }
 
@@ -26,13 +26,13 @@ void ASL::initialize () {
 
   for( int threadid = 0 ; threadid < asl_thread_num; threadid++) {
     if (asl_random_create(&rnd[threadid], ASL_RANDOMMETHOD_AUTO) != ASL_ERROR_OK) {
-      fprintf(stderr, "asl_random_create failed\n");
+      LOG(LOG_ERROR) << "asl_random_create failed";
       exit(-1);
     }
 
     const asl_uint32_t seed = time(NULL) >> threadid ;
     if (asl_random_initialize(rnd[threadid], 1, &seed) != ASL_ERROR_OK) {
-      fprintf(stderr, "asl_random_initialize failed\n");
+      LOG(LOG_ERROR) << "asl_random_initialize failed";
       exit(-1);
     }
   }
@@ -42,13 +42,13 @@ void ASL::finalize() {
 
   for( int threadid = 0 ; threadid < asl_thread_num; threadid++) {
     if (asl_random_destroy(rnd[threadid]) != ASL_ERROR_OK) {
-      fprintf(stderr, "asl_random_destroy failed\n");
+      LOG(LOG_ERROR) << "asl_random_destroy failed";
       exit(-1);
     }
   }
 
   if (asl_library_finalize() != ASL_ERROR_OK) {
-    fprintf(stderr, "asl_library_finalize failed\n");
+    LOG(LOG_ERROR) << "asl_library_finalize failed";
     exit(-1);
   }
 
@@ -70,7 +70,7 @@ int ASL::getRandom(size_t num, float *val) {
 
     if( myChunk > 0 ) {
       if (asl_random_generate_s(rnd[threadid], myChunk, val+chunkBegin) != ASL_ERROR_OK) {
-        fprintf(stderr, "asl_random_generate_d failed\n");
+        LOG(LOG_ERROR) << "asl_random_generate_d failed";
         exit(-1);
       }
     }

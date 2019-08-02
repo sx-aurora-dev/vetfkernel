@@ -65,7 +65,7 @@ REGISTER_KERNEL("Tanh", "op_Tanh");
 
 #define CHECK_ARG_LEN(l0, l1) \
   if ((l0) != (l1)) { \
-      fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n", (l1), (l0)); \
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << (l1) << " expected but " << (l0); \
       return 1; \
   }
 
@@ -112,8 +112,7 @@ template <typename T>
     } const* p;
 
     if (len != sizeof(*p)) {
-      fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n",
-              sizeof(*p), len);
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
       return 1;
     }
 
@@ -176,8 +175,7 @@ template <typename T>
     } const* p;
 
     if (len != sizeof(*p)) {
-      fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n",
-              sizeof(*p), len);
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
       return 1;
     }
 
@@ -264,7 +262,7 @@ int op_AddN(const void* args, size_t len)
 
   int ret = 1;
   if (len != sizeof(*p)) {
-      fprintf(stderr, "%s: illegal argument lenght: %ld expected but %ld\n", sizeof(*p), len);
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
       goto error_exit;
   }
 
@@ -306,9 +304,7 @@ int BiasAdd_NHWC(uint64_t out, uint64_t in, uint64_t bias, int batch, int width,
     }
   }
 
-#if 0
-  fprintf(stderr, "%s done\n", __PRETTY_FUNCTION__);
-#endif
+  // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << " done";
   return 0;
 }
 
@@ -338,9 +334,7 @@ int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias, int batch, int width,
     }
   }
 
-#if 0
-  fprintf(stderr, "%s done\n", __PRETTY_FUNCTION__);
-#endif
+  // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << " done";
   return 0;
 }
 
@@ -490,9 +484,7 @@ int BiasAddGrad_NHWC(uint64_t output, uint64_t output_backprop, int batch, int w
     }
   }
 
-#if 0
-  fprintf(stderr, "%s done\n", __PRETTY_FUNCTION__);
-#endif
+  // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << " done";
   return 0;
 }
 
@@ -513,9 +505,7 @@ int BiasAddGrad_NCHW(uint64_t output, uint64_t output_backprop, int batch, int w
     }
   }
 
-#if 0
-  fprintf(stderr, "%s done\n", __PRETTY_FUNCTION__);
-#endif
+  // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << ": done";
   return 0;
 }
 

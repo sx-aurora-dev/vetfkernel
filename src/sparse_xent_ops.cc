@@ -13,7 +13,7 @@ REGISTER_KERNEL("SparseSoftmaxXentWithLogits", "op_SparseSoftmaxXentWithLogits")
 
 #define CHECK_ARG_LEN(l0, l1) \
   if ((l0) != (l1)) { \
-      fprintf(stderr, "%s: illegal argument length: %ld expected but %ld\n", (l1), (l0)); \
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << (l1) << " expected but " << (l0); \
       return 1; \
   }
 

@@ -52,13 +52,12 @@ class VEOpArgs  {
       pVariable_ = reinterpret_cast<uintptr_t>(buf) + sizeof(Header);
 
 #if 0
-      fprintf(stderr, "%s: buf=%p pHeader_=%p pTensor_=%p (%d)\n", __FUNCTION__,
-              buf, pHeader_, pTensor_, pTensor_ - reinterpret_cast<uintptr_t>(pHeader_));
+      LOG(LOG_DETAIL) << __FUNCTION__ << ": buf=" << buf << " pHeader_=" << pHeader_ << " pTensor_=" << pTensor_ << " (", pTensor_ - reinterpret_cast<uintptr_t>(pHeader_) <<  ")", 
 #endif
 
       const int* p = reinterpret_cast<const int*>(pVariable_);
 #if 0
-      fprintf(stderr, "*p=%d\n", *p);
+      LOG(LOG_DETAIL) << __FUNCTION__ << ": *p=" << *p;
 #endif
 
 #if 0

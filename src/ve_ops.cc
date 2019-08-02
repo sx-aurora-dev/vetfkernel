@@ -47,7 +47,7 @@ int op_select_nn(uint64_t out,
 
 int op_select(const VEOpArgs& args)
 {
-    //fprintf(stderr, "%s: ninputs=%d noutputs=%d\n", __FUNCTION__, args.ninputs(), args.noutputs());
+    // LOG(LOG_PARAM) << __FUNCTION__ << ": ninputs=" << args.ninputs() << " noutputs=" << args.noutputs();
     if (args.nVariables() != 4)
         return 1;
 
@@ -94,9 +94,7 @@ int op_select(const VEOpArgs& args)
         }
     }
 
-#if 0
-    fprintf(stderr, "%s: return 1\n", __FUNCTION__);
-#endif
+    //LOG(LOG_DETAIL) << __FUNCTION__ << ": return1";
     return 1;
 }
 
@@ -293,8 +291,6 @@ int tile_dim4(Tensor const& X, Tensor const& Y)
     int64_t const* sx = X.dim_size;
     int64_t const* sy = Y.dim_size;
 
-//    printf("tile4_11: %d %d %d %d\n",sx[0],sx[1],sx[2],sx[3],sx[4]);
-
     for (size_t i0 = 0; i0 < sx[0]; ++i0) {
         const size_t ix0 = i0 ;
         const size_t iy0 = i0 % sy[0] ;
@@ -328,9 +324,6 @@ int tile_dim5_11(Tensor const& X, Tensor const& Y)
 
     int64_t const* sx = X.dim_size;
     int64_t const* sy = Y.dim_size;
-
-//    printf("tile5_11: x %d %d %d %d %d\n",sx[0],sx[1],sx[2],sx[3],sx[4],sx[5]);
-//    printf("tile5_11: y %d %d %d %d %d\n",sy[0],sy[1],sy[2],sy[3],sy[4],sy[5]);
 
 #pragma _NEC novector
     for (size_t i0 = 0; i0 < sx[0]; ++i0) {
@@ -416,12 +409,6 @@ int op_tile(const VEOpArgs& args)
 
     int rc = 1 ;
 
-    //  printf("ti->dims = %ld\n", ti->dims) ;
-    //  for(int i=0; i<ti->dims ; i++ ) printf(" [%d] = %ld\n", i, ti->dim_size[i]) ;
-    //  printf("to->dims = %ld\n", to->dims) ;
-    //  for(int i=0; i<to->dims ; i++ ) printf(" [%d] = %ld\n", i, to->dim_size[i]) ;
-    //  fflush(stdout) ;
-
     if (ti->dtype == DT_FLOAT && to->dtype == DT_FLOAT) {
         const float* pi = reinterpret_cast<const float*>(ti->addr);
         float* po = reinterpret_cast<float*>(to->addr);
@@ -449,24 +436,19 @@ int op_tile(const VEOpArgs& args)
             }
             rc = 0 ;
         } else if ( ti->dims == to->dims && ti->dims == 3 ) {
-            //            printf("tile3\n");
             rc = tile_dim3<float>(*to, *ti) ;
         } else if ( ti->dims == to->dims && ti->dims == 4 ) {
             if( ti->dim_size[2]==1 && ti->dim_size[3]==1 ) {
-                //                printf("tile4_11\n");
                 rc = tile_dim4_11<float>(*to, *ti) ;
             }
             else {
-                //                printf("tile4\n");
                 rc = tile_dim4<float>(*to, *ti) ;
             }
         } else if ( ti->dims == to->dims && ti->dims == 5 ) {
             if( ti->dim_size[3]==1 && ti->dim_size[4]==1 ) {
-                //                printf("tile5_11\n");
                 rc = tile_dim5_11<float>(*to, *ti) ;
             }
             else {
-                //                printf("tile5\n");
                 rc = tile_dim5<float>(*to, *ti) ;
             }
         }
