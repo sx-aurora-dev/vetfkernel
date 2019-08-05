@@ -14,6 +14,10 @@ struct Tensor {
   }
 #endif
 
+  template <typename T> T ptr() const {
+    return reinterpret_cast<T>(addr);
+  }
+
   std::string to_s() const {
     std::stringstream s;
 
