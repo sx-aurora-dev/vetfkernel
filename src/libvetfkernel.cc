@@ -35,8 +35,8 @@ class InitVETFKernel
 public :
   InitVETFKernel() {
     LOG(LOG_TRACE) << "InitVETFKernel";
-    LOG(LOG_MESSAGE) << "vetfkernel revision: " << VETFKERNEL_REVISION;
-    LOG(LOG_MESSAGE) << "vednn revision: " << VEDNN_REVISION;
+    LOG(LOG_INFO) << "vetfkernel revision: " << VETFKERNEL_REVISION;
+    LOG(LOG_INFO) << "vednn revision: " << VEDNN_REVISION;
     setaffinity() ;
     ASL::initialize() ;
 

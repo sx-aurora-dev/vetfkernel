@@ -10,6 +10,7 @@
 
 #include <omp.h>
 
+#include "vml.h"
 #include "vednn.h"
 
 #ifdef LIBVETF_INTRINSIC
@@ -678,18 +679,9 @@ int op_Neg(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -741,18 +733,9 @@ int op_Floor(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -793,18 +776,9 @@ int op_Reciprocal(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -845,18 +819,9 @@ int op_Log(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -898,18 +863,9 @@ int op_Exp(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -950,19 +906,12 @@ int op_Sigmoid(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
+
+  LOG(LOG_PARAM) << __FUNCTION__ << ": " << sizeof(vml::Tensor) << " " << sizeof(Args) << " len=" << len;
 
   CHECK_ARG_LEN(len, sizeof(Args));
   p = reinterpret_cast<const Args*>(args);
@@ -1000,18 +949,9 @@ int op_Tanh(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -1860,18 +1800,9 @@ int unary_op(const void* args, size_t len,
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-  struct _Tensor {
-    int dtype;
-    int data_format;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-  };
-  
   struct Args {
-    _Tensor in;
-    _Tensor out;
+    vml::Tensor in;
+    vml::Tensor out;
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
