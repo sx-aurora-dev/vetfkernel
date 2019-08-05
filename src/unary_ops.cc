@@ -5,6 +5,7 @@
 #include "log.h"
 #include "kernel.h"
 #include "types.h"
+#include "vml.h"
 
 #define REGISTER_UNARY_OP(NAME, FUNC) \
   REGISTER_KERNEL(#NAME, "__op_" # NAME); \
@@ -17,28 +18,15 @@
 
 namespace {
 
-struct _Tensor {
-  int dtype;
-  int data_format;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-
-  template <typename T> T ptr() const {
-    return reinterpret_cast<T>(addr);
-  }
-};
-
 // valid: in.dtype, in.nelems, in.addr, out.addr
 struct UnaryOpArgs
 {
-  _Tensor in;
-  _Tensor out;
+  vml::Tensor in;
+  vml::Tensor out;
 
   bool isT(int ty) const { return in.dtype == ty; }
   size_t nelems() const { return in.nelems; }
-};
+} __attribute__((__packed__));
 
 int unary_op(const void* args, size_t len,
              int (*func)(UnaryOpArgs const& args),
