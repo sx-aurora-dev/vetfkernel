@@ -577,14 +577,12 @@ class UnaryOpBench : public Bench
         x1_ = new T[n];
 
         args_.in.dtype = to_dtype<T>::val;
-        args_.in.data_format = -1; // do not use
         args_.in.addr = reinterpret_cast<uint64_t>(x0_);
         args_.in.dims = 1;
         args_.in.nelems = n;
         args_.in.dim_size[0] = n;
 
         args_.out.dtype = to_dtype<T>::val;
-        args_.out.data_format = -1; // do not use
         args_.out.addr = reinterpret_cast<uint64_t>(y);
         args_.out.dims = 1;
         args_.out.nelems = n;
@@ -605,18 +603,17 @@ class UnaryOpBench : public Bench
 
   private:
     struct _Tensor {
-      int dtype;
-      int data_format;
+      int32_t dtype;
       uint64_t addr;
       int32_t dims;
       int64_t nelems;
       int64_t dim_size[8];
-    };
+    } __attribute__((__packed__));
 
     struct Args {
       _Tensor in;
       _Tensor out;
-    } args_;
+    } __attribute__((__packed__)) args_;
 
     T* x0_;
     T* x1_;
@@ -1182,6 +1179,7 @@ int main(int argc, char* argv[])
   opts.threshold = 1e-4;
   bool opt_force_bench = false;
   char const* filter = nullptr;
+  bool opt_validation_only = false;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0) {
@@ -1202,6 +1200,8 @@ int main(int argc, char* argv[])
       repeat = atoi(argv[++i]);
     } else if (strcmp(argv[i], "-v") == 0) {
       ++opts.verbose;
+    } else if (strcmp(argv[i], "--validation-only") == 0) {
+      opt_validation_only = true;
     } else if (strcmp(argv[i], "--threshold") == 0) {
       opts.threshold = strtod(argv[++i], NULL);
     } else {
@@ -1210,10 +1210,12 @@ int main(int argc, char* argv[])
     }
   }
 
-  fprintf(stderr, "threshold=%e\n", opts.threshold);
-  fprintf(stderr, "n=%lu\n", n);
-  fprintf(stderr, "nchw=%lu,%lu,%lu,%lu(%lu)\n", 
-          nchw[0], nchw[1], nchw[2], nchw[3], nchw[0] * nchw[1] * nchw[2] * nchw[3]);
+  if (opts.verbose > 0) {
+    fprintf(stderr, "threshold=%e\n", opts.threshold);
+    fprintf(stderr, "n=%lu\n", n);
+    fprintf(stderr, "nchw=%lu,%lu,%lu,%lu(%lu)\n",
+            nchw[0], nchw[1], nchw[2], nchw[3], nchw[0] * nchw[1] * nchw[2] * nchw[3]);
+  }
 
   std::vector<Bench*> v;
 
@@ -1253,6 +1255,11 @@ int main(int argc, char* argv[])
     flag &= tmp;
     if (opts.verbose > 0 || !tmp)
       fprintf(stderr, "Validation: %-20s %s\n", b->name().c_str(), tmp ? "OK" : "NG");
+  }
+
+  if (opt_validation_only) {
+    fprintf(stderr, "Validation: %s\n", flag ? "OK" : "NG");
+    return 1;
   }
 
   if (!flag && !opt_force_bench)

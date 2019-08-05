@@ -6,6 +6,8 @@
 #include <sstream>
 #include <vector>
 
+#include "vml.h"
+
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
 #endif
@@ -59,32 +61,11 @@ extern "C" {
 
 namespace {
 
-struct _Tensor {
-  int dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-
-  std::string to_s() const {
-    std::stringstream s;
-
-    s << "[dtype=" << dtype
-      << ",dims=" << dims
-      << "[";
-    for (int i = 0; i < dims; ++i)
-        s << " " << dim_size[i];
-    s  << " ],nelems=" << nelems
-      << "]";
-    return s.str();
-  }
-} __attribute__((__packed__));
-
 struct BinaryOpArgs {
-  _Tensor in0;
-  _Tensor in1;
-  _Tensor out;
-};
+  vml::Tensor in0;
+  vml::Tensor in1;
+  vml::Tensor out;
+} __attribute__((__packed__));
 
 bool CheckTypes(const BinaryOpArgs& args, int dt0, int dt1, int dt2)
 {
@@ -110,7 +91,7 @@ bool IsSameDims(const BinaryOpArgs& args)
         && args.in0.dims == args.out.dims;
 }
 
-bool check_dim(_Tensor const& s, std::vector<int64_t> const& dim)
+bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
 {
   return s.dims == dim.size()
       && s.dim_size[0] == dim[0]
@@ -220,7 +201,7 @@ int add2_nn_1n(uint64_t out,
 
 // X = Y op Z
 template<typename T0, typename T1, typename F>
-int binop_dim3(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
+int binop_dim3(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T0* px = reinterpret_cast<T0*>(X.addr);
@@ -246,7 +227,7 @@ int binop_dim3(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 
 // X = Y op Z
 template<typename TO, typename TI, typename F>
-int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
+int binop_dimN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
 {
     TO* px = reinterpret_cast<TO*>(X.addr);
     TI const* py = reinterpret_cast<TI*>(Y.addr);
@@ -300,7 +281,7 @@ int binop_dimN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 // Z = [e0, e1, e2, 1, 1]
 // di >= ei
 
-bool check_binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+bool check_binop_dim5_x(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   return X.dims == 5 && Y.dims == 5 && Z.dims == 5
       && X.dim_size[0] == Y.dim_size[0]
@@ -316,7 +297,7 @@ bool check_binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 }
 
 template<typename T, typename F>
-int binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
+int binop_dim5_x(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
 {
   LOG(LOG_DETAIL) << __FUNCTION__
       << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
@@ -381,7 +362,7 @@ int binop_dim5_x(_Tensor const& X, _Tensor const& Y, _Tensor const& Z, F op)
 
 template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
@@ -403,7 +384,7 @@ int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
@@ -577,7 +558,7 @@ int sub2_nn_1n(uint64_t out,
 }
 
 template <typename T, int M, int N>
-int sub_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* x = reinterpret_cast<T*>(X.addr);
@@ -592,7 +573,7 @@ int sub_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 
 template <typename T>
 int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
@@ -780,7 +761,7 @@ int mul2_nn_1n(uint64_t out,
 }
 
 template <typename T, int M, int N>
-int mul_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* x = reinterpret_cast<T*>(X.addr);
@@ -796,7 +777,7 @@ int mul_MxN_1xN_MxN(_Tensor const& X, _Tensor const& Y, _Tensor const& Z)
 
 template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
@@ -818,7 +799,7 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
@@ -840,7 +821,7 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
 
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
@@ -866,7 +847,7 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
@@ -899,7 +880,7 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
 
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
@@ -926,7 +907,7 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   T* pX0 = reinterpret_cast<T*>(X.addr);
@@ -1441,7 +1422,7 @@ int sqdiff2_nn_1n(uint64_t out,
 
 template <typename T>
 int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
-        _Tensor const& X, _Tensor const& Y, _Tensor const& Z)
+        vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   LOG(LOG_DETAIL) << __FUNCTION__;
   size_t n = 16 * 64 * 8 * 8;
