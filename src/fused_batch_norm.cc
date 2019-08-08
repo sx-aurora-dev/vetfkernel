@@ -112,13 +112,13 @@ template <typename T, typename U> int FusedBatchNorm(
 int op_FusedBatchNorm(VEOpArgs const& args) 
 {
   LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
-  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nVariables=" << args.nVariables();
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
 
   int ret = 1;
 
-  if (args.nVariables() != 14) {
-    LOG(LOG_ERROR) << __FUNCTION__ << ": nVariables should be 14. But "
-        << args.nVariables();
+  if (args.nArguments() != 14) {
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nArguments should be 14. But "
+        << args.nArguments();
     goto error_exit;
   }
 
@@ -345,9 +345,9 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
 
   int ret = 1;
 
-  if (args.nVariables() != 15) {
-    LOG(LOG_ERROR) << __FUNCTION__ << ": nVariables should be 15. But "
-        << args.nVariables();
+  if (args.nArguments() != 15) {
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nArguments should be 15. But "
+        << args.nArguments();
     goto error_exit;
   }
 

@@ -319,7 +319,7 @@ namespace {
 
 int op_avgpool(const VEOpArgs& args)
 {
-  if (args.nVariables() != 3)
+  if (args.nArguments() != 3)
     return 1;
 
   // ndims == 4 (checked by tf)
@@ -333,7 +333,7 @@ int op_avgpool(const VEOpArgs& args)
 
 int op_avgpoolgrad(const VEOpArgs& args)
 {
-  if (args.nVariables() != 3)
+  if (args.nArguments() != 3)
     return 1;
 
   // ndims == 4 (checked by tf)

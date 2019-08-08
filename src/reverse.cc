@@ -504,7 +504,7 @@ int op_Reverse(const VEOpArgs& args)
 {
     LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-    if (args.nVariables() != 10)
+    if (args.nArguments() != 10)
         return 1 ;
 
     int ret=1;

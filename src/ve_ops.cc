@@ -50,7 +50,7 @@ int op_select_nn(uint64_t out,
 int op_select(const VEOpArgs& args)
 {
     // LOG(LOG_PARAM) << __FUNCTION__ << ": ninputs=" << args.ninputs() << " noutputs=" << args.noutputs();
-    if (args.nVariables() != 4)
+    if (args.nArguments() != 4)
         return 1;
 
     const vml::Tensor *t0 = args.arg<vml::Tensor>(0) ;
@@ -102,7 +102,7 @@ int op_select(const VEOpArgs& args)
 
 int op_randomUniform(const VEOpArgs& args)
 {
-    if (args.nVariables() != 1)
+    if (args.nArguments() != 1)
         return 1;
 
     const vml::Tensor* t = args.arg<vml::Tensor>(0);
@@ -181,7 +181,7 @@ void cast_from_bool(const vml::Tensor* to, const vml::Tensor* ti) {
 
 int op_cast(const VEOpArgs& args)
 {
-    if (args.nVariables() != 2)
+    if (args.nArguments() != 2)
         return 1;
     const vml::Tensor* ti = args.arg<vml::Tensor>(0);
     const vml::Tensor* to = args.arg<vml::Tensor>(1);
@@ -402,7 +402,7 @@ int tile_dim5(vml::Tensor const& X, vml::Tensor const& Y)
 
 int op_tile(const VEOpArgs& args)
 {
-    if (args.nVariables() != 2)
+    if (args.nArguments() != 2)
         return 1;
     const vml::Tensor* ti = args.arg<vml::Tensor>(0);
     const vml::Tensor* to = args.arg<vml::Tensor>(1);
@@ -563,7 +563,7 @@ int softmax_xent_with_logits_same_shape(
 namespace {
 int op_softmax_xent_with_logits(const VEOpArgs& args)
 {
-    if (args.nVariables() != 5)
+    if (args.nArguments() != 5)
         return 5;
 
     const vml::Tensor* logits_in = args.arg<vml::Tensor>(0);
@@ -1426,7 +1426,7 @@ int l2loss(const int64_t  input_length,
 namespace {
 int op_L2Loss(const VEOpArgs& args)
 {
-    if (args.nVariables() != 2)
+    if (args.nArguments() != 2)
         return 1 ;
 
     int ret=1;

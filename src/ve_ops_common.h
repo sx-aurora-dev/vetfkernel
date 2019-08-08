@@ -35,7 +35,7 @@ class VEOpArgs  {
 #endif
     }
 
-    int64_t nVariables() const { return pHeader_->nVariables; }
+    int64_t nArguments() const { return pHeader_->nArguments; }
 
     template<typename T>
     const T* arg(int i) const {
@@ -51,7 +51,7 @@ class VEOpArgs  {
     const void* buf_;
     uintptr_t pVariable_;
     struct Header {
-      int64_t nVariables;
+      int64_t nArguments;
     };
     const Header* pHeader_;
 
@@ -67,7 +67,7 @@ int op_Kernel(const void* args, size_t len,
 
   VEOpArgs tmp(args);
 
-  LOG(LOG_PARAM) << name << ": nVariable=" << tmp.nVariables();
+  LOG(LOG_PARAM) << name << ": nVariable=" << tmp.nArguments();
 
   // TODO: check length
 
