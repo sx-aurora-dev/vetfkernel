@@ -3,14 +3,15 @@
 #include "types.h"
 #include "ve_ops_common.h"
 #include "log.h"
+#include "vml.h"
 
 
 //
 // Reverse
 //
 template<typename T>
-int reverse_d1(Tensor const *input,
-               Tensor const *output,
+int reverse_d1(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -31,8 +32,8 @@ int reverse_d1(Tensor const *input,
 }
 
 template<typename T>
-int reverse_d2(Tensor const *input,
-               Tensor const *output,
+int reverse_d2(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -63,8 +64,8 @@ int reverse_d2(Tensor const *input,
 }
 
 template<typename T>
-int reverse_d3(Tensor const *input,
-               Tensor const *output,
+int reverse_d3(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -106,8 +107,8 @@ int reverse_d3(Tensor const *input,
 
 
 template<typename T>
-int reverse_d4(Tensor const *input,
-               Tensor const *output,
+int reverse_d4(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -159,8 +160,8 @@ int reverse_d4(Tensor const *input,
 
 
 template<typename T>
-int reverse_d5(Tensor const *input,
-               Tensor const *output,
+int reverse_d5(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -222,8 +223,8 @@ int reverse_d5(Tensor const *input,
 
 
 template<typename T>
-int reverse_d6(Tensor const *input,
-               Tensor const *output,
+int reverse_d6(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -295,8 +296,8 @@ int reverse_d6(Tensor const *input,
 
 
 template<typename T>
-int reverse_d7(Tensor const *input,
-               Tensor const *output,
+int reverse_d7(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -378,8 +379,8 @@ int reverse_d7(Tensor const *input,
 
 
 template<typename T>
-int reverse_d8(Tensor const *input,
-               Tensor const *output,
+int reverse_d8(vml::Tensor const *input,
+               vml::Tensor const *output,
 	       const int64_t *axes )
 {
 
@@ -470,8 +471,8 @@ int reverse_d8(Tensor const *input,
 }
 
 template<typename T>
-int reverse(Tensor const *input,
-            Tensor const *output,
+int reverse(vml::Tensor const *input,
+            vml::Tensor const *output,
 	    const int64_t *axes )
 {
 
@@ -508,8 +509,8 @@ int op_Reverse(const VEOpArgs& args)
 
     int ret=1;
 
-    const Tensor *input_tensor  = args.arg<Tensor>(0) ;
-    const Tensor *output_tensor = args.arg<Tensor>(1) ;
+    const vml::Tensor *input_tensor  = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor *output_tensor = args.arg<vml::Tensor>(1) ;
 
     int64_t axes[8] ;
     axes[0] = *args.arg<int64_t>(2) ;
