@@ -58,18 +58,18 @@ add_custom_target(check_revision
 add_dependencies(vetfkernel check_revision)
 
 # Obosolete
-add_library(vetfkernel_oldintrin STATIC
-  ${SOURCES}
-  $<TARGET_OBJECTS:vetfkernel_old_intrinsic>)
-
-target_compile_options(vetfkernel_oldintrin PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
-if (USE_INTRINSIC)
-        target_compile_definitions(vetfkernel_oldintrin PRIVATE LIBVETF_INTRINSIC)
-endif()
-
-target_include_directories(vetfkernel_oldintrin PRIVATE ${VEDNN_PATH}/src)
-target_include_directories(vetfkernel_oldintrin PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/intrinsic)
-target_include_directories(vetfkernel_oldintrin PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-
-add_dependencies(vetfkernel_oldintrin check_revision)
+#add_library(vetfkernel_oldintrin STATIC
+#  ${SOURCES}
+#  $<TARGET_OBJECTS:vetfkernel_old_intrinsic>)
+#
+#target_compile_options(vetfkernel_oldintrin PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
+#if (USE_INTRINSIC)
+#        target_compile_definitions(vetfkernel_oldintrin PRIVATE LIBVETF_INTRINSIC)
+#endif()
+#
+#target_include_directories(vetfkernel_oldintrin PRIVATE ${VEDNN_PATH}/src)
+#target_include_directories(vetfkernel_oldintrin PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/intrinsic)
+#target_include_directories(vetfkernel_oldintrin PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+#
+#add_dependencies(vetfkernel_oldintrin check_revision)
 

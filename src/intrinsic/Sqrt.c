@@ -11,13 +11,8 @@
 #define NCHW_IDX(n,c,h,w,cl,hl,wl) ((((n)*(cl)+(c))*(hl)+(h))*(wl)+(w))
 
 
-int sqrt_(uint64_t out, uint64_t in, size_t n)
+int sqrt_f32(float* po, float const* pi, size_t n)
 {
-
-	const float* pi = (const float*)(in);
-	float* po = (float*)(out);
-
-
 	if(VLEN<n){
 		for (size_t i = 0; i < n; i+=VLEN) {
 			const int64_t vlen = n-i < VLEN ? n-i : VLEN;

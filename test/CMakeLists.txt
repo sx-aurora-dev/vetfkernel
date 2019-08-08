@@ -35,17 +35,17 @@ target_link_libraries(bench PRIVATE
   -pthread
   -ldl)
 
-add_executable(bench_oldintrin bench.cc)
-target_include_directories(bench_oldintrin PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(bench_oldintrin PRIVATE
-  vetfkernel_oldintrin
-  vednn_openmp
-  ${BLAS}
-  ${ASL}
-  ${CLANG_RUNTIME}
-  -fopenmp
-  -lveio
-  -pthread
-  -ldl)
+#add_executable(bench_oldintrin bench.cc)
+#target_include_directories(bench_oldintrin PRIVATE ${CMAKE_SOURCE_DIR}/src)
+#target_link_libraries(bench_oldintrin PRIVATE
+#  vetfkernel_oldintrin
+#  vednn_openmp
+#  ${BLAS}
+#  ${ASL}
+#  ${CLANG_RUNTIME}
+#  -fopenmp
+#  -lveio
+#  -pthread
+#  -ldl)
 
 

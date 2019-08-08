@@ -53,16 +53,16 @@ REGISTER_KERNEL("Pack", "op_Pack");
 REGISTER_KERNEL("Slice", "op_Slice");
 
 // Unary
-REGISTER_KERNEL("Neg", "op_Neg");
-REGISTER_KERNEL("Sqrt", "op_Sqrt");
-REGISTER_KERNEL("Rsqrt", "op_Rsqrt");
-REGISTER_KERNEL("Square", "op_Square");
-REGISTER_KERNEL("Floor", "op_Floor");
-REGISTER_KERNEL("Reciprocal", "op_Reciprocal");
-REGISTER_KERNEL("Log", "op_Log");
-REGISTER_KERNEL("Exp", "op_Exp");
-REGISTER_KERNEL("Sigmoid", "op_Sigmoid");
-REGISTER_KERNEL("Tanh", "op_Tanh");
+//REGISTER_KERNEL("Neg", "op_Neg");
+//REGISTER_KERNEL("Sqrt", "op_Sqrt");
+//REGISTER_KERNEL("Rsqrt", "op_Rsqrt");
+//REGISTER_KERNEL("Square", "op_Square");
+//REGISTER_KERNEL("Floor", "op_Floor");
+//REGISTER_KERNEL("Reciprocal", "op_Reciprocal");
+//REGISTER_KERNEL("Log", "op_Log");
+//REGISTER_KERNEL("Exp", "op_Exp");
+//REGISTER_KERNEL("Sigmoid", "op_Sigmoid");
+//REGISTER_KERNEL("Tanh", "op_Tanh");
 
 #define CHECK_ARG_LEN(l0, l1) \
   if ((l0) != (l1)) { \
@@ -655,61 +655,7 @@ int op_Snapshot(const void* arg, size_t len)
   return 0;
 }
 
-//
-// Neg
-//
-#ifndef LIBVETF_INTRINSIC
-namespace {
-  template<typename Tin, typename Tout>
-  int neg(uint64_t out, uint64_t in, size_t nelems)
-  {
-    Tout* po = reinterpret_cast<Tout*>(out);
-    const Tin* pi = reinterpret_cast<Tin*>(in);
-
-    for (int64_t i = 0; i < nelems; ++i) {
-      po[i] = - pi[i];
-    }
-
-    return 0;
-  }
-}
-#endif
-
-int op_Neg(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    vml::Tensor in;
-    vml::Tensor out;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
-
-  int ret = 1;
-
-  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
-#ifdef SET_TIMER
-    unsigned long long start = __veperf_get_stm();
-#endif
-#ifndef LIBVETF_INTRINSIC
-    ret = neg<float, float>(p->out.addr, p->in.addr, p->in.nelems);
-#else
-    ret = neg(p->out.addr, p->in.addr, p->in.nelems);
-#endif
-#ifdef SET_TIMER
-    unsigned long long end = __veperf_get_stm();
-    printf("neg, len %d:%lfms\n",p->in.nelems,(end-start)/(800e3));
-#endif
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
-
+#if 0
 //
 // Floor
 //
@@ -968,6 +914,7 @@ int op_Tanh(const void* args, size_t len)
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
+#endif
 
 //
 // Transpose
@@ -1841,6 +1788,7 @@ int unary_op(const void* args, size_t len,
 }
 #ifndef LIBVETF_INTRINSIC
 
+#if 0
 template<typename Tin, typename Tout>
 int sqrt_(uint64_t out, uint64_t in, size_t nelems)
 {
@@ -1878,8 +1826,10 @@ int square(uint64_t out, uint64_t in, size_t nelems)
   return 0;
 }
 #endif
-}
+#endif
+} // namespace
 
+#if 0
 int op_Sqrt(const void* args, size_t len)
 {
   int r = 0;
@@ -1933,4 +1883,5 @@ int op_Square(const void* args, size_t len)
 #endif
   return r;
 }
+#endif
 

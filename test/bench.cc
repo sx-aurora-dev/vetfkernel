@@ -23,9 +23,9 @@ extern "C" {
   int op_Div(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
   int op_Mul(const void* args, size_t len);
-  int op_Neg(const void* args, size_t len);
+  //int op_Neg(const void* args, size_t len);
   int op_Rsqrt(const void* args, size_t len);
-  int op_Sqrt(const void* args, size_t len);
+  //int op_Sqrt(const void* args, size_t len);
   int op_Square(const void* args, size_t len);
   int op_Sub(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
@@ -567,7 +567,7 @@ class UnaryOpBench : public Bench
 {
   public:
     UnaryOpBench(std::string name, 
-                 int (*op)(const void* args, size_t len),
+                 int (*op)(vml::Tensor const& out, vml::Tensor const& in),
                  int (*ref_op)(T*, T const*, size_t),
                  T const* y, size_t n) 
       : Bench(name), op_(op), ref_op_(ref_op), y_(y), n_(n) { 
@@ -576,17 +576,17 @@ class UnaryOpBench : public Bench
         x0_ = new T[n];
         x1_ = new T[n];
 
-        args_.in.dtype = to_dtype<T>::val;
-        args_.in.addr = reinterpret_cast<uint64_t>(x0_);
-        args_.in.dims = 1;
-        args_.in.nelems = n;
-        args_.in.dim_size[0] = n;
+        in_.dtype = to_dtype<T>::val;
+        in_.addr = reinterpret_cast<uint64_t>(x0_);
+        in_.dims = 1;
+        in_.nelems = n;
+        in_.dim_size[0] = n;
 
-        args_.out.dtype = to_dtype<T>::val;
-        args_.out.addr = reinterpret_cast<uint64_t>(y);
-        args_.out.dims = 1;
-        args_.out.nelems = n;
-        args_.out.dim_size[0] = n;
+        out_.dtype = to_dtype<T>::val;
+        out_.addr = reinterpret_cast<uint64_t>(y);
+        out_.dims = 1;
+        out_.nelems = n;
+        out_.dim_size[0] = n;
       }
 
     int validate(BenchOpts const& opts) override {
@@ -598,29 +598,20 @@ class UnaryOpBench : public Bench
     }
 
     int run() {
-      return op_(reinterpret_cast<const void*>(&args_), sizeof(Args));
+      return op_(out_, in_);
     }
 
   private:
-    struct _Tensor {
-      int32_t dtype;
-      uint64_t addr;
-      int32_t dims;
-      int64_t nelems;
-      int64_t dim_size[8];
-    } __attribute__((__packed__));
-
-    struct Args {
-      _Tensor in;
-      _Tensor out;
-    } __attribute__((__packed__)) args_;
+    vml::Tensor in_;
+    vml::Tensor out_;
 
     T* x0_;
     T* x1_;
     T const* y_;
     size_t n_;
 
-    int (*op_)(const void* args, size_t len);
+    int (*op_)(vml::Tensor const& out, vml::Tensor const& in);
+    //int (*op_)(const void* args, size_t len);
     int (*ref_op_)(T* x, T const* y, size_t n);
 };
 
@@ -1157,10 +1148,10 @@ void add_bench(std::vector<Bench*>& v, size_t n)
   v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n));
   v.push_back(new ReductionOpBench<float>("Sum", op_Sum, ref::sum_d2a0<float>, y, n));
 
-  v.push_back(new UnaryOpBench<float>("Sqrt", op_Sqrt, ref::sqrt, y, n));
-  v.push_back(new UnaryOpBench<float>("Rsqrt", op_Rsqrt, ref::rsqrt, y, n));
-  v.push_back(new UnaryOpBench<float>("Square", op_Square, ref::square, y, n));
-  v.push_back(new UnaryOpBench<float>("Neg", op_Neg, ref::neg, y, n));
+  v.push_back(new UnaryOpBench<float>("Neg", vml::neg, ref::neg, y, n));
+  v.push_back(new UnaryOpBench<float>("Rsqrt", vml::rsqrt, ref::rsqrt, y, n));
+  v.push_back(new UnaryOpBench<float>("Sqrt", vml::sqrt, ref::sqrt, y, n));
+  v.push_back(new UnaryOpBench<float>("Square", vml::square, ref::square, y, n));
 
 #if 0
   delete[] y;

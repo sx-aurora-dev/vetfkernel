@@ -28,11 +28,11 @@ int mul_nn_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n);
 int div_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n);
 int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n1);
 
-int sqrt_(uint64_t out, uint64_t in, size_t n);
-int rsqrt(uint64_t out, uint64_t in, size_t n);
-int square(uint64_t out, uint64_t in, size_t n);
-
-int neg(uint64_t out, uint64_t in, size_t n);
+// unary_op
+int neg_f32(float* out, float const* in, size_t n);
+int rsqrt_f32(float* out, float const* in, size_t n);
+int sqrt_f32(float* out, float const* in, size_t n);
+int square_f32(float* out, float const* in, size_t n);
 
 void _apply_adam_f32(float* var, float* m, float *v,
                      const float beta1, const float beta2, 

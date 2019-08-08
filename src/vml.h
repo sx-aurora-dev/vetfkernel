@@ -48,4 +48,16 @@ struct PoolingParam {
 int avgpool(Tensor const& out, Tensor const& in, PoolingParam const& param);
 int avgpoolgrad(Tensor const& out, Tensor const& in, PoolingParam const& param);
 
+// unary op
+int abs(vml::Tensor const& out, vml::Tensor const& in);
+int exp(vml::Tensor const& out, vml::Tensor const& in);
+int floor(vml::Tensor const& out, vml::Tensor const& in);
+int log(vml::Tensor const& out, vml::Tensor const& in);
+int neg(vml::Tensor const& out, vml::Tensor const& in);
+int reciprocal(vml::Tensor const& out, vml::Tensor const& in);
+int rsqrt(vml::Tensor const& out, vml::Tensor const& in);
+int sigmoid(vml::Tensor const& out, vml::Tensor const& in);
+int sqrt(vml::Tensor const& out, vml::Tensor const& in);
+int square(vml::Tensor const& out, vml::Tensor const& in);
+int tanh(vml::Tensor const& out, vml::Tensor const& in);
 };

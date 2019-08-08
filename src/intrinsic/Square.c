@@ -11,16 +11,11 @@
 #define NCHW_IDX(n,c,h,w,cl,hl,wl) ((((n)*(cl)+(c))*(hl)+(h))*(wl)+(w))
 
 
-int square(uint64_t out, uint64_t in, size_t n)
+int square_f32(float* po, float const* pi, size_t n)
 {
-
-	const float* pi = (const float*)(in);
-	float* po = (float*)(out);
-
-
 	if(VLEN<n){
-		const uint64_t alignIn = ((const uint64_t)in) & 0x07;
-		const uint64_t alignOut = ((const uint64_t)out) & 0x07;
+		const uint64_t alignIn = ((const uint64_t)pi) & 0x07;
+		const uint64_t alignOut = ((const uint64_t)po) & 0x07;
 
 
 		if((alignIn==0)&&(alignOut==0)&&(n%2==0)){
