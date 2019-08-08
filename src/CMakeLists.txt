@@ -5,7 +5,7 @@ option(USE_INTRINSIC "Use intrinsic" ON)
 set(CMAKE_C_COMPILER ${NCC})
 set(CMAKE_CXX_COMPILER ${NCXX})
 
-set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -report-all -assembly-list")
+set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -report-all -assembly-list")
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 

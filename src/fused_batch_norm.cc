@@ -1,19 +1,20 @@
 #include "ve_ops_common.h"
 #include "types.h"
+#include "vml.h"
 
 namespace {
 
 template <typename T, typename U> int FusedBatchNorm(
-        Tensor const* x_input,
-        Tensor const* scale_input,
-        Tensor const* offset_input,
-        Tensor const* estimated_mean_input,
-        Tensor const* estimated_variance_input,
-        Tensor const* y_output,
-        Tensor const* batch_mean_output,
-        Tensor const* saved_mean_output,
-        Tensor const* batch_var_output,
-        Tensor const* saved_var_output,
+        vml::Tensor const* x_input,
+        vml::Tensor const* scale_input,
+        vml::Tensor const* offset_input,
+        vml::Tensor const* estimated_mean_input,
+        vml::Tensor const* estimated_variance_input,
+        vml::Tensor const* y_output,
+        vml::Tensor const* batch_mean_output,
+        vml::Tensor const* saved_mean_output,
+        vml::Tensor const* batch_var_output,
+        vml::Tensor const* saved_var_output,
         U epsilon,
         bool is_training)
 {
@@ -123,16 +124,16 @@ int op_FusedBatchNorm(VEOpArgs const& args)
 
   {  
     // dimensions are checked in TF
-    Tensor const* x_input = args.arg<Tensor>(0); // 4D
-    Tensor const* scale_input = args.arg<Tensor>(1); // 1D
-    Tensor const* offset_input = args.arg<Tensor>(2); // 1D
-    Tensor const* estimated_mean_input = args.arg<Tensor>(3); // 1D
-    Tensor const* estimated_variance_input = args.arg<Tensor>(4); // 1D
-    Tensor const* y_output = args.arg<Tensor>(5); // 4D
-    Tensor const* batch_mean_output = args.arg<Tensor>(6); // 1D
-    Tensor const* saved_mean_output = args.arg<Tensor>(7); // 1D
-    Tensor const* batch_var_output = args.arg<Tensor>(8); // 1D
-    Tensor const* saved_var_output = args.arg<Tensor>(9); // 1D
+    vml::Tensor const* x_input = args.arg<vml::Tensor>(0); // 4D
+    vml::Tensor const* scale_input = args.arg<vml::Tensor>(1); // 1D
+    vml::Tensor const* offset_input = args.arg<vml::Tensor>(2); // 1D
+    vml::Tensor const* estimated_mean_input = args.arg<vml::Tensor>(3); // 1D
+    vml::Tensor const* estimated_variance_input = args.arg<vml::Tensor>(4); // 1D
+    vml::Tensor const* y_output = args.arg<vml::Tensor>(5); // 4D
+    vml::Tensor const* batch_mean_output = args.arg<vml::Tensor>(6); // 1D
+    vml::Tensor const* saved_mean_output = args.arg<vml::Tensor>(7); // 1D
+    vml::Tensor const* batch_var_output = args.arg<vml::Tensor>(8); // 1D
+    vml::Tensor const* saved_var_output = args.arg<vml::Tensor>(9); // 1D
     // epsilon(10)
     bool is_training = *args.arg<bool>(11);
     int Ttype = *args.arg<int64_t>(12);
@@ -182,14 +183,14 @@ DEFINE_KERNEL(FusedBatchNorm, op_FusedBatchNorm);
 namespace {
 
 template <typename T, typename U> int FusedBatchNormGrad_NCHW(
-        Tensor const* y_backprop_input,
-        Tensor const* x_input,
-        Tensor const* scale_input,
-        Tensor const* mean_input,
-        Tensor const* variance_input,
-        Tensor const* x_backprop_output,
-        Tensor const* scale_backprop_output,
-        Tensor const* offset_backprop_output,
+        vml::Tensor const* y_backprop_input,
+        vml::Tensor const* x_input,
+        vml::Tensor const* scale_input,
+        vml::Tensor const* mean_input,
+        vml::Tensor const* variance_input,
+        vml::Tensor const* x_backprop_output,
+        vml::Tensor const* scale_backprop_output,
+        vml::Tensor const* offset_backprop_output,
         U epsilon,
         bool is_training)
 {
@@ -353,17 +354,17 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
   {
     // dimensions are checked in TF
     // input tensors
-    Tensor const* y_backprop = args.arg<Tensor>(0); // 4D
-    Tensor const* x = args.arg<Tensor>(1); // 4D
-    Tensor const* scale = args.arg<Tensor>(2); // 1D
-    Tensor const* saved_mean_or_pop_mean = args.arg<Tensor>(3); // 1D
-    Tensor const* saved_maybe_inv_var_or_pop_var = args.arg<Tensor>(4); // 1D
+    vml::Tensor const* y_backprop = args.arg<vml::Tensor>(0); // 4D
+    vml::Tensor const* x = args.arg<vml::Tensor>(1); // 4D
+    vml::Tensor const* scale = args.arg<vml::Tensor>(2); // 1D
+    vml::Tensor const* saved_mean_or_pop_mean = args.arg<vml::Tensor>(3); // 1D
+    vml::Tensor const* saved_maybe_inv_var_or_pop_var = args.arg<vml::Tensor>(4); // 1D
     // output tensors
-    Tensor const* x_backprop = args.arg<Tensor>(5); // 4D
-    Tensor const* scale_backprop = args.arg<Tensor>(6); // 1D
-    Tensor const* offset_backprop = args.arg<Tensor>(7); // 1D
-    Tensor const* placeholder_1 = args.arg<Tensor>(8);
-    Tensor const* placeholder_2 = args.arg<Tensor>(9);
+    vml::Tensor const* x_backprop = args.arg<vml::Tensor>(5); // 4D
+    vml::Tensor const* scale_backprop = args.arg<vml::Tensor>(6); // 1D
+    vml::Tensor const* offset_backprop = args.arg<vml::Tensor>(7); // 1D
+    vml::Tensor const* placeholder_1 = args.arg<vml::Tensor>(8);
+    vml::Tensor const* placeholder_2 = args.arg<vml::Tensor>(9);
     // epsilon(10)
     int32_t tensor_format = *args.arg<int32_t>(11);
     bool is_training = *args.arg<bool>(12);

@@ -3,6 +3,7 @@
 #include "types.h"
 #include <sstream>
 #include "ve_ops_common.h"
+#include "vml.h"
 
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
@@ -10,8 +11,8 @@
 
 namespace {
 
-
-std::string TensorToString(const Tensor *t)
+#if 0
+std::string vml::TensorToString(const vml::Tensor *t)
 {
     std::stringstream s;
 
@@ -25,6 +26,7 @@ std::string TensorToString(const Tensor *t)
       << "]";
     return s.str();
 }
+#endif
 
 
 template <typename T>
@@ -51,16 +53,16 @@ int op_select(const VEOpArgs& args)
     if (args.nVariables() != 4)
         return 1;
 
-    const Tensor *t0 = args.arg<Tensor>(0) ;
-    const Tensor *t1 = args.arg<Tensor>(1) ;
-    const Tensor *t2 = args.arg<Tensor>(2) ;
-    const Tensor *t3 = args.arg<Tensor>(3) ;
+    const vml::Tensor *t0 = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor *t1 = args.arg<vml::Tensor>(1) ;
+    const vml::Tensor *t2 = args.arg<vml::Tensor>(2) ;
+    const vml::Tensor *t3 = args.arg<vml::Tensor>(3) ;
 
     LOG(LOG_PARAM) << __FUNCTION__ << ":"
-	   << " in0=" << TensorToString(t0)
-	   << " in1=" << TensorToString(t1)
-	   << " in2=" << TensorToString(t2)
-	   << " out=" << TensorToString(t3);
+	   << " in0=" << t0->to_s()
+	   << " in1=" << t1->to_s()
+	   << " in2=" << t2->to_s()
+	   << " out=" << t3->to_s();
 
     if (t0->dtype == DT_BOOL) {
         if (t1->dtype == DT_FLOAT && t2->dtype == DT_FLOAT &&
@@ -103,7 +105,7 @@ int op_randomUniform(const VEOpArgs& args)
     if (args.nVariables() != 1)
         return 1;
 
-    const Tensor* t = args.arg<Tensor>(0);
+    const vml::Tensor* t = args.arg<vml::Tensor>(0);
 
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << t->dtype << " nelems=" << t->nelems;
 
@@ -127,7 +129,7 @@ DEFINE_KERNEL(RandomUniform, op_randomUniform);
 namespace {
 
 template <typename TO, typename TI>
-void cast(const Tensor* to, const Tensor* ti) {
+void cast(const vml::Tensor* to, const vml::Tensor* ti) {
     TO* po = reinterpret_cast<TO*>(to->addr);
     const TI* pi = reinterpret_cast<const TI*>(ti->addr);
 
@@ -136,7 +138,7 @@ void cast(const Tensor* to, const Tensor* ti) {
 }
 
 template <typename TO>
-void cast_from_bool(const Tensor* to, const Tensor* ti) {
+void cast_from_bool(const vml::Tensor* to, const vml::Tensor* ti) {
     TO* po = reinterpret_cast<TO*>(to->addr);
     const bool* pi = reinterpret_cast<const bool*>(ti->addr);
 
@@ -181,8 +183,8 @@ int op_cast(const VEOpArgs& args)
 {
     if (args.nVariables() != 2)
         return 1;
-    const Tensor* ti = args.arg<Tensor>(0);
-    const Tensor* to = args.arg<Tensor>(1);
+    const vml::Tensor* ti = args.arg<vml::Tensor>(0);
+    const vml::Tensor* to = args.arg<vml::Tensor>(1);
 
     LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti << " to=" << to;
 
@@ -224,7 +226,7 @@ DEFINE_KERNEL(Cast, op_cast);
 namespace {
 
 template<typename T>
-int tile_dim3(Tensor const& X, Tensor const& Y)
+int tile_dim3(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -254,7 +256,7 @@ int tile_dim3(Tensor const& X, Tensor const& Y)
 // X = [d0, d1, d2, d3]
 // Y = [e0, e1, 1, 1]
 template<typename T>
-int tile_dim4_11(Tensor const& X, Tensor const& Y)
+int tile_dim4_11(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -282,7 +284,7 @@ int tile_dim4_11(Tensor const& X, Tensor const& Y)
 }
 
 template<typename T>
-int tile_dim4(Tensor const& X, Tensor const& Y)
+int tile_dim4(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -316,7 +318,7 @@ int tile_dim4(Tensor const& X, Tensor const& Y)
 // X = [d0, d1, d2, d3, d4]
 // Y = [e0, e1, e2, 1, 1]
 template<typename T>
-int tile_dim5_11(Tensor const& X, Tensor const& Y)
+int tile_dim5_11(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -349,7 +351,7 @@ int tile_dim5_11(Tensor const& X, Tensor const& Y)
 }
 #ifdef LIBVETF_INTRINSIC
 template<>
-int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
+int tile_dim5_11<float>(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__ << "(intrinsic)";
     float* px = (float*)(X.addr);
@@ -363,7 +365,7 @@ int tile_dim5_11<float>(Tensor const& X, Tensor const& Y)
 #endif
 
 template<typename T>
-int tile_dim5(Tensor const& X, Tensor const& Y)
+int tile_dim5(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -402,8 +404,8 @@ int op_tile(const VEOpArgs& args)
 {
     if (args.nVariables() != 2)
         return 1;
-    const Tensor* ti = args.arg<Tensor>(0);
-    const Tensor* to = args.arg<Tensor>(1);
+    const vml::Tensor* ti = args.arg<vml::Tensor>(0);
+    const vml::Tensor* to = args.arg<vml::Tensor>(1);
 
     LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
 
@@ -564,11 +566,11 @@ int op_softmax_xent_with_logits(const VEOpArgs& args)
     if (args.nVariables() != 5)
         return 5;
 
-    const Tensor* logits_in = args.arg<Tensor>(0);
-    const Tensor* labels_in = args.arg<Tensor>(1);
-    const Tensor* scratch = args.arg<Tensor>(2);
-    const Tensor* loss_out = args.arg<Tensor>(3);
-    const Tensor* back_out = args.arg<Tensor>(4);
+    const vml::Tensor* logits_in = args.arg<vml::Tensor>(0);
+    const vml::Tensor* labels_in = args.arg<vml::Tensor>(1);
+    const vml::Tensor* scratch = args.arg<vml::Tensor>(2);
+    const vml::Tensor* loss_out = args.arg<vml::Tensor>(3);
+    const vml::Tensor* back_out = args.arg<vml::Tensor>(4);
 
     LOG(LOG_PARAM) << __FUNCTION__
            << " logits_in=" << logits_in->to_s()
@@ -718,12 +720,12 @@ int op_Split(const VEOpArgs& args)
     const int64_t split_dim_size  = *args.arg<int64_t>(narg++) ;
     const int64_t suffix_dim_size = *args.arg<int64_t>(narg++) ;
 
-    const Tensor *input_tensor = args.arg<Tensor>(narg++) ;
+    const vml::Tensor *input_tensor = args.arg<vml::Tensor>(narg++) ;
     const uint64_t input_addr  = input_tensor->addr ;
 
     uint64_t output_addrs[num_split] ;
     for(int64_t i=0; i<num_split; i++) {
-        const Tensor *result = args.arg<Tensor>(narg++) ;
+        const vml::Tensor *result = args.arg<vml::Tensor>(narg++) ;
         output_addrs[i] = result->addr ;
     }
 
@@ -788,13 +790,13 @@ int op_SplitV(const VEOpArgs& args)
     const int64_t split_dim_size  = *args.arg<int64_t>(narg++) ;
     const int64_t suffix_dim_size = *args.arg<int64_t>(narg++) ;
 
-    const Tensor *input_tensor = args.arg<Tensor>(narg++) ;
+    const vml::Tensor *input_tensor = args.arg<vml::Tensor>(narg++) ;
     const uint64_t input_addr  = input_tensor->addr ;
 
     uint64_t output_addrs[num_split] ;
     int64_t  split_sizes[num_split] ;
     for(int64_t i=0; i<num_split; i++) {
-        const Tensor *result = args.arg<Tensor>(narg++) ;
+        const vml::Tensor *result = args.arg<vml::Tensor>(narg++) ;
         output_addrs[i] = result->addr ;
         split_sizes[i] = *args.arg<int64_t>(narg++) ;
     }
@@ -828,8 +830,8 @@ template<typename T>
 int strided_slice1(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -848,8 +850,8 @@ template<typename T>
 int strided_slice2(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -870,8 +872,8 @@ template<typename T>
 int strided_slice3(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -895,8 +897,8 @@ template<typename T>
 int strided_slice4(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -932,8 +934,8 @@ template<typename T>
 int strided_slice5(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -959,8 +961,8 @@ template<typename T>
 int strided_slice6(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -988,8 +990,8 @@ template<typename T>
 int strided_slice7(const int64_t* begin_di,
                    const int64_t* end_di,
                    const int64_t* stride_di,
-                   const Tensor*  input_tensor,
-                   Tensor* result_tensor)
+                   const vml::Tensor*  input_tensor,
+                   vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1023,8 +1025,8 @@ int op_StridedSlice(const VEOpArgs& args)
     int narg = 0 ;
     const int64_t processing_dims = *args.arg<int64_t>(narg++) ;
 
-    const Tensor *input_tensor  = args.arg<Tensor>(narg++) ;
-    const Tensor *result_tensor = args.arg<Tensor>(narg++) ;
+    const vml::Tensor *input_tensor  = args.arg<vml::Tensor>(narg++) ;
+    const vml::Tensor *result_tensor = args.arg<vml::Tensor>(narg++) ;
 
     int64_t begin_di[STRIDED_SLICE_MAX_HANDLE_DIM] ;
     int64_t end_di[STRIDED_SLICE_MAX_HANDLE_DIM] ;
@@ -1047,25 +1049,25 @@ int op_StridedSlice(const VEOpArgs& args)
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
         case 1:
-            ret = strided_slice1<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice1<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 2:
-            ret = strided_slice2<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice2<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 3 :
-            ret = strided_slice3<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice3<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 4 :
-            ret = strided_slice4<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice4<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 5 :
-            ret = strided_slice5<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice5<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 6 :
-            ret = strided_slice6<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice6<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 7 :
-            ret = strided_slice7<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice7<float>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         default :
             break ;
@@ -1074,25 +1076,25 @@ int op_StridedSlice(const VEOpArgs& args)
     else if (dtype == DT_DOUBLE) {
         switch(processing_dims) {
         case 1:
-            ret = strided_slice1<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice1<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 2:
-            ret = strided_slice2<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice2<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 3 :
-            ret = strided_slice3<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice3<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 4 :
-            ret = strided_slice4<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice4<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 5 :
-            ret = strided_slice5<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice5<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 6 :
-            ret = strided_slice6<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice6<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 7 :
-            ret = strided_slice7<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice7<double>(begin_di, end_di, stride_di, input_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         default :
             break ;
@@ -1116,8 +1118,8 @@ template<typename T>
 int strided_slice_grad1(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1138,8 +1140,8 @@ template<typename T>
 int strided_slice_grad2(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1162,8 +1164,8 @@ template<typename T>
 int strided_slice_grad3(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1189,8 +1191,8 @@ template<typename T>
 int strided_slice_grad4(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1219,8 +1221,8 @@ template<typename T>
 int strided_slice_grad5(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1248,8 +1250,8 @@ template<typename T>
 int strided_slice_grad6(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1279,8 +1281,8 @@ template<typename T>
 int strided_slice_grad7(const int64_t* begin_di,
                         const int64_t* end_di,
                         const int64_t* stride_di,
-                        const Tensor*  dy_tensor,
-                        Tensor* result_tensor)
+                        const vml::Tensor*  dy_tensor,
+                        vml::Tensor* result_tensor)
 {
     const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
     T* po = reinterpret_cast<T*>(result_tensor->addr);
@@ -1316,8 +1318,8 @@ int op_StridedSliceGrad(const VEOpArgs& args)
     int narg = 0 ;
     const int64_t processing_dims = *args.arg<int64_t>(narg++) ;
 
-    const Tensor *dy_tensor     = args.arg<Tensor>(narg++) ;
-    const Tensor *result_tensor = args.arg<Tensor>(narg++) ;
+    const vml::Tensor *dy_tensor     = args.arg<vml::Tensor>(narg++) ;
+    const vml::Tensor *result_tensor = args.arg<vml::Tensor>(narg++) ;
 
     int64_t begin_di[STRIDED_SLICE_GRAD_MAX_HANDLE_DIM] ;
     int64_t end_di[STRIDED_SLICE_GRAD_MAX_HANDLE_DIM] ;
@@ -1340,25 +1342,25 @@ int op_StridedSliceGrad(const VEOpArgs& args)
     if (dtype == DT_FLOAT) {
         switch(processing_dims) {
         case 1:
-            ret = strided_slice_grad1<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad1<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 2:
-            ret = strided_slice_grad2<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad2<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 3 :
-            ret = strided_slice_grad3<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad3<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 4 :
-            ret = strided_slice_grad4<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad4<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 5 :
-            ret = strided_slice_grad5<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad5<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 6 :
-            ret = strided_slice_grad6<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad6<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 7 :
-            ret = strided_slice_grad7<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad7<float>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         default :
             break ;
@@ -1367,25 +1369,25 @@ int op_StridedSliceGrad(const VEOpArgs& args)
     else if (dtype == DT_DOUBLE) {
         switch(processing_dims) {
         case 1:
-            ret = strided_slice_grad1<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad1<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 2:
-            ret = strided_slice_grad2<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad2<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 3 :
-            ret = strided_slice_grad3<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad3<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 4 :
-            ret = strided_slice_grad4<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad4<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 5 :
-            ret = strided_slice_grad5<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad5<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 6 :
-            ret = strided_slice_grad6<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad6<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         case 7 :
-            ret = strided_slice_grad7<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            ret = strided_slice_grad7<double>(begin_di, end_di, stride_di, dy_tensor, (vml::Tensor*)result_tensor) ;
             break ;
         default :
             break ;
@@ -1429,8 +1431,8 @@ int op_L2Loss(const VEOpArgs& args)
 
     int ret=1;
 
-    const Tensor *input_tensor  = args.arg<Tensor>(0) ;
-    const Tensor *output_tensor = args.arg<Tensor>(1) ;
+    const vml::Tensor *input_tensor  = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor *output_tensor = args.arg<vml::Tensor>(1) ;
 
     const int dtype = input_tensor->dtype ;
 
