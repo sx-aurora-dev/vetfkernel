@@ -8,30 +8,6 @@
 #include <vml.h>
 #include <types.h>
 
-#if 0
-// copy from src/binary_ops.cc
-struct vml::Tensor {
-    int dtype;
-    uint64_t addr;
-    int32_t dims;
-    int64_t nelems;
-    int64_t dim_size[8];
-
-    std::string to_s() const {
-        std::stringstream s;
-
-        s << "[dtype=" << dtype
-            << ",dims=" << dims
-            << "[";
-        for (int i = 0; i < dims; ++i)
-            s << " " << dim_size[i];
-        s  << " ],nelems=" << nelems
-            << "]";
-        return s.str();
-    }
-};
-#endif
-
 struct BinaryOpArgs {
     vml::Tensor in0;
     vml::Tensor in1;
@@ -95,9 +71,18 @@ bool checkTensor(Tensor<T> const& a, Tensor<T> const& b)
     if (a.nelems() != b.nelems())
         return false;
 
-    for (size_t i = 0; i < a.nelems(); ++i)
+    for (size_t i = 0; i < a.nelems(); ++i) {
+#if 0
         if (a.data()[i] != b.data()[i])
             return false;
+#else
+        T ai = a.data()[i];
+        T bi = b.data()[i];
+        double err = ai - bi;
+        if (err * err / (ai * bi) > 1e-8)
+          return false;
+#endif
+    }
     return true;
 }
 
@@ -140,6 +125,78 @@ struct TestParam
     int verbose;
 };
 
+//
+// UnaryOp
+//
+
+template<typename T>
+bool test_UnaryOp(TestParam const& param,
+                  Tensor<T>& out,
+                  Tensor<T> const& in,
+                  Tensor<T> const& exp,
+                  int (*op)(vml::Tensor const&out, vml::Tensor const& in))
+{
+    int ret = op(out.tensor(), in.tensor());
+
+    bool flag = false;
+    if (ret == 0)
+        flag = checkTensor(out, exp);
+
+    if (param.verbose > 1 || (!flag && param.verbose > 0)) {
+        fprintf(stderr, "in = \n");
+        printTensor(in);
+        fprintf(stderr, "out = \n");
+        printTensor(out);
+        fprintf(stderr, "expected = \n");
+        printTensor(exp);
+    }
+
+    return flag;
+}
+
+template<typename T>
+bool test_UnaryOp_01(TestParam const& param, 
+                     int (*op)(vml::Tensor const&out, vml::Tensor const& in),
+                     T (*func)(T))
+{
+    Tensor<T> out({10});
+    Tensor<T> in({10});
+    Tensor<T> exp({10});
+
+    for (size_t i = 0; i < 10; ++i) {
+      for (size_t j = 0; j < 10; ++j) {
+          T v = T(i);
+          in.data()[i] = v;
+          out.data()[i] = 0;
+          exp.data()[i] = func(v);
+        }
+    }
+
+    return test_UnaryOp(param, out, in, exp, op);
+}
+
+#define DEFINE_TEST_UNARY_OP_01(name, op, func) \
+bool test_##name##_01(TestParam const& param) { \
+  return test_UnaryOp_01<float>(param, op, func); \
+}
+
+DEFINE_TEST_UNARY_OP_01(Abs, vml::abs, std::abs);
+DEFINE_TEST_UNARY_OP_01(Exp, vml::exp, expf);
+DEFINE_TEST_UNARY_OP_01(Floor, vml::floor, std::floor);
+DEFINE_TEST_UNARY_OP_01(Neg, vml::neg, [](float x) { return -x; });
+DEFINE_TEST_UNARY_OP_01(Log, vml::log, std::log);
+DEFINE_TEST_UNARY_OP_01(Reciprocal, vml::reciprocal, [](float x) { return 1/x; });
+DEFINE_TEST_UNARY_OP_01(Rsqrt, vml::rsqrt, [](float x) { return 1/std::sqrt(x); });
+DEFINE_TEST_UNARY_OP_01(Sigmoid, vml::sigmoid,
+                        [](float x) { return 1/(1+std::exp(-x)); });
+DEFINE_TEST_UNARY_OP_01(Sqrt, vml::sqrt, std::sqrt);
+DEFINE_TEST_UNARY_OP_01(Square, vml::square, [](float x) { return x * x; });
+DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
+
+//
+// BinaryOp
+//
+
 extern "C" {
     int op_Add(const void* args, size_t len);
     int op_Sub(const void* args, size_t len);
@@ -170,7 +227,7 @@ bool test_BinaryOp(TestParam const& param,
         printTensor(in0);
         fprintf(stderr, "in1 = \n");
         printTensor(in1);
-        fprintf(stderr, "in0 + in1 = \n");
+        fprintf(stderr, "out = \n");
         printTensor(out);
         fprintf(stderr, "expected = \n");
         printTensor(exp);
@@ -745,6 +802,18 @@ int main(int argc, char* argv[])
 
         { "op_AvgPool_01", test_AvgPool_01 },
         { "op_AvgPool_02", test_AvgPool_02 },
+
+#define DEFINE_TEST_01(T) {"op_" #T "_01", test_##T##_01}
+        DEFINE_TEST_01(Abs),
+        DEFINE_TEST_01(Exp),
+        DEFINE_TEST_01(Floor),
+        DEFINE_TEST_01(Neg),
+        DEFINE_TEST_01(Log),
+        DEFINE_TEST_01(Reciprocal),
+        DEFINE_TEST_01(Rsqrt),
+        DEFINE_TEST_01(Sigmoid),
+        DEFINE_TEST_01(Square),
+        DEFINE_TEST_01(Tanh),
     };
 
     TestParam param;

@@ -99,7 +99,7 @@ int vml::abs(vml::Tensor const& out, vml::Tensor const& in)
 // Exp
 //
 
-template<typename Tin, typename Tout>
+template<typename Tout, typename Tin>
 int op_exp(Tout* po, Tin const* pi, size_t nelems)
 {
   for (int64_t i = 0; i < nelems; ++i) {
@@ -210,7 +210,7 @@ DEFINE_UNARY_OP(rsqrt, ::rsqrt);
 // Sigmoid
 //
 
-template<typename Tin, typename Tout>
+template<typename Tout, typename Tin>
 int op_sigmoid(Tout* po, Tin const* pi, size_t nelems)
 {
   for (int64_t i = 0; i < nelems; ++i) {
