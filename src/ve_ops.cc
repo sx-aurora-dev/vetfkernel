@@ -822,7 +822,7 @@ DEFINE_KERNEL(SplitV, op_SplitV);
 //
 // StridedSlice
 //
-#define STRIDED_SLICE_MAX_HANDLE_DIM 5
+#define STRIDED_SLICE_MAX_HANDLE_DIM 7
 
 template<typename T>
 int strided_slice1(const int64_t* begin_di,
@@ -955,6 +955,66 @@ int strided_slice5(const int64_t* begin_di,
     return 0 ;
 }
 
+template<typename T>
+int strided_slice6(const int64_t* begin_di,
+                   const int64_t* end_di,
+                   const int64_t* stride_di,
+                   const Tensor*  input_tensor,
+                   Tensor* result_tensor)
+{
+    const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
+    T* po = reinterpret_cast<T*>(result_tensor->addr);
+
+    const int64_t d0 = input_tensor->dim_size[0] ;
+    const int64_t d1 = input_tensor->dim_size[1] ;
+    const int64_t d2 = input_tensor->dim_size[2] ;
+    const int64_t d3 = input_tensor->dim_size[3] ;
+    const int64_t d4 = input_tensor->dim_size[4] ;
+    const int64_t d5 = input_tensor->dim_size[5] ;
+
+    for(int64_t i0=begin_di[0]; i0<end_di[0] ; i0+=stride_di[0] ) {
+    for(int64_t i1=begin_di[1]; i1<end_di[1] ; i1+=stride_di[1] ) {
+    for(int64_t i2=begin_di[2]; i2<end_di[2] ; i2+=stride_di[2] ) {
+    for(int64_t i3=begin_di[3]; i3<end_di[3] ; i3+=stride_di[3] ) {
+    for(int64_t i4=begin_di[4]; i4<end_di[4] ; i4+=stride_di[4] ) {
+    for(int64_t i5=begin_di[5]; i5<end_di[5] ; i5+=stride_di[5] ) {
+        *po = pi[((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5] ; po++ ;
+    } } } } } }
+
+    return 0 ;
+}
+
+template<typename T>
+int strided_slice7(const int64_t* begin_di,
+                   const int64_t* end_di,
+                   const int64_t* stride_di,
+                   const Tensor*  input_tensor,
+                   Tensor* result_tensor)
+{
+    const T* pi = reinterpret_cast<const T*>(input_tensor->addr);
+    T* po = reinterpret_cast<T*>(result_tensor->addr);
+
+    const int64_t d0 = input_tensor->dim_size[0] ;
+    const int64_t d1 = input_tensor->dim_size[1] ;
+    const int64_t d2 = input_tensor->dim_size[2] ;
+    const int64_t d3 = input_tensor->dim_size[3] ;
+    const int64_t d4 = input_tensor->dim_size[4] ;
+    const int64_t d5 = input_tensor->dim_size[5] ;
+    const int64_t d6 = input_tensor->dim_size[6] ;
+
+    for(int64_t i0=begin_di[0]; i0<end_di[0] ; i0+=stride_di[0] ) {
+    for(int64_t i1=begin_di[1]; i1<end_di[1] ; i1+=stride_di[1] ) {
+    for(int64_t i2=begin_di[2]; i2<end_di[2] ; i2+=stride_di[2] ) {
+    for(int64_t i3=begin_di[3]; i3<end_di[3] ; i3+=stride_di[3] ) {
+    for(int64_t i4=begin_di[4]; i4<end_di[4] ; i4+=stride_di[4] ) {
+    for(int64_t i5=begin_di[5]; i5<end_di[5] ; i5+=stride_di[5] ) {
+    for(int64_t i6=begin_di[6]; i6<end_di[6] ; i6+=stride_di[6] ) {
+        *po = pi[(((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5)*d6+i6] ; po++ ;
+    } } } } } } }
+
+    return 0 ;
+}
+
 namespace {
 int op_StridedSlice(const VEOpArgs& args)
 {
@@ -1001,6 +1061,12 @@ int op_StridedSlice(const VEOpArgs& args)
         case 5 :
             ret = strided_slice5<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
             break ;
+        case 6 :
+            ret = strided_slice6<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            break ;
+        case 7 :
+            ret = strided_slice7<float>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            break ;
         default :
             break ;
         }
@@ -1022,6 +1088,12 @@ int op_StridedSlice(const VEOpArgs& args)
         case 5 :
             ret = strided_slice5<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
             break ;
+        case 6 :
+            ret = strided_slice6<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            break ;
+        case 7 :
+            ret = strided_slice7<double>(begin_di, end_di, stride_di, input_tensor, (Tensor*)result_tensor) ;
+            break ;
         default :
             break ;
         }
@@ -1038,7 +1110,7 @@ DEFINE_KERNEL(StridedSlice, op_StridedSlice);
 //
 // StridedSliceGrad
 //
-#define STRIDED_SLICE_GRAD_MAX_HANDLE_DIM 5
+#define STRIDED_SLICE_GRAD_MAX_HANDLE_DIM 7
 
 template<typename T>
 int strided_slice_grad1(const int64_t* begin_di,
@@ -1172,6 +1244,69 @@ int strided_slice_grad5(const int64_t* begin_di,
     return 0 ;
 }
 
+template<typename T>
+int strided_slice_grad6(const int64_t* begin_di,
+                        const int64_t* end_di,
+                        const int64_t* stride_di,
+                        const Tensor*  dy_tensor,
+                        Tensor* result_tensor)
+{
+    const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
+    T* po = reinterpret_cast<T*>(result_tensor->addr);
+
+    const int64_t d0 = result_tensor->dim_size[0] ;
+    const int64_t d1 = result_tensor->dim_size[1] ;
+    const int64_t d2 = result_tensor->dim_size[2] ;
+    const int64_t d3 = result_tensor->dim_size[3] ;
+    const int64_t d4 = result_tensor->dim_size[4] ;
+    const int64_t d5 = result_tensor->dim_size[5] ;
+
+    for(int64_t i=0; i<d0*d1*d2*d3*d4*d5; i++) po[i] = T(0.) ;
+
+    for(int64_t i0=begin_di[0]; i0<end_di[0] ; i0+=stride_di[0] ) {
+    for(int64_t i1=begin_di[1]; i1<end_di[1] ; i1+=stride_di[1] ) {
+    for(int64_t i2=begin_di[2]; i2<end_di[2] ; i2+=stride_di[2] ) {
+    for(int64_t i3=begin_di[3]; i3<end_di[3] ; i3+=stride_di[3] ) {
+    for(int64_t i4=begin_di[4]; i4<end_di[4] ; i4+=stride_di[4] ) {
+    for(int64_t i5=begin_di[5]; i5<end_di[5] ; i5+=stride_di[5] ) {
+        po[((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5] = *pi ; pi++ ;
+    } } } } } }
+
+    return 0 ;
+}
+
+template<typename T>
+int strided_slice_grad7(const int64_t* begin_di,
+                        const int64_t* end_di,
+                        const int64_t* stride_di,
+                        const Tensor*  dy_tensor,
+                        Tensor* result_tensor)
+{
+    const T* pi = reinterpret_cast<const T*>(dy_tensor->addr);
+    T* po = reinterpret_cast<T*>(result_tensor->addr);
+
+    const int64_t d0 = result_tensor->dim_size[0] ;
+    const int64_t d1 = result_tensor->dim_size[1] ;
+    const int64_t d2 = result_tensor->dim_size[2] ;
+    const int64_t d3 = result_tensor->dim_size[3] ;
+    const int64_t d4 = result_tensor->dim_size[4] ;
+    const int64_t d5 = result_tensor->dim_size[5] ;
+    const int64_t d6 = result_tensor->dim_size[6] ;
+
+    for(int64_t i=0; i<d0*d1*d2*d3*d4*d5*d6; i++) po[i] = T(0.) ;
+
+    for(int64_t i0=begin_di[0]; i0<end_di[0] ; i0+=stride_di[0] ) {
+    for(int64_t i1=begin_di[1]; i1<end_di[1] ; i1+=stride_di[1] ) {
+    for(int64_t i2=begin_di[2]; i2<end_di[2] ; i2+=stride_di[2] ) {
+    for(int64_t i3=begin_di[3]; i3<end_di[3] ; i3+=stride_di[3] ) {
+    for(int64_t i4=begin_di[4]; i4<end_di[4] ; i4+=stride_di[4] ) {
+    for(int64_t i5=begin_di[5]; i5<end_di[5] ; i5+=stride_di[5] ) {
+    for(int64_t i6=begin_di[6]; i6<end_di[6] ; i6+=stride_di[6] ) {
+        po[(((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5)*d6+i6] = *pi ; pi++ ;
+    } } } } } } }
+
+    return 0 ;
+}
 
 namespace {
 int op_StridedSliceGrad(const VEOpArgs& args)
@@ -1219,6 +1354,12 @@ int op_StridedSliceGrad(const VEOpArgs& args)
         case 5 :
             ret = strided_slice_grad5<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
             break ;
+        case 6 :
+            ret = strided_slice_grad6<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            break ;
+        case 7 :
+            ret = strided_slice_grad7<float>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            break ;
         default :
             break ;
         }
@@ -1239,6 +1380,12 @@ int op_StridedSliceGrad(const VEOpArgs& args)
             break ;
         case 5 :
             ret = strided_slice_grad5<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            break ;
+        case 6 :
+            ret = strided_slice_grad6<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
+            break ;
+        case 7 :
+            ret = strided_slice_grad7<double>(begin_di, end_di, stride_di, dy_tensor, (Tensor*)result_tensor) ;
             break ;
         default :
             break ;
