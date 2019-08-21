@@ -668,9 +668,11 @@ int op_Concat(const VEOpArgs& args)
     if (dtype == DT_FLOAT) {
         ret = concat<float>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
+#if 0 // do int32 type's concat in CPU.
     else if (dtype == DT_INT32) {
         ret = concat<int32_t>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }
+#endif
     else if (dtype == DT_DOUBLE) {
         ret = concat<double>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
     }

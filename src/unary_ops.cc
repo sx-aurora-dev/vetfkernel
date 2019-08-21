@@ -78,12 +78,14 @@ int vml::abs(vml::Tensor const& out, vml::Tensor const& in)
     for (size_t i = 0; i < in.nelems; ++i)
       po[i] = fabs(pi[i]);
     return 0;
+#if 0 // do int32 type's abs in CPU.
   } else if (in.dtype == DT_INT32) {
     int32_t* po = out.ptr<int32_t*>();
     int32_t const* pi = in.ptr<int32_t const*>();
     for (size_t i = 0; i < in.nelems; ++i)
       po[i] = ::abs(pi[i]);
     return 0;
+#endif
   } else if (in.dtype == DT_INT64) {
     int64_t* po = out.ptr<int64_t*>();
     int64_t const* pi = in.ptr<int64_t const*>();
