@@ -1579,7 +1579,7 @@ int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <typename T>
 int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
-  bool* po = reinterpret_cast<bool*>(out);
+  T* po = reinterpret_cast<T*>(out);
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
@@ -1624,7 +1624,7 @@ int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <typename T>
 int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
-  bool* po = reinterpret_cast<bool*>(out);
+  T* po = reinterpret_cast<T*>(out);
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
