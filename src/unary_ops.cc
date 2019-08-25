@@ -215,10 +215,21 @@ DEFINE_UNARY_OP(rsqrt, ::rsqrt);
 template<typename Tout, typename Tin>
 int op_sigmoid(Tout* po, Tin const* pi, size_t nelems)
 {
+#if 0 // original
   for (int64_t i = 0; i < nelems; ++i) {
     const Tout One = Tout(1.) ;
     po[i] = One / (One + std::exp(-pi[i])) ;
   }
+#else
+  // ncc's vectorized-exp causes nan.
+
+  for (int64_t i = 0; i < nelems; ++i) {
+    const Tout One = Tout(1.) ;
+    const Tin  vi  = pi[i] ;
+
+    po[i] = vi < Tin(-88.) ? Tout(0.) : One / (One + std::exp(-vi)) ;
+  }
+#endif
   return 0;
 }
 
