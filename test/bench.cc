@@ -16,18 +16,14 @@ enum {
 };
 
 extern "C" {
-  int _op_Add(const void* args, size_t len);
   int op_ApplyAdam(const void* args, size_t len);
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
-  int op_Div(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
-  int _op_Mul(const void* args, size_t len);
   //int op_Neg(const void* args, size_t len);
   int op_Rsqrt(const void* args, size_t len);
   //int op_Sqrt(const void* args, size_t len);
   int op_Square(const void* args, size_t len);
-  int _op_Sub(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Tile(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
@@ -620,7 +616,9 @@ class BinaryOpBench : public Bench
 {
   public:
     BinaryOpBench(std::string name, 
-                  int (*op)(const void* args, size_t len),
+                  int (*op)(vml::Tensor const& out,
+                            vml::Tensor const& in0,
+                            vml::Tensor const& in1),
                   int (*ref_op)(T*, T const*, T const*, size_t),
                   T const* y, T const* z, size_t n) 
       : Bench(name), op_(op), ref_op_(ref_op), y_(y), z_(z), n_(n) { 
@@ -646,7 +644,7 @@ class BinaryOpBench : public Bench
     }
 
     int run() override {
-      return op_(reinterpret_cast<void const*>(&args_), sizeof(BinaryOpArgs));
+      return op_(args_.out, args_.in0, args_.in1);
     }
 
   private:
@@ -655,7 +653,7 @@ class BinaryOpBench : public Bench
     T const* y_;
     T const* z_;
     size_t n_;
-    int (*op_)(const void* args, size_t len);
+    int (*op_)(vml::Tensor const&, vml::Tensor const&, vml::Tensor const&);
     int (*ref_op_)(T*, T const*, T const*, size_t);
 
     struct BinaryOpArgs {
@@ -1140,10 +1138,10 @@ void add_bench(std::vector<Bench*>& v, size_t n)
     z[i] = drand48();
   }
 
-  v.push_back(new BinaryOpBench<float>("Add", _op_Add, ref::add<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Sub", _op_Sub, ref::sub<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Mul", _op_Mul, ref::mul<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Div", op_Div, ref::div<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Add", vml::add, ref::add<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Sub", vml::sub, ref::sub<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Mul", vml::mul, ref::mul<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Div", vml::div, ref::div<float>, y, z, n));
 
   v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n));
   v.push_back(new ReductionOpBench<float>("Sum", op_Sum, ref::sum_d2a0<float>, y, n));

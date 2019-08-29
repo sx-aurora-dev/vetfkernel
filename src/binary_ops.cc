@@ -23,37 +23,6 @@
 
 //#define DEBUG
 
-// FIXME: see bottom
-#if 1
-REGISTER_KERNEL("Div", "op_Div");
-REGISTER_KERNEL("DivNoNan", "op_DivNoNan");
-REGISTER_KERNEL("Pow", "op_Pow");
-REGISTER_KERNEL("RsqrtGrad", "op_RsqrtGrad")
-REGISTER_KERNEL("Minimum", "op_Minimum");
-REGISTER_KERNEL("Maximum", "op_Maximum");
-REGISTER_KERNEL("Equal", "op_Equal");
-REGISTER_KERNEL("NotEqual", "op_NotEqual");
-REGISTER_KERNEL("Less", "op_Less");
-REGISTER_KERNEL("LessEqual", "op_LessEqual");
-REGISTER_KERNEL("Greater", "op_Greater");
-REGISTER_KERNEL("GreaterEqual", "op_GreaterEqual");
-
-extern "C" {
-  int op_Div(const void* arg, size_t len);
-  int op_DivNoNan(const void* arg, size_t len);
-  int op_Pow(const void* arg, size_t len);
-  int op_RsqrtGrad(const void* arg, size_t len);
-  int op_Minimum(const void* arg, size_t len);
-  int op_Maximum(const void* arg, size_t len);
-  int op_Equal(const void* arg, size_t len);
-  int op_NotEqual(const void* arg, size_t len);
-  int op_Less(const void* arg, size_t len);
-  int op_LessEqual(const void* arg, size_t len);
-  int op_Greater(const void* arg, size_t len);
-  int op_GreaterEqual(const void* arg, size_t len);
-}
-#endif
-
 namespace {
 
 struct BinaryOpArgs {
@@ -1185,46 +1154,55 @@ inline int div2_nn_n1<float>(uint64_t out,
 }
 #endif
 
-int op_div(const BinaryOpArgs& args) {
+} // namespace
 
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+namespace vml {
+
+int div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+
+//  printf("in0.dims = %ld\n", in0.dims) ;
+//  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
+//  printf("in1.dims = %ld\n", in1.dims) ;
+//  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
 
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
 
     int r=1;
 
-    if (args.in0.nelems == 1) {
+    if (in0.nelems == 1) {
       /* TODO : impl intrinsic */
-      r = div_1n<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                        args.out.nelems);
+      r = div_1n<float>(out.addr, in0.addr, in1.addr,
+                        out.nelems);
 
-    } else if (args.in1.nelems == 1) {
-      r = div_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.out.nelems);
-    } else if (args.in0.nelems == args.in1.nelems ) {
-      r = div_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                        args.out.nelems);
-    } else if (args.in0.dims == 2
-               && args.in1.dims == 2
-               && args.in0.dim_size[0] == args.in1.dim_size[0]
-               && args.in1.dim_size[1] == 1) {
-      r = div2_nn_n1<float>(args.out.addr,
-                               args.in0.addr,
-                               args.in1.addr,
-                               args.in0.dim_size[0],
-                               args.in0.dim_size[1]);
-    } else if (IsSameDims(args)) {
-      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
+    } else if (in1.nelems == 1) {
+      r = div_n1<float>(out.addr, in0.addr, in1.addr,
+                           out.nelems);
+    } else if (in0.nelems == in1.nelems ) {
+      r = div_nn<float>(out.addr, in0.addr, in1.addr,
+                        out.nelems);
+    } else if (in0.dims == 2
+               && in1.dims == 2
+               && in0.dim_size[0] == in1.dim_size[0]
+               && in1.dim_size[1] == 1) {
+      r = div2_nn_n1<float>(out.addr,
+                               in0.addr,
+                               in1.addr,
+                               in0.dim_size[0],
+                               in0.dim_size[1]);
+    } else if (IsSameDims(out, in0, in1)) {
+      r = binop_dimN<float, float>(out, in0, in1,
               [](float y, float z) -> float { return y / z; });
     }
     return r;
   }
   return 1;
 }
+
+} // namespace vml
+
+namespace {
 
 // DivNoNan
 
@@ -2099,70 +2077,31 @@ int op_greaterEqual(const BinaryOpArgs& args) {
 } \
 REGISTER_KERNEL(#name, "_op_"#name);
 
+// deprecated
+#define DEFINE_BINARY_OP_DEP(name, FUNC) \
+  extern "C" { \
+  int _op_##name(const void* args, size_t len) \
+{ \
+  return op_Binary_(args, len, FUNC, #name); \
+} \
+} \
+REGISTER_KERNEL(#name, "_op_"#name);
+
 DEFINE_BINARY_OP(Add, vml::add);
-DEFINE_BINARY_OP(Sub, vml::sub);
+DEFINE_BINARY_OP(Div, vml::div);
 DEFINE_BINARY_OP(Mul, vml::mul);
 DEFINE_BINARY_OP(SquaredDifference, vml::sqdiff);
+DEFINE_BINARY_OP(Sub, vml::sub);
 
-// FIXME: rewrite as above
-
-int op_Div(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_div, "op_Div");
-}
-
-int op_DivNoNan(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_divnonan, "op_DivNoNan");
-}
-
-int op_Pow(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_pow, "op_Pow");
-}
-
-int op_RsqrtGrad(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_rsqrt_grad, "op_RsqrtGrad");
-}
-
-
-int op_Minimum(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_minimum, "op_Minimum");
-}
-
-int op_Maximum(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_maximum, "op_Maximum");
-}
-
-int op_Equal(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_equal, "op_Equal");
-}
-
-int op_NotEqual(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_notEqual, "op_NotEqual");
-}
-
-int op_Less(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_less, "op_Less");
-}
-
-int op_LessEqual(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_lessEqual, "op_LessEqual");
-}
-
-int op_Greater(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_greater, "op_Greater");
-}
-
-int op_GreaterEqual(const void* args, size_t len)
-{
-  return op_Binary_(args, len, op_greaterEqual, "op_GreaterEqual");
-}
+// FIXME: add vml interface as above
+DEFINE_BINARY_OP_DEP(DivNoNan, op_divnonan);
+DEFINE_BINARY_OP_DEP(Pow, op_pow);
+DEFINE_BINARY_OP_DEP(RsqrtGrad, op_rsqrt_grad);
+DEFINE_BINARY_OP_DEP(Minimum, op_minimum);
+DEFINE_BINARY_OP_DEP(Maximum, op_maximum);
+DEFINE_BINARY_OP_DEP(Equal, op_equal);
+DEFINE_BINARY_OP_DEP(NotEqual, op_notEqual);
+DEFINE_BINARY_OP_DEP(Less, op_less);
+DEFINE_BINARY_OP_DEP(LessEqual, op_lessEqual);
+DEFINE_BINARY_OP_DEP(Greater, op_greater);
+DEFINE_BINARY_OP_DEP(GreaterEqual, op_greaterEqual);

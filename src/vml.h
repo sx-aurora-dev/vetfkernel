@@ -63,7 +63,8 @@ int tanh(vml::Tensor const& out, vml::Tensor const& in);
 
 // binary op
 int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
-int sub(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
+int div(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
 int mul(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
 int sqdiff(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
+int sub(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
 };
