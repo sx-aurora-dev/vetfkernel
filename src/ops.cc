@@ -10,7 +10,6 @@
 
 #include <omp.h>
 
-#include "vml.h"
 #include "vednn.h"
 
 #ifdef LIBVETF_INTRINSIC
@@ -1424,55 +1423,3 @@ int op_Slice(const void* args, size_t len)
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret ; 
 }
-
-
-namespace {
-
-int unary_op(const void* args, size_t len,
-             int (*func_f32_f32)(uint64_t, uint64_t, size_t))
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    vml::Tensor in;
-    vml::Tensor out;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << p->in.dtype << " out.dtype=" << p->out.dtype;
-
-  int ret = 1;
-  if (p->in.dtype == DT_FLOAT && p->out.dtype == DT_FLOAT) {
-    if( p->in.nelems >= 2048 ) {
-#pragma omp parallel
-      {
-        int64_t nthreads = omp_get_num_threads() ;
-        int64_t threadid = omp_get_thread_num() ;
-
-        int64_t chunkSize = p->in.nelems / nthreads ;
-        int64_t remain    = p->in.nelems % nthreads ;
-
-        int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
-        int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
-
-        int64_t offset    = sizeof(float) * chunkBegin ;
-
-        if( myChunk > 0 ) {
-          ret = func_f32_f32(p->out.addr+offset, p->in.addr+offset, myChunk);
-        }
-      }
-    }
-    else {
-      ret = func_f32_f32(p->out.addr, p->in.addr, p->in.nelems);
-    }
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
-
-} // namespace
-
-

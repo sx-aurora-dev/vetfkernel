@@ -421,10 +421,7 @@ int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
 
 } // namespace
 
-namespace vml
-{
-
-int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
+int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
 //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
@@ -474,8 +471,6 @@ int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
   }
   return 1;
 }
-
-} // namespace vml
 
 namespace {
 
@@ -604,9 +599,7 @@ int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 } // namespace
 
-namespace vml {
-
-int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
 //  printf("in0.dims = %ld\n", in0.dims) ;
@@ -673,8 +666,6 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   }
   return 1;
 }
-
-} // namespace vml
 
 namespace {
 
@@ -952,9 +943,7 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
 
 } // namespace
 
-namespace vml {
-
-int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
 //  printf("in0.dims = %ld\n", in0.dims) ;
@@ -1069,8 +1058,6 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   return 1;
 }
 
-} // namespace vml
-
 namespace {
 
 // Div
@@ -1156,9 +1143,7 @@ inline int div2_nn_n1<float>(uint64_t out,
 
 } // namespace
 
-namespace vml {
-
-int div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
 //  printf("in0.dims = %ld\n", in0.dims) ;
@@ -1199,8 +1184,6 @@ int div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   }
   return 1;
 }
-
-} // namespace vml
 
 namespace {
 
@@ -1480,9 +1463,7 @@ int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 } // namespace
 
-namespace vml {
-
-int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
 //  printf("in0.dims = %ld\n", in0.dims) ;
@@ -1560,8 +1541,6 @@ int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
   }
   return 1;
 }
-
-} // namespace vml
 
 namespace {
 

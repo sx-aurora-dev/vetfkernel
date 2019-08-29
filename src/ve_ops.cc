@@ -11,24 +11,6 @@
 
 namespace {
 
-#if 0
-std::string vml::TensorToString(const vml::Tensor *t)
-{
-    std::stringstream s;
-
-    s << "[dtype=" << t->dtype
-      << ",dims=" << t->dims
-      << "[";
-    for (int i = 0; i < t->dims; ++i) {
-        s << " " << t->dim_size[i];
-    }
-    s  << " ],nelems=" << t->nelems
-      << "]";
-    return s.str();
-}
-#endif
-
-
 template <typename T>
 int op_select_nn(uint64_t out,
                  uint64_t cond,
