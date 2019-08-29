@@ -212,22 +212,23 @@ int op_AddN(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
 
-#define MAX_INPUTS 32
   struct Args {
     int output_type;
     uint64_t out;
     size_t num_elems;
     size_t num_inputs;
-    uint64_t in[MAX_INPUTS];
+    uint64_t in[1];	// variable length
   } const* p;
 
   int ret = 1;
-  if (len != sizeof(*p)) {
-      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
-      goto error_exit;
-  }
 
   p = reinterpret_cast<const Args*>(args);
+
+  size_t expectedSize = sizeof(struct Args) + sizeof(uint64_t) * (p->num_inputs - 1) ;
+  if (len != expectedSize) {
+      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << expectedSize << " expected but " << len;
+      goto error_exit;
+  }
 
   LOG(LOG_PARAM) << __FUNCTION__
 	 << ": dtype=" << p->output_type
