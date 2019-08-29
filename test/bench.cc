@@ -20,12 +20,7 @@ extern "C" {
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
-  //int op_Neg(const void* args, size_t len);
-  int op_Rsqrt(const void* args, size_t len);
-  //int op_Sqrt(const void* args, size_t len);
-  int op_Square(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
-  int op_Tile(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
 }
 
@@ -38,6 +33,32 @@ static double second()
 
 template <typename T> struct to_dtype {};
 template<> struct to_dtype<float> { static const int val = 1; };
+
+template <typename T>
+vml::Tensor makeTensor1D(T const* x, size_t n)
+{
+  vml::Tensor t;
+  t.dtype = to_dtype<T>::val;
+  t.addr = reinterpret_cast<uint64_t>(x);
+  t.dims = 1;
+  t.nelems = n;
+  t.dim_size[0] = n;
+  return t;
+}
+
+#define USE_VML_RANDOM
+
+template <typename T>
+void randomInit(T* p, size_t n)
+{
+#ifdef USE_VML_RANDOM
+  vml::Tensor t = makeTensor1D(p, n);
+  vml::randomUniform(t);
+#else
+  for (size_t i = 0; i < n; ++i)
+    p[i] = T(drand48());
+#endif
+}
 
 struct BenchOpts
 {
@@ -352,38 +373,8 @@ int BiasAddGrad_NCHW(uint64_t output, uint64_t output_backprop,
 
 // Tile
 
-struct Tensor {
-  int32_t dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-
-  size_t size() const {
-    return sizeof(Tensor) + sizeof(int64_t) * (dims - 1);
-  }
-
-  std::string to_s() const {
-    std::stringstream s;
-
-    s << "[dtype=" << dtype
-      << ",dims=" << dims
-      << ",nelems=" << nelems
-      << ",dim_size=[";
-
-    for (size_t i = 0; i < dims; ++i) {
-      s << dim_size[i];
-      if (i < dims - 1)
-        s << ",";
-    }
-    s << "]]";
-    return s.str();
-  }
-} __attribute__((__packed__));
-
-
 template<typename T>
-int tile_dim5_11(Tensor const& X, Tensor const& Y)
+int tile_dim5_11(vml::Tensor const& X, vml::Tensor const& Y)
 {
     //LOG(3) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -751,8 +742,7 @@ class BiasAddOpBench : public Bench
       out1_ = new T[szio];
       bias_ = new T[szb];
 
-      for (size_t i = 0; i < szb; ++i)
-        bias_[i] = T(drand48());
+      randomInit(bias_, szb);
 
       szio_ = szio;
 
@@ -915,19 +905,6 @@ class TileOpBench : public Bench
       out1_.nelems = szOut;
       for (size_t i = 0; i < ndims; ++i)
         out1_.dim_size[i] = dimsOut[i];
-
-      len_ = (sizeof(ref::Tensor) + sizeof(size_t)) * 2 + sizeof(int64_t);
-      buf_ = new char[len_];
-      uintptr_t addr = reinterpret_cast<uintptr_t>(buf_);
-      *reinterpret_cast<int64_t*>(addr) = 2;
-      addr += sizeof(int64_t);
-      *reinterpret_cast<size_t*>(addr) = sizeof(ref::Tensor);
-      addr += sizeof(size_t);
-      *reinterpret_cast<ref::Tensor*>(addr) = in_;
-      addr += sizeof(ref::Tensor);
-      *reinterpret_cast<size_t*>(addr) = sizeof(ref::Tensor);
-      addr += sizeof(size_t);
-      *reinterpret_cast<ref::Tensor*>(addr) = out0_;
     }
 
     int validate(BenchOpts const& opts) override {
@@ -939,22 +916,19 @@ class TileOpBench : public Bench
     }
 
     int run() override {
-      op_Tile(buf_, len_);
+      vml::tile(out0_, in_);
     }
 
   private:
-    void* buf_;
-    size_t len_;
-
     T* x0_;
     T* x1_;
     T* y_;
 
     size_t szOut_;
 
-    ref::Tensor in_;
-    ref::Tensor out0_;
-    ref::Tensor out1_;
+    vml::Tensor in_;
+    vml::Tensor out0_;
+    vml::Tensor out1_;
 };
 
 template <typename T>
@@ -1038,13 +1012,11 @@ class ApplyAdamOpBench : public Bench
       epsilon = new T[1];
       grad = new T[n];
 
-      for (size_t i = 0; i < n; ++i) {
-        m0_[i] = T(drand48());
-        v0_[i] = T(drand48());
-        m1_[i] = T(drand48());
-        v1_[i] = T(drand48());
-        grad[i] = T(drand48());
-      }
+      randomInit(m0_, n);
+      randomInit(v0_, n);
+      randomInit(m1_, n);
+      randomInit(v1_, n);
+      randomInit(grad, n);
 
       beta1_power[0] = T(drand48());
       beta2_power[0] = T(drand48());
@@ -1133,10 +1105,8 @@ void add_bench(std::vector<Bench*>& v, size_t n)
   T* y = new T[n];
   T* z = new T[n];
 
-  for (int i = 0; i < n; ++i) {
-    y[i] = drand48();
-    z[i] = drand48();
-  }
+  randomInit(y, n);
+  randomInit(z, n);
 
   v.push_back(new BinaryOpBench<float>("Add", vml::add, ref::add<float>, y, z, n));
   v.push_back(new BinaryOpBench<float>("Sub", vml::sub, ref::sub<float>, y, z, n));
@@ -1214,8 +1184,7 @@ int main(int argc, char* argv[])
 
   float* y = new float[nchw_elems];
 
-  for (size_t i = 0; i < nchw_elems; ++i)
-    y[i] = (float)drand48();
+  randomInit(y, nchw_elems);
 
   add_bench<float>(v, n);
 
@@ -1237,6 +1206,9 @@ int main(int argc, char* argv[])
                                           ref::transpose4_0312<float>, y, nchw,
                                           {0, 3, 1, 2}));
   v.push_back(new ApplyAdamOpBench<float>("ApplyAdam", n));
+
+  if (opts.verbose > 0)
+    fprintf(stderr, "Initialization done\n");
 
   int flag = 1;
   for (Bench* b : v) {

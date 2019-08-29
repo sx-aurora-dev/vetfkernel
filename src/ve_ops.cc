@@ -82,13 +82,31 @@ int op_select(const VEOpArgs& args)
     return 1;
 }
 
+} // namespace
+
+int vml::randomUniform(vml::Tensor const& t)
+{
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << t.dtype << " nelems=" << t.nelems;
+
+    if (t.dtype == DT_FLOAT) {
+        float* p = reinterpret_cast<float*>(t.addr);
+        ASL::getRandom(t.nelems, p) ;
+    }
+
+    return 0;
+}
+
+namespace {
+
 int op_randomUniform(const VEOpArgs& args)
 {
     if (args.nArguments() != 1)
         return 1;
 
     const vml::Tensor* t = args.arg<vml::Tensor>(0);
+    return vml::randomUniform(*t);
 
+#if 0
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << t->dtype << " nelems=" << t->nelems;
 
     if (t->dtype == DT_FLOAT) {
@@ -97,6 +115,7 @@ int op_randomUniform(const VEOpArgs& args)
     }
 
     return 0;
+#endif
 }
 
 } // namespace
@@ -381,6 +400,63 @@ int tile_dim5(vml::Tensor const& X, vml::Tensor const& Y)
     return 0;
 }
 
+} // namespace
+
+int vml::tile(vml::Tensor const& X, vml::Tensor const& Y)
+{
+    LOG(LOG_PARAM) << __FUNCTION__ << " Y=" << Y.to_s() << " X=" << X.to_s();
+
+    int rc = 1 ;
+
+    if (Y.dtype == DT_FLOAT && X.dtype == DT_FLOAT) {
+        const float* pi = reinterpret_cast<const float*>(Y.addr);
+        float* po = reinterpret_cast<float*>(X.addr);
+        if (Y.nelems == 1) {
+            for (size_t i = 0; i < X.nelems; ++i) {
+                po[i] = pi[0];
+            }
+            rc = 0 ;
+        } else if (Y.dims == 2 && X.dims == 2
+                   && Y.dim_size[0] == X.dim_size[0]
+                   && Y.dim_size[1] == 1) {
+            for (size_t i = 0; i < Y.dim_size[0]; ++i) {
+                for (size_t j = 0; j < X.dim_size[1]; ++j) {
+                    po[i * X.dim_size[1] + j] = pi[i];
+                }
+            }
+            rc = 0 ;
+        } else if (Y.dims == 2 && X.dims == 2
+                   && Y.dim_size[1] == X.dim_size[1]
+                   && Y.dim_size[0] == 1) {
+            for (size_t i = 0; i < X.dim_size[0]; ++i) {
+                for (size_t j = 0; j < X.dim_size[1]; ++j) {
+                    po[i * X.dim_size[1] + j] = pi[j];
+                }
+            }
+            rc = 0 ;
+        } else if ( Y.dims == X.dims && Y.dims == 3 ) {
+            rc = tile_dim3<float>(X, Y) ;
+        } else if ( Y.dims == X.dims && Y.dims == 4 ) {
+            if( Y.dim_size[2]==1 && Y.dim_size[3]==1 ) {
+                rc = tile_dim4_11<float>(X, Y) ;
+            }
+            else {
+                rc = tile_dim4<float>(X, Y) ;
+            }
+        } else if ( Y.dims == X.dims && Y.dims == 5 ) {
+            if( Y.dim_size[3]==1 && Y.dim_size[4]==1 ) {
+                rc = tile_dim5_11<float>(X, Y) ;
+            }
+            else {
+                rc = tile_dim5<float>(X, Y) ;
+            }
+        }
+    }
+
+    return rc;
+}
+
+namespace {
 
 int op_tile(const VEOpArgs& args)
 {
@@ -389,57 +465,9 @@ int op_tile(const VEOpArgs& args)
     const vml::Tensor* ti = args.arg<vml::Tensor>(0);
     const vml::Tensor* to = args.arg<vml::Tensor>(1);
 
-    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
-
-    int rc = 1 ;
-
-    if (ti->dtype == DT_FLOAT && to->dtype == DT_FLOAT) {
-        const float* pi = reinterpret_cast<const float*>(ti->addr);
-        float* po = reinterpret_cast<float*>(to->addr);
-        if (ti->nelems == 1) {
-            for (size_t i = 0; i < to->nelems; ++i) {
-                po[i] = pi[0];
-            }
-            rc = 0 ;
-        } else if (ti->dims == 2 && to->dims == 2
-                   && ti->dim_size[0] == to->dim_size[0]
-                   && ti->dim_size[1] == 1) {
-            for (size_t i = 0; i < ti->dim_size[0]; ++i) {
-                for (size_t j = 0; j < to->dim_size[1]; ++j) {
-                    po[i * to->dim_size[1] + j] = pi[i];
-                }
-            }
-            rc = 0 ;
-        } else if (ti->dims == 2 && to->dims == 2
-                   && ti->dim_size[1] == to->dim_size[1]
-                   && ti->dim_size[0] == 1) {
-            for (size_t i = 0; i < to->dim_size[0]; ++i) {
-                for (size_t j = 0; j < to->dim_size[1]; ++j) {
-                    po[i * to->dim_size[1] + j] = pi[j];
-                }
-            }
-            rc = 0 ;
-        } else if ( ti->dims == to->dims && ti->dims == 3 ) {
-            rc = tile_dim3<float>(*to, *ti) ;
-        } else if ( ti->dims == to->dims && ti->dims == 4 ) {
-            if( ti->dim_size[2]==1 && ti->dim_size[3]==1 ) {
-                rc = tile_dim4_11<float>(*to, *ti) ;
-            }
-            else {
-                rc = tile_dim4<float>(*to, *ti) ;
-            }
-        } else if ( ti->dims == to->dims && ti->dims == 5 ) {
-            if( ti->dim_size[3]==1 && ti->dim_size[4]==1 ) {
-                rc = tile_dim5_11<float>(*to, *ti) ;
-            }
-            else {
-                rc = tile_dim5<float>(*to, *ti) ;
-            }
-        }
-    }
-
-    return rc;
+    return vml::tile(*to, *ti);
 }
+
 } // namespace
 
 DEFINE_KERNEL(Tile, op_tile);
