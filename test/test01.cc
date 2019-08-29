@@ -197,31 +197,6 @@ DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
 // BinaryOp
 //
 
-extern "C" {
-//    int op_Add(const void* args, size_t len);
-//    int op_Sub(const void* args, size_t len);
-//    int op_Mul(const void* args, size_t len);
-    int op_SquaredDifference(const void* args, size_t len);
-}
-
-namespace {
-#define DEFILE_WRAPPER(name) \
-int name##_(vml::Tensor const& out, \
-            vml::Tensor const& in0, \
-            vml::Tensor const& in1) \
-{ \
-  BinaryOpArgs args; \
-  args.out = out; \
-  args.in0 = in0; \
-  args.in1 = in1; \
-  return name(&args, sizeof(args)); \
-}
-
-//DEFILE_WRAPPER(op_Sub);
-//DEFILE_WRAPPER(op_Mul);
-DEFILE_WRAPPER(op_SquaredDifference);
-} // namespace
-
 template<typename T>
 bool test_BinaryOp(TestParam const& param,
                    Tensor<T>& out,
@@ -669,7 +644,7 @@ bool test_Mul_12(TestParam const& param)
 bool test_SquaredDifference_05(TestParam const& param)
 {
   return test_BinaryOp_05<float>(param, ref_SquaredDifference<float>, 
-          op_SquaredDifference_);
+                                 vml::sqdiff);
 }
 
 bool test_AvgPool_01(TestParam const& param)

@@ -16,18 +16,18 @@ enum {
 };
 
 extern "C" {
-  int op_Add(const void* args, size_t len);
+  int _op_Add(const void* args, size_t len);
   int op_ApplyAdam(const void* args, size_t len);
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
   int op_Div(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
-  int op_Mul(const void* args, size_t len);
+  int _op_Mul(const void* args, size_t len);
   //int op_Neg(const void* args, size_t len);
   int op_Rsqrt(const void* args, size_t len);
   //int op_Sqrt(const void* args, size_t len);
   int op_Square(const void* args, size_t len);
-  int op_Sub(const void* args, size_t len);
+  int _op_Sub(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Tile(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
@@ -1140,9 +1140,9 @@ void add_bench(std::vector<Bench*>& v, size_t n)
     z[i] = drand48();
   }
 
-  v.push_back(new BinaryOpBench<float>("Add", op_Add, ref::add<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Sub", op_Sub, ref::sub<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Mul", op_Mul, ref::mul<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Add", _op_Add, ref::add<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Sub", _op_Sub, ref::sub<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Mul", _op_Mul, ref::mul<float>, y, z, n));
   v.push_back(new BinaryOpBench<float>("Div", op_Div, ref::div<float>, y, z, n));
 
   v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n));
