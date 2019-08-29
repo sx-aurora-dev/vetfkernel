@@ -23,9 +23,6 @@
 
 //#define DEBUG
 
-REGISTER_KERNEL("Add", "op_Add");
-REGISTER_KERNEL("Sub", "op_Sub");
-REGISTER_KERNEL("Mul", "op_Mul");
 REGISTER_KERNEL("Div", "op_Div");
 REGISTER_KERNEL("DivNoNan", "op_DivNoNan");
 REGISTER_KERNEL("Pow", "op_Pow");
@@ -41,9 +38,6 @@ REGISTER_KERNEL("Greater", "op_Greater");
 REGISTER_KERNEL("GreaterEqual", "op_GreaterEqual");
 
 extern "C" {
-  int op_Add(const void* arg, size_t len);
-  int op_Sub(const void* arg, size_t len);
-  int op_Mul(const void* arg, size_t len);
   int op_Div(const void* arg, size_t len);
   int op_DivNoNan(const void* arg, size_t len);
   int op_Pow(const void* arg, size_t len);
@@ -74,6 +68,14 @@ bool CheckTypes(const BinaryOpArgs& args, int dt0, int dt1, int dt2)
     && args.out.dtype == dt2;
 }
 
+bool CheckTypesAll(vml::Tensor const& X,
+                   vml::Tensor const& Y,
+                   vml::Tensor const& Z,
+                   int dtype) {
+  return X.dtype == dtype && Y.dtype == dtype && Z.dtype == dtype;
+}
+
+
 bool CheckTypesAll(const BinaryOpArgs& args, int dtype) {
   return CheckTypes(args, dtype, dtype, dtype);
 }
@@ -83,6 +85,13 @@ bool CheckDimsAll(const BinaryOpArgs& args, size_t dims)
     return args.in0.dims == dims
         && args.in1.dims == dims
         && args.out.dims == dims;
+}
+
+bool IsSameDims(vml::Tensor const& X,
+                vml::Tensor const& Y,
+                vml::Tensor const& Z)
+{
+  return X.dims == Y.dims && X.dims == Z.dims;
 }
 
 bool IsSameDims(const BinaryOpArgs& args)
@@ -101,7 +110,43 @@ bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
       && s.dim_size[4] == dim[4];
 }
 
+// X = Y op Z
 int op_Binary(const void* args, size_t len, 
+              int (*func)(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z),
+              const char* name)
+{
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": begin";
+  int ret = 1;
+
+  if (sizeof(BinaryOpArgs) == len) {
+    const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
+
+    LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
+      << " in0=" << p->in0.to_s()
+      << " in1=" << p->in1.to_s()
+      << " out=" << p->out.to_s();
+
+    if (func) {
+#ifdef TIMER
+      double t0 = second();
+#endif
+      ret = func(p->out, p->in0, p->in1);
+#ifdef TIMER
+      double ms = (second() - t0) * 1e3;
+      LOG(LOG_TIMER) << __FUNCTION__ << "::" << name << ": " << ms << " msec";
+#endif
+    }
+  } else {
+    LOG(LOG_ERROR) << name << ": illegal args size " << len
+      << " bytes. but " << sizeof(BinaryOpArgs) << " bytes expected";
+  }
+
+  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": end. ret=" << ret;
+  return ret;
+}
+
+// obsolete
+int op_Binary_(const void* args, size_t len, 
               int (*func)(const BinaryOpArgs&),
               const char* name)
 {
@@ -404,64 +449,54 @@ int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
   return 0;
 }
 
+} // namespace
 
-int op_add(const BinaryOpArgs& args) {
+namespace vml
+{
 
+int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
+{
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
 //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+//  printf("Z.dims = %ld\n", Z.dims) ;
+//  for(int i=0; i<Z.dims ; i++ ) printf(" [%d] = %ld\n", i, Z.dim_size[i]) ;
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
+  if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
 
     int r=1;
 
-    if (args.in0.nelems == 1) {
-      r = add_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                           args.out.nelems);
-    } else if (args.in1.nelems == 1) {
-      r = add_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.out.nelems);
-    } else if (args.in0.nelems == args.in1.nelems) {
-      r = add_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.in0.nelems);
-    } else if (args.in0.dims == 2 && args.in1.dims == 1
-        && args.in0.dim_size[1] == args.in1.dim_size[0] ) {
-      r = add2_nn_1n<float>(args.out.addr,
-                            args.in0.addr,
-                            args.in1.addr,
-                            args.in0.dim_size[0],
-                            args.in0.dim_size[1]) ;
-    } else if (args.in0.dims == 3 && args.in1.dims == 3
-	         && args.in1.dim_size[0] == 1
-		 && args.in1.dim_size[1] == 1
-		 && args.in1.dim_size[2] == args.in0.dim_size[2]) {
-      r = add2_nn_1n<float>(args.out.addr,
-	                    args.in0.addr,
-                            args.in1.addr,
-                            args.in0.dim_size[0]*args.in0.dim_size[1],
-                            args.in0.dim_size[2]) ;
-    } else if (args.in0.dims == 3 && args.in1.dims == 3
-	         && args.in0.dim_size[0] == 1
-		 && args.in0.dim_size[1] == 1
-		 && args.in0.dim_size[2] == args.in1.dim_size[2]) {
-      r = add2_nn_1n<float>(args.out.addr,
-	                    args.in1.addr,
-                            args.in0.addr,
-                            args.in1.dim_size[0]*args.in1.dim_size[1],
-                            args.in1.dim_size[2]) ;
-    } else if (check_dim(args.out, {8, 16, 64, 8, 8})
-            && check_dim(args.in0, {8, 16, 64, 8, 8})
-            && check_dim(args.in1, {1, 16, 64, 1, 1})) {
-      r = add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_dim(args.out, {8, 16, 64, 8, 8})
-            && check_dim(args.in0, {8, 16, 64, 8, 8})
-            && check_dim(args.in1, {1,  1, 64, 1, 1})) {
-      r = add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
-      r = binop_dim5_x<float>(args.out, args.in0, args.in1, add_n1<float>);
-    } else if (IsSameDims(args)) {
-      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
+    if (Y.nelems == 1) {
+      r = add_n1<float>(X.addr, Z.addr, Y.addr, X.nelems);
+    } else if (Z.nelems == 1) {
+      r = add_n1<float>(X.addr, Y.addr, Z.addr, X.nelems);
+    } else if (Y.nelems == Z.nelems) {
+      r = add_nn<float>(X.addr, Y.addr, Z.addr, Y.nelems);
+    } else if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
+      r = add2_nn_1n<float>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
+    } else if (Y.dims == 3 && Z.dims == 3
+	         && Z.dim_size[0] == 1
+		 && Z.dim_size[1] == 1
+		 && Z.dim_size[2] == Y.dim_size[2]) {
+      r = add2_nn_1n<float>(X.addr, Y.addr, Z.addr,
+                            Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]) ;
+    } else if (Y.dims == 3 && Z.dims == 3
+	         && Y.dim_size[0] == 1
+		 && Y.dim_size[1] == 1
+		 && Y.dim_size[2] == Z.dim_size[2]) {
+      r = add2_nn_1n<float>(X.addr, Z.addr, Y.addr,
+                            Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
+    } else if (check_dim(X, {8, 16, 64, 8, 8})
+            && check_dim(Y, {8, 16, 64, 8, 8})
+            && check_dim(Z, {1, 16, 64, 1, 1})) {
+      r = add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(X, Y, Z);
+    } else if (check_dim(X, {8, 16, 64, 8, 8})
+            && check_dim(Y, {8, 16, 64, 8, 8})
+            && check_dim(Z, {1,  1, 64, 1, 1})) {
+      r = add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(X, Y, Z);
+    } else if (check_binop_dim5_x(X, Y, Z)) {
+      r = binop_dim5_x<float>(X, Y, Z, add_n1<float>);
+    } else if (IsSameDims(X, Y, Z)) {
+      r = binop_dimN<float, float>(X, Y, Z,
                        [](float y, float z) -> float { return y + z; });
     }
 
@@ -469,6 +504,10 @@ int op_add(const BinaryOpArgs& args) {
   }
   return 1;
 }
+
+} // namespace vml
+
+namespace {
 
 // Sub
 
@@ -593,65 +632,70 @@ int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   return 0;
 }
 
-int op_sub(const BinaryOpArgs& args) {
+} // namespace
 
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+namespace vml {
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
+int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+
+//  printf("in0.dims = %ld\n", in0.dims) ;
+//  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
+//  printf("in1.dims = %ld\n", in1.dims) ;
+//  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
+
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
     int r=1;
-    if (args.in0.nelems == 1) {
-      r = sub_1n<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                        args.out.nelems);
+    if (in0.nelems == 1) {
+      r = sub_1n<float>(out.addr, in0.addr, in1.addr,
+                        out.nelems);
     }
-    else if(args.in1.nelems == 1) {
-      r = sub_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                        args.out.nelems);
+    else if(in1.nelems == 1) {
+      r = sub_n1<float>(out.addr, in0.addr, in1.addr,
+                        out.nelems);
     }
-    else if (args.in0.nelems == args.in1.nelems) {
-      r = sub_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.in0.nelems);
+    else if (in0.nelems == in1.nelems) {
+      r = sub_nn<float>(out.addr, in0.addr, in1.addr,
+                           in0.nelems);
     }
-    else if (args.in0.dims == 2 && args.in1.dims == 2
-               && args.in0.dim_size[0] == args.in1.dim_size[0]
-               && args.in1.dim_size[1] == 1) {
-      r = sub2_nn_n1<float>(args.out.addr,
-                               args.in0.addr,
-                               args.in1.addr,
-                               args.in0.dim_size[0],
-                               args.in0.dim_size[1]);
+    else if (in0.dims == 2 && in1.dims == 2
+               && in0.dim_size[0] == in1.dim_size[0]
+               && in1.dim_size[1] == 1) {
+      r = sub2_nn_n1<float>(out.addr,
+                               in0.addr,
+                               in1.addr,
+                               in0.dim_size[0],
+                               in0.dim_size[1]);
     }
-    else if (args.in0.dims == 2 && args.in1.dims == 2
-               && args.in0.dim_size[1] == args.in1.dim_size[1]
-               && args.in1.dim_size[0] == 1) {
-      r = sub2_nn_1n<float>(args.out.addr,
-                               args.in0.addr,
-                               args.in1.addr,
-                               args.in0.dim_size[0],
-                               args.in0.dim_size[1]);
-    } else if (check_dim(args.out, {8, 16, 64, 8, 8})
-            && check_dim(args.in0, {8, 16, 64, 8, 8})
-            && check_dim(args.in1, {1, 16, 64, 1, 1})) {
-      r = sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
-      r = binop_dim5_x<float>(args.out, args.in0, args.in1, sub_n1<float>);
-    } else if (IsSameDims(args)) {
-      if (check_dim(args.out, {1, 16, 64, 1, 1})
-              && check_dim(args.in0, {1, 1, 64, 1, 1})
-              && check_dim(args.in1, {1, 16, 64, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 64>(args.out, args.in0, args.in1);
-      } else if (check_dim(args.out, {1, 16, 32, 1, 1})
-              && check_dim(args.in0, {1,  1, 32, 1, 1})
-              && check_dim(args.in1, {1, 16, 32, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 32>(args.out, args.in0, args.in1);
-      } else if (check_dim(args.out, {1, 16, 16, 1, 1})
-              && check_dim(args.in0, {1,  1, 16, 1, 1})
-              && check_dim(args.in1, {1, 16, 16, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 16>(args.out, args.in0, args.in1);
+    else if (in0.dims == 2 && in1.dims == 2
+               && in0.dim_size[1] == in1.dim_size[1]
+               && in1.dim_size[0] == 1) {
+      r = sub2_nn_1n<float>(out.addr,
+                               in0.addr,
+                               in1.addr,
+                               in0.dim_size[0],
+                               in0.dim_size[1]);
+    } else if (check_dim(out, {8, 16, 64, 8, 8})
+            && check_dim(in0, {8, 16, 64, 8, 8})
+            && check_dim(in1, {1, 16, 64, 1, 1})) {
+      r = sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(out, in0, in1);
+    } else if (check_binop_dim5_x(out, in0, in1)) {
+      r = binop_dim5_x<float>(out, in0, in1, sub_n1<float>);
+    } else if (IsSameDims(out, in0, in1)) {
+      if (check_dim(out, {1, 16, 64, 1, 1})
+              && check_dim(in0, {1, 1, 64, 1, 1})
+              && check_dim(in1, {1, 16, 64, 1, 1})) {
+        r = sub_MxN_1xN_MxN<float, 16, 64>(out, in0, in1);
+      } else if (check_dim(out, {1, 16, 32, 1, 1})
+              && check_dim(in0, {1,  1, 32, 1, 1})
+              && check_dim(in1, {1, 16, 32, 1, 1})) {
+        r = sub_MxN_1xN_MxN<float, 16, 32>(out, in0, in1);
+      } else if (check_dim(out, {1, 16, 16, 1, 1})
+              && check_dim(in0, {1,  1, 16, 1, 1})
+              && check_dim(in1, {1, 16, 16, 1, 1})) {
+        r = sub_MxN_1xN_MxN<float, 16, 16>(out, in0, in1);
       } else {
-        r = binop_dimN<float, float>(args.out, args.in0, args.in1,
+        r = binop_dimN<float, float>(out, in0, in1,
                 [](float y, float z) -> float { return y - z; });
       }
     }
@@ -659,6 +703,10 @@ int op_sub(const BinaryOpArgs& args) {
   }
   return 1;
 }
+
+} // namespace vml
+
+namespace {
 
 // Mul
 template <typename T>
@@ -932,112 +980,116 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
   return 0;
 }
 
+} // namespace
 
-int op_mul(const BinaryOpArgs& args) {
+namespace vml {
 
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
+//  printf("in0.dims = %ld\n", in0.dims) ;
+//  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
+//  printf("in1.dims = %ld\n", in1.dims) ;
+//  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
+
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
 
     int r=1;
 
-    if (args.in0.nelems == 1) {
-     r = mul_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                           args.out.nelems);
-    } else if (args.in1.nelems == 1) {
-     r = mul_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.out.nelems);
-    } else if (args.in0.nelems == args.in1.nelems) {
-     r = mul_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.in0.nelems);
-    } else if (args.in0.dims == 2 && args.in1.dims == 2
-               && args.in0.dim_size[0] == args.in1.dim_size[0] ) {
-      if( args.in1.dim_size[1] == 1 ) {
-        r = mul2_nn_n1<float>(args.out.addr,
-                               args.in0.addr,
-                               args.in1.addr,
-                               args.in0.dim_size[0],
-                               args.in0.dim_size[1]);
+    if (in0.nelems == 1) {
+     r = mul_n1<float>(out.addr, in1.addr, in0.addr,
+                           out.nelems);
+    } else if (in1.nelems == 1) {
+     r = mul_n1<float>(out.addr, in0.addr, in1.addr,
+                           out.nelems);
+    } else if (in0.nelems == in1.nelems) {
+     r = mul_nn<float>(out.addr, in0.addr, in1.addr,
+                           in0.nelems);
+    } else if (in0.dims == 2 && in1.dims == 2
+               && in0.dim_size[0] == in1.dim_size[0] ) {
+      if( in1.dim_size[1] == 1 ) {
+        r = mul2_nn_n1<float>(out.addr,
+                               in0.addr,
+                               in1.addr,
+                               in0.dim_size[0],
+                               in0.dim_size[1]);
       }
-      else if( args.in0.dim_size[1] == 1 ) {
-        r = mul2_nn_n1<float>(args.out.addr,
-                               args.in1.addr,
-                               args.in0.addr,
-                               args.in1.dim_size[0],
-                               args.in1.dim_size[1]);
+      else if( in0.dim_size[1] == 1 ) {
+        r = mul2_nn_n1<float>(out.addr,
+                               in1.addr,
+                               in0.addr,
+                               in1.dim_size[0],
+                               in1.dim_size[1]);
       }
-    } else if (args.in0.dims == 2 && args.in1.dims == 1
-                && args.in0.dim_size[1] == args.in1.dim_size[0] ) {
-      r = mul2_nn_1n<float>(args.out.addr,
-                            args.in0.addr,
-                            args.in1.addr,
-                            args.in0.dim_size[0],
-                            args.in0.dim_size[1]) ;
-    } else if (args.in0.dims == 3 && args.in1.dims == 3
-	         && args.in1.dim_size[0] == 1
-		 && args.in1.dim_size[1] == 1
-		 && args.in1.dim_size[2] == args.in0.dim_size[2]) {
-      r = mul2_nn_1n<float>(args.out.addr,
-	                    args.in0.addr,
-                            args.in1.addr,
-                            args.in0.dim_size[0]*args.in0.dim_size[1],
-                            args.in0.dim_size[2]) ;
-    } else if (args.in0.dims == 3 && args.in1.dims == 3
-	         && args.in0.dim_size[0] == 1
-		 && args.in0.dim_size[1] == 1
-		 && args.in0.dim_size[2] == args.in1.dim_size[2]) {
-      r = mul2_nn_1n<float>(args.out.addr,
-			    args.in1.addr,
-                            args.in0.addr,
-                            args.in1.dim_size[0]*args.in1.dim_size[1],
-                            args.in1.dim_size[2]) ;
-    } else if (check_dim(args.out, {8, 16, 64, 8, 8})
-            && check_dim(args.in0, {8, 16, 64, 8, 8})
-            && check_dim(args.in1, {1, 16, 64, 1, 1})) {
-      r = mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_dim(args.out, {8, 16, 64, 8, 8})
-            && check_dim(args.in0, {8, 16, 64, 8, 8})
-            && check_dim(args.in1, {1,  1, 64, 1, 1})) {
-      r = mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_dim(args.out, {8, 16, 32, 16, 16})
-            && check_dim(args.in0, {8, 16, 32, 16, 16})
-            && check_dim(args.in1, {1, 16, 32,  1,  1})) {
-      r = mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_dim(args.out, {8, 16, 16, 32, 32})
-            && check_dim(args.in0, {8, 16, 16, 32, 32})
-            && check_dim(args.in1, {1, 16, 16,  1,  1})) {
-      r = mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<float>(args.out, args.in0, args.in1);
-    } else if (check_dim(args.out, {8, 16, 32, 16, 16})
-            && check_dim(args.in0, {8, 16, 32, 16, 16})
-            && check_dim(args.in1, {1,  1, 32,  1,  1})) {
-      r = mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<float>(args.out, args.in0, args.in1);
+    } else if (in0.dims == 2 && in1.dims == 1
+                && in0.dim_size[1] == in1.dim_size[0] ) {
+      r = mul2_nn_1n<float>(out.addr,
+                            in0.addr,
+                            in1.addr,
+                            in0.dim_size[0],
+                            in0.dim_size[1]) ;
+    } else if (in0.dims == 3 && in1.dims == 3
+	         && in1.dim_size[0] == 1
+		 && in1.dim_size[1] == 1
+		 && in1.dim_size[2] == in0.dim_size[2]) {
+      r = mul2_nn_1n<float>(out.addr,
+	                    in0.addr,
+                            in1.addr,
+                            in0.dim_size[0]*in0.dim_size[1],
+                            in0.dim_size[2]) ;
+    } else if (in0.dims == 3 && in1.dims == 3
+	         && in0.dim_size[0] == 1
+		 && in0.dim_size[1] == 1
+		 && in0.dim_size[2] == in1.dim_size[2]) {
+      r = mul2_nn_1n<float>(out.addr,
+			    in1.addr,
+                            in0.addr,
+                            in1.dim_size[0]*in1.dim_size[1],
+                            in1.dim_size[2]) ;
+    } else if (check_dim(out, {8, 16, 64, 8, 8})
+            && check_dim(in0, {8, 16, 64, 8, 8})
+            && check_dim(in1, {1, 16, 64, 1, 1})) {
+      r = mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(out, in0, in1);
+    } else if (check_dim(out, {8, 16, 64, 8, 8})
+            && check_dim(in0, {8, 16, 64, 8, 8})
+            && check_dim(in1, {1,  1, 64, 1, 1})) {
+      r = mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(out, in0, in1);
+    } else if (check_dim(out, {8, 16, 32, 16, 16})
+            && check_dim(in0, {8, 16, 32, 16, 16})
+            && check_dim(in1, {1, 16, 32,  1,  1})) {
+      r = mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<float>(out, in0, in1);
+    } else if (check_dim(out, {8, 16, 16, 32, 32})
+            && check_dim(in0, {8, 16, 16, 32, 32})
+            && check_dim(in1, {1, 16, 16,  1,  1})) {
+      r = mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<float>(out, in0, in1);
+    } else if (check_dim(out, {8, 16, 32, 16, 16})
+            && check_dim(in0, {8, 16, 32, 16, 16})
+            && check_dim(in1, {1,  1, 32,  1,  1})) {
+      r = mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<float>(out, in0, in1);
 
-    } else if (check_dim(args.out, {8, 16, 16, 32, 32})
-            && check_dim(args.in0, {8, 16, 16, 32, 32})
-            && check_dim(args.in1, {1,  1, 16,  1,  1})) {
-      r = mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<float>(args.out, args.in0, args.in1);
+    } else if (check_dim(out, {8, 16, 16, 32, 32})
+            && check_dim(in0, {8, 16, 16, 32, 32})
+            && check_dim(in1, {1,  1, 16,  1,  1})) {
+      r = mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<float>(out, in0, in1);
 
 #if 0
-    } else if (check_dim(args.out, {1, 16, 64, 1, 1})
-            && check_dim(args.in0, {1, 16, 64, 1, 1})
-            && check_dim(args.in1, {1, 1, 64, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 64>(args.out, args.in1, args.in0);
-    } else if (check_dim(args.out, {1, 16, 16, 1, 1})
-            && check_dim(args.in0, {1, 16, 16, 1, 1})
-            && check_dim(args.in1, {1, 1, 16, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 16>(args.out, args.in1, args.in0);
-    } else if (check_dim(args.out, {1, 16, 32, 1, 1})
-            && check_dim(args.in0, {1, 16, 32, 1, 1})
-            && check_dim(args.in1, {1, 1, 32, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 32>(args.out, args.in1, args.in0);
+    } else if (check_dim(out, {1, 16, 64, 1, 1})
+            && check_dim(in0, {1, 16, 64, 1, 1})
+            && check_dim(in1, {1, 1, 64, 1, 1})) {
+      r = mul_MxN_1xN_MxN<float, 16, 64>(out, in1, in0);
+    } else if (check_dim(out, {1, 16, 16, 1, 1})
+            && check_dim(in0, {1, 16, 16, 1, 1})
+            && check_dim(in1, {1, 1, 16, 1, 1})) {
+      r = mul_MxN_1xN_MxN<float, 16, 16>(out, in1, in0);
+    } else if (check_dim(out, {1, 16, 32, 1, 1})
+            && check_dim(in0, {1, 16, 32, 1, 1})
+            && check_dim(in1, {1, 1, 32, 1, 1})) {
+      r = mul_MxN_1xN_MxN<float, 16, 32>(out, in1, in0);
 #endif
-    } else if (check_binop_dim5_x(args.out, args.in0, args.in1)) {
-      r = binop_dim5_x<float>(args.out, args.in0, args.in1, mul_n1<float>);
-    } else if (IsSameDims(args)) {
-      r = binop_dimN<float, float>(args.out, args.in0, args.in1,
+    } else if (check_binop_dim5_x(out, in0, in1)) {
+      r = binop_dim5_x<float>(out, in0, in1, mul_n1<float>);
+    } else if (IsSameDims(out, in0, in1)) {
+      r = binop_dimN<float, float>(out, in0, in1,
               [](float a, float b) -> float { return a * b; });
     }
 
@@ -1046,6 +1098,10 @@ int op_mul(const BinaryOpArgs& args) {
   }
   return 1;
 }
+
+} // namespace vml
+
+namespace {
 
 // Div
 
@@ -2021,83 +2077,85 @@ int op_greaterEqual(const BinaryOpArgs& args) {
 
 } // namespace
 
-int op_Add(const void* args, size_t len)
-{
-  return op_Binary(args, len, op_add, "op_Add");
-}
 
-int op_Sub(const void* args, size_t len)
-{
-  return op_Binary(args, len, op_sub, "op_Sub");
-}
+// Wrappers for TensorFlow kernel
 
-int op_Mul(const void* args, size_t len)
-{
-  return op_Binary(args, len, op_mul, "op_Mul");
-}
+#define DEFINE_BINARY_OP(name, FUNC) \
+  extern "C" { \
+  int op_##name(const void* args, size_t len) \
+{ \
+  return op_Binary(args, len, FUNC, "op_" #name); \
+} \
+} \
+REGISTER_KERNEL(#name, "op_"#name);
+
+DEFINE_BINARY_OP(Add, vml::add);
+DEFINE_BINARY_OP(Sub, vml::sub);
+DEFINE_BINARY_OP(Mul, vml::mul);
+
 
 int op_Div(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_div, "op_Div");
+  return op_Binary_(args, len, op_div, "op_Div");
 }
 
 int op_DivNoNan(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_divnonan, "op_DivNoNan");
+  return op_Binary_(args, len, op_divnonan, "op_DivNoNan");
 }
 
 int op_Pow(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_pow, "op_Pow");
+  return op_Binary_(args, len, op_pow, "op_Pow");
 }
 
 int op_SquaredDifference(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_sqdiff, "op_SquaredDifference");
+  return op_Binary_(args, len, op_sqdiff, "op_SquaredDifference");
 }
 
 int op_RsqrtGrad(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_rsqrt_grad, "op_RsqrtGrad");
+  return op_Binary_(args, len, op_rsqrt_grad, "op_RsqrtGrad");
 }
 
 
 int op_Minimum(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_minimum, "op_Minimum");
+  return op_Binary_(args, len, op_minimum, "op_Minimum");
 }
 
 int op_Maximum(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_maximum, "op_Maximum");
+  return op_Binary_(args, len, op_maximum, "op_Maximum");
 }
 
 int op_Equal(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_equal, "op_Equal");
+  return op_Binary_(args, len, op_equal, "op_Equal");
 }
 
 int op_NotEqual(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_notEqual, "op_NotEqual");
+  return op_Binary_(args, len, op_notEqual, "op_NotEqual");
 }
 
 int op_Less(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_less, "op_Less");
+  return op_Binary_(args, len, op_less, "op_Less");
 }
 
 int op_LessEqual(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_lessEqual, "op_LessEqual");
+  return op_Binary_(args, len, op_lessEqual, "op_LessEqual");
 }
 
 int op_Greater(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_greater, "op_Greater");
+  return op_Binary_(args, len, op_greater, "op_Greater");
 }
 
 int op_GreaterEqual(const void* args, size_t len)
 {
-  return op_Binary(args, len, op_greaterEqual, "op_GreaterEqual");
+  return op_Binary_(args, len, op_greaterEqual, "op_GreaterEqual");
 }

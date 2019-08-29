@@ -60,4 +60,9 @@ int sigmoid(vml::Tensor const& out, vml::Tensor const& in);
 int sqrt(vml::Tensor const& out, vml::Tensor const& in);
 int square(vml::Tensor const& out, vml::Tensor const& in);
 int tanh(vml::Tensor const& out, vml::Tensor const& in);
+
+// binary op
+int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
+int sub(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
+int mul(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
 };

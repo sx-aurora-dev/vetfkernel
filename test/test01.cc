@@ -198,11 +198,29 @@ DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
 //
 
 extern "C" {
-    int op_Add(const void* args, size_t len);
-    int op_Sub(const void* args, size_t len);
-    int op_Mul(const void* args, size_t len);
+//    int op_Add(const void* args, size_t len);
+//    int op_Sub(const void* args, size_t len);
+//    int op_Mul(const void* args, size_t len);
     int op_SquaredDifference(const void* args, size_t len);
 }
+
+namespace {
+#define DEFILE_WRAPPER(name) \
+int name##_(vml::Tensor const& out, \
+            vml::Tensor const& in0, \
+            vml::Tensor const& in1) \
+{ \
+  BinaryOpArgs args; \
+  args.out = out; \
+  args.in0 = in0; \
+  args.in1 = in1; \
+  return name(&args, sizeof(args)); \
+}
+
+//DEFILE_WRAPPER(op_Sub);
+//DEFILE_WRAPPER(op_Mul);
+DEFILE_WRAPPER(op_SquaredDifference);
+} // namespace
 
 template<typename T>
 bool test_BinaryOp(TestParam const& param,
@@ -210,13 +228,13 @@ bool test_BinaryOp(TestParam const& param,
                    Tensor<T> const& in0,
                    Tensor<T> const& in1,
                    Tensor<T> const& exp,
-                   int (*op)(const void* args, size_t len))
+                   int (*op)(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1))
 {
     BinaryOpArgs args;
     args.out = out.tensor();
     args.in0 = in0.tensor();
     args.in1 = in1.tensor();
-    int ret = op(&args, sizeof(args));
+    int ret = op(args.out, args.in0, args.in1);
 
     bool flag = false;
     if (ret == 0)
@@ -322,7 +340,7 @@ bool test_Add_01(TestParam const& param)
 
     ref_Add(exp, in0, in1);
 
-    return test_BinaryOp(param, out, in0, in1, exp, op_Add);
+    return test_BinaryOp(param, out, in0, in1, exp, vml::add);
 }
 
 bool test_Add_02(TestParam const& param)
@@ -350,7 +368,7 @@ bool test_Add_02(TestParam const& param)
 
     ref_Add(exp, in0, in1);
 
-    return test_BinaryOp(param, out, in0, in1, exp, op_Add);
+    return test_BinaryOp(param, out, in0, in1, exp, vml::add);
 }
 
 bool test_Add_03(TestParam const& param)
@@ -375,7 +393,7 @@ bool test_Add_03(TestParam const& param)
     }
 
     ref_Add(exp, in0, in1);
-    return test_BinaryOp(param, out, in0, in1, exp, op_Add);
+    return test_BinaryOp(param, out, in0, in1, exp, vml::add);
 }
 
 template<typename T, typename F0, typename F1>
@@ -580,78 +598,78 @@ bool test_BinaryOp_12(TestParam const& param, F0 f0, F1 f1)
 
 bool test_Add_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Add<float>, op_Add);
+  return test_BinaryOp_04<float>(param, ref_Add<float>, vml::add);
 }
 
 bool test_Add_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Add<float>, op_Add);
+  return test_BinaryOp_05<float>(param, ref_Add<float>, vml::add);
 }
 
 bool test_Add_06(TestParam const& param)
 {
-  return test_BinaryOp_06<float>(param, ref_Add<float>, op_Add);
+  return test_BinaryOp_06<float>(param, ref_Add<float>, vml::add);
 }
 
 bool test_Sub_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Sub<float>, op_Sub);
+  return test_BinaryOp_04<float>(param, ref_Sub<float>, vml::sub);
 }
 
 bool test_Sub_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Sub<float>, op_Sub);
+  return test_BinaryOp_05<float>(param, ref_Sub<float>, vml::sub);
 }
 
 bool test_Mul_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_04<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_05<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_06(TestParam const& param)
 {
-  return test_BinaryOp_06<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_06<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_07(TestParam const& param)
 {
-  return test_BinaryOp_07<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_07<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_08(TestParam const& param)
 {
-  return test_BinaryOp_08<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_08<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_09(TestParam const& param)
 {
-  return test_BinaryOp_09<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_09<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_10(TestParam const& param)
 {
-  return test_BinaryOp_10<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_10<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_11(TestParam const& param)
 {
-  return test_BinaryOp_11<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_11<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_Mul_12(TestParam const& param)
 {
-  return test_BinaryOp_12<float>(param, ref_Mul<float>, op_Mul);
+  return test_BinaryOp_12<float>(param, ref_Mul<float>, vml::mul);
 }
 
 bool test_SquaredDifference_05(TestParam const& param)
 {
   return test_BinaryOp_05<float>(param, ref_SquaredDifference<float>, 
-          op_SquaredDifference);
+          op_SquaredDifference_);
 }
 
 bool test_AvgPool_01(TestParam const& param)
@@ -778,32 +796,32 @@ struct Test
 int main(int argc, char* argv[])
 {
     Test tests[] = {
-        { "op_Add_01", test_Add_01 },
-        { "op_Add_02", test_Add_02 },
-        { "op_Add_03", test_Add_03 },
-        { "op_Add_04", test_Add_04 },
-        { "op_Add_05", test_Add_05 },
-        { "op_Add_06", test_Add_06 },
+        { "Add_01", test_Add_01 },
+        { "Add_02", test_Add_02 },
+        { "Add_03", test_Add_03 },
+        { "Add_04", test_Add_04 },
+        { "Add_05", test_Add_05 },
+        { "Add_06", test_Add_06 },
 
-        { "op_Sub_04", test_Sub_04 },
-        { "op_Sub_05", test_Sub_05 },
+        { "Sub_04", test_Sub_04 },
+        { "Sub_05", test_Sub_05 },
 
-        { "op_Mul_04", test_Mul_04 },
-        { "op_Mul_05", test_Mul_05 },
-        { "op_Mul_06", test_Mul_06 },
-        { "op_Mul_07", test_Mul_07 },
-        { "op_Mul_08", test_Mul_08 },
-        { "op_Mul_09", test_Mul_09 },
-        { "op_Mul_10", test_Mul_10 },
-        { "op_Mul_11", test_Mul_11 },
-        { "op_Mul_12", test_Mul_12 },
+        { "Mul_04", test_Mul_04 },
+        { "Mul_05", test_Mul_05 },
+        { "Mul_06", test_Mul_06 },
+        { "Mul_07", test_Mul_07 },
+        { "Mul_08", test_Mul_08 },
+        { "Mul_09", test_Mul_09 },
+        { "Mul_10", test_Mul_10 },
+        { "Mul_11", test_Mul_11 },
+        { "Mul_12", test_Mul_12 },
 
-        { "op_SquaredDifference_05", test_SquaredDifference_05 },
+        { "SquaredDifference_05", test_SquaredDifference_05 },
 
-        { "op_AvgPool_01", test_AvgPool_01 },
-        { "op_AvgPool_02", test_AvgPool_02 },
+        { "AvgPool_01", test_AvgPool_01 },
+        { "AvgPool_02", test_AvgPool_02 },
 
-#define DEFINE_TEST_01(T) {"op_" #T "_01", test_##T##_01}
+#define DEFINE_TEST_01(T) {#T "_01", test_##T##_01}
         DEFINE_TEST_01(Abs),
         DEFINE_TEST_01(Exp),
         DEFINE_TEST_01(Floor),
