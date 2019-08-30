@@ -1085,7 +1085,7 @@ int op_MatMul(const void* args, size_t len)
     << " transpose_a=" << p->transpose_a
     << " transpose_b=" << p->transpose_b;
 
-  int ret = 0;
+  int ret = 1;
   if (p->dtype == DT_FLOAT) {
     if (!p->transpose_a && !p->transpose_b) {
       assert(p->dim_size_a[1] == p->dim_size_b[0]);
@@ -1119,8 +1119,18 @@ int op_MatMul(const void* args, size_t len)
 #endif
     } else if (p->transpose_a && !p->transpose_b) {
       assert(p->dim_size_a[0] == p->dim_size_b[0]);
+#if 1
       ret = matmul<float, 'T', 'N'>(
           p->out, p->a, p->b, p->dim_size_a[1], p->dim_size_b[1], p->dim_size_a[0]);
+#else
+      const uint64_t inDim  = p->dim_size_a[1] ;
+      const uint64_t outDim = p->dim_size_b[1] ;
+      const uint64_t nBatch = p->dim_size_a[0] ;
+      const void* pDataIn          = reinterpret_cast<const void*>(p->a);
+      const void* pDataGradOut     = reinterpret_cast<const void*>(p->b);
+      void*       pDataGradWeight  = reinterpret_cast<void*>(p->out);
+      ret = vednnLinearBackwardWeight(inDim,outDim,nBatch, pDataIn, pDataGradOut, pDataGradWeight) ;
+#endif
     }
   }
 
