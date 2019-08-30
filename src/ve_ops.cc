@@ -5,6 +5,8 @@
 #include "ve_ops_common.h"
 #include "vml.h"
 
+#include "vednn.h"
+
 #ifdef LIBVETF_INTRINSIC
 #include "libvetfkernel.h"
 #endif
@@ -472,6 +474,98 @@ int op_tile(const VEOpArgs& args)
 
 DEFINE_KERNEL(Tile, op_tile);
 
+
+//
+// Softmax
+//
+
+namespace {
+int op_softmax(const VEOpArgs& args)
+{
+    if (args.nArguments() != 3)
+        return 1;
+
+    const vml::Tensor* logits_in   = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor* softmax_out = args.arg<vml::Tensor>(1) ;
+    const bool use_log = *args.arg<int64_t>(2) == 1 ? true : false ;
+
+    LOG(LOG_PARAM) << __FUNCTION__
+           << " logits_in="   << logits_in->to_s()
+           << " softmax_out=" << softmax_out->to_s()
+	   << " use_log=" << use_log ;
+
+    int ret=1;
+
+    if ( logits_in->dtype == DT_FLOAT && softmax_out->dtype == DT_FLOAT ) {
+
+      const float* in = reinterpret_cast<const float*>(logits_in->addr);
+      float* out = reinterpret_cast<float*>(softmax_out->addr);
+
+      const int64_t inner_dim = logits_in->dim_size[logits_in->dims-1] ;
+      const int64_t outer_dim = logits_in->nelems / inner_dim ;
+
+      if( use_log ) {
+#if 1	// use vednn
+        ret = vednnSoftmaxForward( VEDNN_SOFTMAX_LOG, (void *)(in), (void*)(out), outer_dim, inner_dim) ;
+#else
+        // LogSoftmax
+        for(uint64_t b=0; b<outer_dim; b++) {
+          float max = -FLT_MAX ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+             if( max < in[i] ) max = in[i] ;
+          }
+
+          float sum = 0.f ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+            const float shifted_in = in[i] - max ;
+            sum += std::exp(shifted_in) ;
+            out[i] = shifted_in ;
+          }
+
+          float log_sum = logf(sum) ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+            out[i] -= log_sum ;
+          }
+
+          in  += inner_dim ;
+          out += inner_dim ;
+        }
+        ret = 0;
+#endif
+      }
+      else {
+#if 1	// use vednn
+        ret = vednnSoftmaxForward( VEDNN_SOFTMAX_ACCURATE, (void *)(in), (void*)(out), outer_dim, inner_dim) ;
+#else
+        // Softmax
+        for(uint64_t b=0; b<outer_dim; b++) {
+          float max = -FLT_MAX ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+            if( max < in[i] ) max = in[i] ;
+          }
+
+          float sum = 0.f ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+            sum += (out[i] = std::exp(in[i]-max)) ;
+          }
+
+          float inv_sum = 1.f / sum ;
+          for(uint64_t i=0; i<inner_dim; i++) {
+            out[i] *= inv_sum ;
+          }
+
+          in  += inner_dim ;
+          out += inner_dim ;
+        }
+        ret = 0 ;
+#endif
+      }
+    }
+    return ret ;
+}
+} // namespace
+
+DEFINE_KERNEL(Softmax, op_softmax);
 
 //
 // SoftmaxXentWithLogits
