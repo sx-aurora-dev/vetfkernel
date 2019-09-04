@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <cassert>
 #include "kernel.h"
@@ -78,6 +79,25 @@ bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
       && s.dim_size[2] == dim[2]
       && s.dim_size[3] == dim[3]
       && s.dim_size[4] == dim[4];
+}
+
+bool IsSameSize(const BinaryOpArgs& args)
+{
+  if (args.in0.nelems != args.in1.nelems || args.in0.nelems != args.out.nelems) {
+    return false;
+  }
+  const int32_t dims_in0 = args.in0.dims;
+  const int32_t dims_in1 = args.in1.dims;
+  const int32_t dims_out = args.out.dims;
+  int32_t dimsMin = std::min(std::min(dims_in0, dims_in1), dims_out);
+  for (int32_t i=1; i<dimsMin; i++) {
+    if (args.in0.dim_size[dims_in0 - i] != args.in1.dim_size[dims_in1 - i] ||
+	args.in0.dim_size[dims_in1 - i] != args.out.dim_size[dims_out - i]) {
+      return false;
+    }
+  }
+  // 一番小さい配列でサイズが同じでnelemsが等しい場合、残りの次元は常に1なので true を返す
+  return true;
 }
 
 // X = Y op Z
@@ -1619,12 +1639,13 @@ int op_minimum(const BinaryOpArgs& args)
     if (args.in1.nelems == 1) {
       return minimum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return minimum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return minimum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
@@ -1663,12 +1684,13 @@ int op_maximum(const BinaryOpArgs& args)
     if (args.in1.nelems == 1) {
       return maximum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return maximum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return maximum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
@@ -1703,47 +1725,53 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
 int op_equal(const BinaryOpArgs& args) {
   if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in0.nelems == 1) {
-      return equal_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-			     args.in1.nelems);
-    } else if (args.in1.nelems == 1) {
+    if (args.in1.nelems == 1) {
       return equal_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                              args.in0.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (args.in0.nelems == 1) {
+      return equal_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
+			     args.in1.nelems);
+    } 
+    if (IsSameSize(args)) {
       return equal_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
+			     args.in0.nelems);
     }
-    else if (IsSameDims(args)) {
+    if (IsSameDims(args)) {
       return binop_dimN<bool, float>(args.out, args.in0, args.in1,
-              [](float y, float z) -> bool { return y == z; });
+				     [](float y, float z) -> bool { return y == z; });
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
-    if (args.in0.nelems == 1) {
-      return equal_n1<double>(args.out.addr, args.in1.addr, args.in0.addr,
-                              args.in1.nelems);
-    } else if (args.in1.nelems == 1) {
+    if (args.in1.nelems == 1) {
       return equal_n1<double>(args.out.addr, args.in0.addr, args.in1.addr,
                               args.in0.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (args.in0.nelems == 1) {
+      return equal_n1<double>(args.out.addr, args.in1.addr, args.in0.addr,
+                              args.in1.nelems);
+    }
+    if (IsSameSize(args)) {
       return equal_nn<double>(args.out.addr, args.in0.addr, args.in1.addr,
                               args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   else if (CheckTypes(args, DT_INT64, DT_INT64, DT_BOOL)) {
     if (args.in1.nelems == 1) {
-      return equal_n1<int64_t>(args.out.addr, args.in1.addr, args.in0.addr,
-                              args.in1.nelems);
-    } else if (args.in1.nelems == 1) {
       return equal_n1<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
+			       args.in0.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (args.in1.nelems == 1) {
+      return equal_n1<int64_t>(args.out.addr, args.in1.addr, args.in0.addr,
+			       args.in1.nelems);
+    }
+    if (IsSameSize(args)) {
       return equal_nn<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
+			       args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
 
   return 1;
@@ -1779,25 +1807,19 @@ int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
 int op_notEqual(const BinaryOpArgs& args) {
   if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
+    if (args.in1.nelems == 1) {
+      return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
+				args.in0.nelems);
+    }
     if (args.in0.nelems == 1) {
       return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                             args.in1.nelems);
-    } else if (args.in1.nelems == 1) {
-      return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                             args.in0.nelems);
+				args.in1.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return notEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
+				args.in0.nelems);
     }
-    else if (args.in0.nelems == 1 ) {
-      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-                             args.in1.nelems);
-    }
-    else {
-      LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
-      return 1;
-    }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
 
   return 1;
@@ -1971,14 +1993,15 @@ int op_less(const BinaryOpArgs& args) {
       return less_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
 			    args.in0.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return greaterEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
 				    args.in1.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return less_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
 			    args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
@@ -1992,14 +2015,15 @@ int op_lessEqual(const BinaryOpArgs& args) {
       return lessEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                                  args.in0.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return greater_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
 			       args.in1.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return lessEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
 				 args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
@@ -2011,14 +2035,15 @@ int op_greater(const BinaryOpArgs& args) {
       return greater_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
 			       args.in0.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return lessEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
 				 args.in1.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return greater_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
 			       args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
@@ -2030,14 +2055,15 @@ int op_greaterEqual(const BinaryOpArgs& args) {
       return greaterEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
                                     args.in0.nelems);
     }
-    else if (args.in0.nelems == 1) {
+    if (args.in0.nelems == 1) {
       return less_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
 			    args.in1.nelems);
     }
-    else if( args.in0.nelems == args.in1.nelems ) {
+    if (IsSameSize(args)) {
       return greaterEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
 				    args.in0.nelems);
     }
+    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
   return 1;
 }
