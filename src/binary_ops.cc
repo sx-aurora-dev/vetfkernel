@@ -81,24 +81,35 @@ bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
       && s.dim_size[4] == dim[4];
 }
 
-bool IsSameSize(const BinaryOpArgs& args)
+
+
+bool IsSameSize(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tensor &in1)
 {
-  if (args.in0.nelems != args.in1.nelems || args.in0.nelems != args.out.nelems) {
+  if (in0.nelems != in1.nelems || in0.nelems != out.nelems) {
     return false;
   }
-  const int32_t dims_in0 = args.in0.dims;
-  const int32_t dims_in1 = args.in1.dims;
-  const int32_t dims_out = args.out.dims;
+  const int32_t dims_in0 = in0.dims;
+  const int32_t dims_in1 = in1.dims;
+  const int32_t dims_out = out.dims;
   int32_t dimsMin = std::min(std::min(dims_in0, dims_in1), dims_out);
   for (int32_t i=1; i<dimsMin; i++) {
-    if (args.in0.dim_size[dims_in0 - i] != args.in1.dim_size[dims_in1 - i] ||
-	args.in0.dim_size[dims_in1 - i] != args.out.dim_size[dims_out - i]) {
+    if (in0.dim_size[dims_in0 - i] != in1.dim_size[dims_in1 - i] ||
+	in0.dim_size[dims_in1 - i] != out.dim_size[dims_out - i]) {
       return false;
     }
   }
   // 一番小さい配列でサイズが同じでnelemsが等しい場合、残りの次元は常に1なので true を返す
   return true;
 }
+
+
+
+bool IsSameSize(const BinaryOpArgs& args)
+{
+  return IsSameSize(args.out, args.in0, args.in1);
+}
+
+
 
 // X = Y op Z
 int op_Binary(const void* args, size_t len, 
@@ -135,6 +146,8 @@ int op_Binary(const void* args, size_t len,
   return ret;
 }
 
+
+
 // obsolete
 int op_Binary_(const void* args, size_t len, 
               int (*func)(const BinaryOpArgs&),
@@ -170,6 +183,8 @@ int op_Binary_(const void* args, size_t len,
   return ret;
 }
 
+
+
 // Add
 template <typename T>
 int add_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -193,6 +208,8 @@ int add_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 #endif
 
+
+
 template <typename T>
 int add_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -207,6 +224,8 @@ int add_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int add_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -214,6 +233,8 @@ inline int add_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return add_nn_f32(out,in0,in1,n) ;
 }
 #endif
+
+
 
 template <typename T>
 int add2_nn_1n(uint64_t out,
@@ -233,6 +254,8 @@ int add2_nn_1n(uint64_t out,
   }
   return 0;
 }
+
+
 
 // X = Y op Z
 template<typename T0, typename T1, typename F>
@@ -259,6 +282,8 @@ int binop_dim3(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z,
 
     return 0;
 }
+
+
 
 // X = Y op Z
 template<typename TO, typename TI, typename F>
@@ -310,6 +335,8 @@ int binop_dimN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z,
     return 0;
 }
 
+
+
 // X = Y op Z
 // X = [d0, d1, d2, d3, d4]
 // Y = [d0, d1, d2, d3, d4]
@@ -330,6 +357,8 @@ bool check_binop_dim5_x(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor 
       && Z.dim_size[3] == 1
       && Z.dim_size[4] == 1;
 }
+
+
 
 template<typename T, typename F>
 int binop_dim5_x(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
@@ -395,6 +424,8 @@ int binop_dim5_x(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& 
   return 0;
 }
 
+
+
 template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -416,6 +447,8 @@ int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
+
+
 
 template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
@@ -441,6 +474,9 @@ int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
 
 } // namespace
 
+
+
+template <typename T>
 int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
@@ -448,49 +484,57 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 //  printf("Z.dims = %ld\n", Z.dims) ;
 //  for(int i=0; i<Z.dims ; i++ ) printf(" [%d] = %ld\n", i, Z.dim_size[i]) ;
 
-  if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
-
-    int r=1;
-
-    if (Y.nelems == 1) {
-      r = add_n1<float>(X.addr, Z.addr, Y.addr, X.nelems);
-    } else if (Z.nelems == 1) {
-      r = add_n1<float>(X.addr, Y.addr, Z.addr, X.nelems);
-    } else if (Y.nelems == Z.nelems) {
-      r = add_nn<float>(X.addr, Y.addr, Z.addr, Y.nelems);
-    } else if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
-      r = add2_nn_1n<float>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
-    } else if (Y.dims == 3 && Z.dims == 3
-	         && Z.dim_size[0] == 1
-		 && Z.dim_size[1] == 1
-		 && Z.dim_size[2] == Y.dim_size[2]) {
-      r = add2_nn_1n<float>(X.addr, Y.addr, Z.addr,
-                            Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]) ;
-    } else if (Y.dims == 3 && Z.dims == 3
-	         && Y.dim_size[0] == 1
-		 && Y.dim_size[1] == 1
-		 && Y.dim_size[2] == Z.dim_size[2]) {
-      r = add2_nn_1n<float>(X.addr, Z.addr, Y.addr,
-                            Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
-    } else if (check_dim(X, {8, 16, 64, 8, 8})
-            && check_dim(Y, {8, 16, 64, 8, 8})
-            && check_dim(Z, {1, 16, 64, 1, 1})) {
-      r = add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(X, Y, Z);
-    } else if (check_dim(X, {8, 16, 64, 8, 8})
-            && check_dim(Y, {8, 16, 64, 8, 8})
-            && check_dim(Z, {1,  1, 64, 1, 1})) {
-      r = add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(X, Y, Z);
-    } else if (check_binop_dim5_x(X, Y, Z)) {
-      r = binop_dim5_x<float>(X, Y, Z, add_n1<float>);
-    } else if (IsSameDims(X, Y, Z)) {
-      r = binop_dimN<float, float>(X, Y, Z,
-                       [](float y, float z) -> float { return y + z; });
-    }
-
-    return r;
+  if (Y.nelems == 1) {
+    return add_n1<T>(X.addr, Z.addr, Y.addr, X.nelems);
+  } else if (Z.nelems == 1) {
+    return add_n1<T>(X.addr, Y.addr, Z.addr, X.nelems);
+  } else if (IsSameSize(X, Y, Z)) {
+    return add_nn<T>(X.addr, Y.addr, Z.addr, Y.nelems);
+  } else if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
+    return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
+  } else if (Y.dims == 3 && Z.dims == 3
+	     && Z.dim_size[0] == 1
+	     && Z.dim_size[1] == 1
+	     && Z.dim_size[2] == Y.dim_size[2]) {
+    return add2_nn_1n<T>(X.addr, Y.addr, Z.addr,
+			 Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]) ;
+  } else if (Y.dims == 3 && Z.dims == 3
+	     && Y.dim_size[0] == 1
+	     && Y.dim_size[1] == 1
+	     && Y.dim_size[2] == Z.dim_size[2]) {
+    return add2_nn_1n<T>(X.addr, Z.addr, Y.addr,
+			 Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
+  } else if (check_dim(X, {8, 16, 64, 8, 8})
+	     && check_dim(Y, {8, 16, 64, 8, 8})
+	     && check_dim(Z, {1, 16, 64, 1, 1})) {
+    return add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(X, Y, Z);
+  } else if (check_dim(X, {8, 16, 64, 8, 8})
+	     && check_dim(Y, {8, 16, 64, 8, 8})
+	     && check_dim(Z, {1,  1, 64, 1, 1})) {
+    return add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(X, Y, Z);
+  } else if (check_binop_dim5_x(X, Y, Z)) {
+    return binop_dim5_x<T>(X, Y, Z, add_n1<T>);
+  } else if (IsSameDims(X, Y, Z)) {
+    return binop_dimN<T, T>(X, Y, Z,
+			    [](T y, T z) -> T { return y + z; });
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
+{
+  if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
+    return vml::add<float>(X, Y, Z);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
 
 namespace {
 
@@ -509,6 +553,8 @@ int sub_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+
+
 template <typename T>
 int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -521,6 +567,8 @@ int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
+
+
 
 template <typename T>
 int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -535,6 +583,8 @@ int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+
+
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -542,6 +592,8 @@ inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
   return sub_nn_f32(out,in0,in1,nelems) ;
 }
 #endif
+
+
 
 template <typename T>
 int sub2_nn_n1(uint64_t out, 
@@ -562,6 +614,8 @@ int sub2_nn_n1(uint64_t out,
   return 0;
 }
 
+
+
 template <typename T>
 int sub2_nn_1n(uint64_t out,
                uint64_t in0,
@@ -581,6 +635,8 @@ int sub2_nn_1n(uint64_t out,
   return 0;
 }
 
+
+
 template <typename T, int M, int N>
 int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -594,6 +650,8 @@ int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor cons
   }
   return 0;
 }
+
+
 
 template <typename T>
 int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
@@ -619,73 +677,73 @@ int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 } // namespace
 
+
+
+template<typename T>
 int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
 //  printf("in1.dims = %ld\n", in1.dims) ;
 //  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
 
-  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    int r=1;
-    if (in0.nelems == 1) {
-      r = sub_1n<float>(out.addr, in0.addr, in1.addr,
-                        out.nelems);
-    }
-    else if(in1.nelems == 1) {
-      r = sub_n1<float>(out.addr, in0.addr, in1.addr,
-                        out.nelems);
-    }
-    else if (in0.nelems == in1.nelems) {
-      r = sub_nn<float>(out.addr, in0.addr, in1.addr,
-                           in0.nelems);
-    }
-    else if (in0.dims == 2 && in1.dims == 2
-               && in0.dim_size[0] == in1.dim_size[0]
-               && in1.dim_size[1] == 1) {
-      r = sub2_nn_n1<float>(out.addr,
-                               in0.addr,
-                               in1.addr,
-                               in0.dim_size[0],
-                               in0.dim_size[1]);
-    }
-    else if (in0.dims == 2 && in1.dims == 2
-               && in0.dim_size[1] == in1.dim_size[1]
-               && in1.dim_size[0] == 1) {
-      r = sub2_nn_1n<float>(out.addr,
-                               in0.addr,
-                               in1.addr,
-                               in0.dim_size[0],
-                               in0.dim_size[1]);
-    } else if (check_dim(out, {8, 16, 64, 8, 8})
+  if (in0.nelems == 1) {
+    return sub_1n<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  } else if(in1.nelems == 1) {
+    return sub_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  } else if (IsSameSize(out, in0, in1)) {
+    return sub_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  } else if (in0.dims == 2 && in1.dims == 2
+	   && in0.dim_size[0] == in1.dim_size[0]
+	   && in1.dim_size[1] == 1) {
+    return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr,
+			 in0.dim_size[0], in0.dim_size[1]);
+  } else if (in0.dims == 2 && in1.dims == 2
+	   && in0.dim_size[1] == in1.dim_size[1]
+	   && in1.dim_size[0] == 1) {
+    return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr,
+			 in0.dim_size[0], in0.dim_size[1]);
+  } else if (check_dim(out, {8, 16, 64, 8, 8})
             && check_dim(in0, {8, 16, 64, 8, 8})
             && check_dim(in1, {1, 16, 64, 1, 1})) {
-      r = sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(out, in0, in1);
-    } else if (check_binop_dim5_x(out, in0, in1)) {
-      r = binop_dim5_x<float>(out, in0, in1, sub_n1<float>);
-    } else if (IsSameDims(out, in0, in1)) {
-      if (check_dim(out, {1, 16, 64, 1, 1})
-              && check_dim(in0, {1, 1, 64, 1, 1})
-              && check_dim(in1, {1, 16, 64, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 64>(out, in0, in1);
-      } else if (check_dim(out, {1, 16, 32, 1, 1})
-              && check_dim(in0, {1,  1, 32, 1, 1})
-              && check_dim(in1, {1, 16, 32, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 32>(out, in0, in1);
-      } else if (check_dim(out, {1, 16, 16, 1, 1})
-              && check_dim(in0, {1,  1, 16, 1, 1})
-              && check_dim(in1, {1, 16, 16, 1, 1})) {
-        r = sub_MxN_1xN_MxN<float, 16, 16>(out, in0, in1);
-      } else {
-        r = binop_dimN<float, float>(out, in0, in1,
-                [](float y, float z) -> float { return y - z; });
-      }
+    return sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+  } else if (check_binop_dim5_x(out, in0, in1)) {
+    return  binop_dim5_x<T>(out, in0, in1, sub_n1<T>);
+  } else if (IsSameDims(out, in0, in1)) {
+    if (check_dim(out, {1, 16, 64, 1, 1})
+	&& check_dim(in0, {1, 1, 64, 1, 1})
+	&& check_dim(in1, {1, 16, 64, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 64>(out, in0, in1);
+    } else if (check_dim(out, {1, 16, 32, 1, 1})
+	       && check_dim(in0, {1,  1, 32, 1, 1})
+	       && check_dim(in1, {1, 16, 32, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 32>(out, in0, in1);
+    } else if (check_dim(out, {1, 16, 16, 1, 1})
+	       && check_dim(in0, {1,  1, 16, 1, 1})
+	       && check_dim(in1, {1, 16, 16, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 16>(out, in0, in1);
+    } else {
+      return binop_dimN<T, T>(out, in0, in1,
+			      [](T y, T z) -> T { return y - z; });
     }
-    return r;
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::sub<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
 
 namespace {
 
@@ -704,6 +762,8 @@ int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -711,6 +771,8 @@ inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return mul_n1_f32(out, in0, in1, n) ;
 }
 #endif
+
+
 
 template <typename T>
 int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -725,6 +787,8 @@ int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
+
+
 
 #ifdef LIBVETF_INTRINSIC
 template <>
@@ -750,6 +814,8 @@ inline int mul_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 #endif
 
+
+
 // nelems_in0 > nelems_in1
 template <typename T>
 int mul2_nn_n1(uint64_t out, 
@@ -770,6 +836,8 @@ int mul2_nn_n1(uint64_t out,
   return 0;
 }
 
+
+
 template <typename T>
 int mul2_nn_1n(uint64_t out,
                uint64_t in0,
@@ -789,6 +857,8 @@ int mul2_nn_1n(uint64_t out,
   return 0;
 }
 
+
+
 template <typename T, int M, int N>
 int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -802,6 +872,7 @@ int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor cons
   }
   return 0;
 }
+
 
 
 template <typename T>
@@ -826,6 +897,8 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   return 0;
 }
 
+
+
 template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -847,6 +920,8 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
+
+
 
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
@@ -873,6 +948,8 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
+
+
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
@@ -907,6 +984,8 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
   return 0;
 }
 
+
+
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -933,6 +1012,8 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
+
+
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
@@ -963,120 +1044,112 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
 
 } // namespace
 
+
+
+template<typename T>
 int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
 //  printf("in1.dims = %ld\n", in1.dims) ;
 //  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
 
-  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+  if (in0.nelems == 1) {
+    return mul_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
+  } else if (in1.nelems == 1) {
+    return mul_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  } else if (IsSameSize(out, in0, in1)) {
+    return mul_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  } else if (in0.dims == 2 && in1.dims == 2
+	     && in0.dim_size[0] == in1.dim_size[0] ) {
+    if( in1.dim_size[1] == 1 ) {
+      return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr,
+			   in0.dim_size[0], in0.dim_size[1]);
+    }
+    else if( in0.dim_size[1] == 1 ) {
+      return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr,
+			   in1.dim_size[0], in1.dim_size[1]);
+    }
+  } else if (in0.dims == 2 && in1.dims == 1
+	     && in0.dim_size[1] == in1.dim_size[0] ) {
+    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr,
+			 in0.dim_size[0], in0.dim_size[1]) ;
+  } else if (in0.dims == 3 && in1.dims == 3
+	     && in1.dim_size[0] == 1
+	     && in1.dim_size[1] == 1
+	     && in1.dim_size[2] == in0.dim_size[2]) {
+    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr,
+			 in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+  } else if (in0.dims == 3 && in1.dims == 3
+	     && in0.dim_size[0] == 1
+	     && in0.dim_size[1] == 1
+	     && in0.dim_size[2] == in1.dim_size[2]) {
+    return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr,
+			 in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+  } else if (check_dim(out, {8, 16, 64, 8, 8})
+	     && check_dim(in0, {8, 16, 64, 8, 8})
+	     && check_dim(in1, {1, 16, 64, 1, 1})) {
+    return mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+  } else if (check_dim(out, {8, 16, 64, 8, 8})
+	     && check_dim(in0, {8, 16, 64, 8, 8})
+	     && check_dim(in1, {1,  1, 64, 1, 1})) {
+    return mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(out, in0, in1);
+  } else if (check_dim(out, {8, 16, 32, 16, 16})
+	     && check_dim(in0, {8, 16, 32, 16, 16})
+	     && check_dim(in1, {1, 16, 32,  1,  1})) {
+    return mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<T>(out, in0, in1);
+  } else if (check_dim(out, {8, 16, 16, 32, 32})
+	     && check_dim(in0, {8, 16, 16, 32, 32})
+	     && check_dim(in1, {1, 16, 16,  1,  1})) {
+    return mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<T>(out, in0, in1);
+  } else if (check_dim(out, {8, 16, 32, 16, 16})
+	     && check_dim(in0, {8, 16, 32, 16, 16})
+	     && check_dim(in1, {1,  1, 32,  1,  1})) {
+    return mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<T>(out, in0, in1);
 
-    int r=1;
-
-    if (in0.nelems == 1) {
-     r = mul_n1<float>(out.addr, in1.addr, in0.addr,
-                           out.nelems);
-    } else if (in1.nelems == 1) {
-     r = mul_n1<float>(out.addr, in0.addr, in1.addr,
-                           out.nelems);
-    } else if (in0.nelems == in1.nelems) {
-     r = mul_nn<float>(out.addr, in0.addr, in1.addr,
-                           in0.nelems);
-    } else if (in0.dims == 2 && in1.dims == 2
-               && in0.dim_size[0] == in1.dim_size[0] ) {
-      if( in1.dim_size[1] == 1 ) {
-        r = mul2_nn_n1<float>(out.addr,
-                               in0.addr,
-                               in1.addr,
-                               in0.dim_size[0],
-                               in0.dim_size[1]);
-      }
-      else if( in0.dim_size[1] == 1 ) {
-        r = mul2_nn_n1<float>(out.addr,
-                               in1.addr,
-                               in0.addr,
-                               in1.dim_size[0],
-                               in1.dim_size[1]);
-      }
-    } else if (in0.dims == 2 && in1.dims == 1
-                && in0.dim_size[1] == in1.dim_size[0] ) {
-      r = mul2_nn_1n<float>(out.addr,
-                            in0.addr,
-                            in1.addr,
-                            in0.dim_size[0],
-                            in0.dim_size[1]) ;
-    } else if (in0.dims == 3 && in1.dims == 3
-	         && in1.dim_size[0] == 1
-		 && in1.dim_size[1] == 1
-		 && in1.dim_size[2] == in0.dim_size[2]) {
-      r = mul2_nn_1n<float>(out.addr,
-	                    in0.addr,
-                            in1.addr,
-                            in0.dim_size[0]*in0.dim_size[1],
-                            in0.dim_size[2]) ;
-    } else if (in0.dims == 3 && in1.dims == 3
-	         && in0.dim_size[0] == 1
-		 && in0.dim_size[1] == 1
-		 && in0.dim_size[2] == in1.dim_size[2]) {
-      r = mul2_nn_1n<float>(out.addr,
-			    in1.addr,
-                            in0.addr,
-                            in1.dim_size[0]*in1.dim_size[1],
-                            in1.dim_size[2]) ;
-    } else if (check_dim(out, {8, 16, 64, 8, 8})
-            && check_dim(in0, {8, 16, 64, 8, 8})
-            && check_dim(in1, {1, 16, 64, 1, 1})) {
-      r = mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(out, in0, in1);
-    } else if (check_dim(out, {8, 16, 64, 8, 8})
-            && check_dim(in0, {8, 16, 64, 8, 8})
-            && check_dim(in1, {1,  1, 64, 1, 1})) {
-      r = mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<float>(out, in0, in1);
-    } else if (check_dim(out, {8, 16, 32, 16, 16})
-            && check_dim(in0, {8, 16, 32, 16, 16})
-            && check_dim(in1, {1, 16, 32,  1,  1})) {
-      r = mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<float>(out, in0, in1);
-    } else if (check_dim(out, {8, 16, 16, 32, 32})
-            && check_dim(in0, {8, 16, 16, 32, 32})
-            && check_dim(in1, {1, 16, 16,  1,  1})) {
-      r = mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<float>(out, in0, in1);
-    } else if (check_dim(out, {8, 16, 32, 16, 16})
-            && check_dim(in0, {8, 16, 32, 16, 16})
-            && check_dim(in1, {1,  1, 32,  1,  1})) {
-      r = mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<float>(out, in0, in1);
-
-    } else if (check_dim(out, {8, 16, 16, 32, 32})
-            && check_dim(in0, {8, 16, 16, 32, 32})
-            && check_dim(in1, {1,  1, 16,  1,  1})) {
-      r = mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<float>(out, in0, in1);
+  } else if (check_dim(out, {8, 16, 16, 32, 32})
+	     && check_dim(in0, {8, 16, 16, 32, 32})
+	     && check_dim(in1, {1,  1, 16,  1,  1})) {
+    return mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<T>(out, in0, in1);
 
 #if 0
-    } else if (check_dim(out, {1, 16, 64, 1, 1})
-            && check_dim(in0, {1, 16, 64, 1, 1})
-            && check_dim(in1, {1, 1, 64, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 64>(out, in1, in0);
-    } else if (check_dim(out, {1, 16, 16, 1, 1})
-            && check_dim(in0, {1, 16, 16, 1, 1})
-            && check_dim(in1, {1, 1, 16, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 16>(out, in1, in0);
-    } else if (check_dim(out, {1, 16, 32, 1, 1})
-            && check_dim(in0, {1, 16, 32, 1, 1})
-            && check_dim(in1, {1, 1, 32, 1, 1})) {
-      r = mul_MxN_1xN_MxN<float, 16, 32>(out, in1, in0);
+  } else if (check_dim(out, {1, 16, 64, 1, 1})
+	     && check_dim(in0, {1, 16, 64, 1, 1})
+	     && check_dim(in1, {1, 1, 64, 1, 1})) {
+    return mul_MxN_1xN_MxN<T, 16, 64>(out, in1, in0);
+  } else if (check_dim(out, {1, 16, 16, 1, 1})
+	     && check_dim(in0, {1, 16, 16, 1, 1})
+	     && check_dim(in1, {1, 1, 16, 1, 1})) {
+    return mul_MxN_1xN_MxN<T, 16, 16>(out, in1, in0);
+  } else if (check_dim(out, {1, 16, 32, 1, 1})
+	     && check_dim(in0, {1, 16, 32, 1, 1})
+	     && check_dim(in1, {1, 1, 32, 1, 1})) {
+    return mul_MxN_1xN_MxN<T, 16, 32>(out, in1, in0);
 #endif
-    } else if (check_binop_dim5_x(out, in0, in1)) {
-      r = binop_dim5_x<float>(out, in0, in1, mul_n1<float>);
-    } else if (IsSameDims(out, in0, in1)) {
-      r = binop_dimN<float, float>(out, in0, in1,
-              [](float a, float b) -> float { return a * b; });
-    }
-
-
-    return r;
+  } else if (check_binop_dim5_x(out, in0, in1)) {
+    return binop_dim5_x<T>(out, in0, in1, mul_n1<T>);
+  } else if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T a, T b) -> T { return a * b; });
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::mul<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 namespace {
 
@@ -1163,6 +1236,7 @@ inline int div2_nn_n1<float>(uint64_t out,
 
 } // namespace
 
+template <typename T>
 int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
@@ -1171,39 +1245,47 @@ int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 //  printf("in1.dims = %ld\n", in1.dims) ;
 //  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
 
+  int r=1;
 
-  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-
-    int r=1;
-
-    if (in0.nelems == 1) {
-      /* TODO : impl intrinsic */
-      r = div_1n<float>(out.addr, in0.addr, in1.addr,
-                        out.nelems);
-
-    } else if (in1.nelems == 1) {
-      r = div_n1<float>(out.addr, in0.addr, in1.addr,
-                           out.nelems);
-    } else if (in0.nelems == in1.nelems ) {
-      r = div_nn<float>(out.addr, in0.addr, in1.addr,
-                        out.nelems);
-    } else if (in0.dims == 2
-               && in1.dims == 2
-               && in0.dim_size[0] == in1.dim_size[0]
-               && in1.dim_size[1] == 1) {
-      r = div2_nn_n1<float>(out.addr,
-                               in0.addr,
-                               in1.addr,
-                               in0.dim_size[0],
-                               in0.dim_size[1]);
-    } else if (IsSameDims(out, in0, in1)) {
-      r = binop_dimN<float, float>(out, in0, in1,
-              [](float y, float z) -> float { return y / z; });
-    }
-    return r;
+  if (in0.nelems == 1) {
+    /* TODO : impl intrinsic */
+    return div_1n<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
+  if (in1.nelems == 1) {
+    return div_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  }
+  if (IsSameSize(out, in0, in1)) {
+    return div_nn<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  }
+  if (in0.dims == 2
+      && in1.dims == 2
+      && in0.dim_size[0] == in1.dim_size[0]
+      && in1.dim_size[1] == 1) {
+    return div2_nn_n1<T>(out.addr, in0.addr, in1.addr,
+			 in0.dim_size[0], in0.dim_size[1]);
+  }
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T y, T z) -> T { return y / z; });
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::div<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 namespace {
 
@@ -1222,6 +1304,8 @@ int divnonan_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
+
+
 
 template <typename T>
 int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -1243,6 +1327,8 @@ int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+
+
 template <typename T>
 int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1256,6 +1342,8 @@ int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
+
+
 
 template <typename T>
 int divnonan2_nn_n1(uint64_t out, 
@@ -1283,6 +1371,9 @@ int divnonan2_nn_n1(uint64_t out,
   return 0;
 }
 
+
+
+template <typename T>
 int op_divnonan(const BinaryOpArgs& args) {
 
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
@@ -1290,33 +1381,38 @@ int op_divnonan(const BinaryOpArgs& args) {
 //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
 //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
-
-    int r=1;
-
-    if (args.in0.nelems == args.in1.nelems) {
-     r = divnonan_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                            args.in0.nelems);
-    } else if (args.in0.nelems == 1) {
-      r = divnonan_1n<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                            args.out.nelems);
-    } else if (args.in1.nelems == 1) {
-      r = divnonan_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                             args.out.nelems);
-    } else if (args.in0.dims == 2
-               && args.in1.dims == 2
-               && args.in0.dim_size[0] == args.in1.dim_size[0]
-               && args.in1.dim_size[1] == 1) {
-      r = divnonan2_nn_n1<float>(args.out.addr,
-                               args.in0.addr,
-                               args.in1.addr,
-                               args.in0.dim_size[0],
-                               args.in0.dim_size[1]);
-    }
-    return r;
+  if (args.in1.nelems == 1) {
+    return divnonan_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return divnonan_1n<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  }
+  if (IsSameSize(args)) {
+    return divnonan_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  } 
+  if (args.in0.dims == 2
+      && args.in1.dims == 2
+      && args.in0.dim_size[0] == args.in1.dim_size[0]
+      && args.in1.dim_size[1] == 1) {
+    return divnonan2_nn_n1<T>(args.out.addr, args.in0.addr, args.in1.addr,
+			      args.in0.dim_size[0], args.in0.dim_size[1]);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int op_divnonan(const BinaryOpArgs& args) {
+  if (CheckTypesAll(args, DT_FLOAT)) {
+    return op_divnonan<float>(args);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
 
 
 // Pow
@@ -1334,6 +1430,8 @@ int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1347,6 +1445,8 @@ int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
+
+
 
 template <typename T>
 int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1362,6 +1462,9 @@ int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
+template<typename T>
 int op_pow(const BinaryOpArgs& args) {
 
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
@@ -1369,21 +1472,32 @@ int op_pow(const BinaryOpArgs& args) {
 //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
 //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
-  int r=1;
-
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    // TODO : impl other patterns
-    if (args.in0.nelems == 1) {
-      r = pow_1n<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
-    } else if (args.in1.nelems == 1) {
-      r = pow_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
-    } else if (args.in0.nelems == args.in1.nelems) {
-      r = pow_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
-    }
+  // TODO : impl other patterns
+  if (args.in0.nelems == 1) {
+    return pow_1n<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  if (args.in1.nelems == 1) {
+    return pow_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  if (IsSameSize(args)) {
+    return pow_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   
-  return r;
+  return 1;
 }
+
+
+
+int op_pow(const BinaryOpArgs& args) {
+  if (CheckTypesAll(args, DT_FLOAT)) {
+    return op_pow<float>(args);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+  
+  return 1;
+}
+
 
 
 // SquaredDifference
@@ -1483,84 +1597,77 @@ int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
 
 } // namespace
 
+
+
+template <typename T>
 int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
 //  printf("in1.dims = %ld\n", in1.dims) ;
 //  for(int i=0; i<in1.dims ; i++ ) printf(" [%d] = %ld\n", i, in1.dim_size[i]) ;
 
-  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-
-    int r=1;
-
-    if (in0.nelems == 1) {
-     r = sqdiff_n1<float>(out.addr, in1.addr, in0.addr,
-                           out.nelems);
-    } else if (in1.nelems == 1) {
-     r = sqdiff_n1<float>(out.addr, in0.addr, in1.addr,
-                           out.nelems);
-    } else if (in0.nelems == in1.nelems) {
-     r = sqdiff_nn<float>(out.addr, in0.addr, in1.addr,
-                           in0.nelems);
-    } else if (in0.dims == 2 && in1.dims == 2
-               && in0.dim_size[0] == in1.dim_size[0] ) {
-      if( in1.dim_size[1] == 1 ) {
-        r = sqdiff2_nn_n1<float>(out.addr,
-                               in0.addr,
-                               in1.addr,
-                               in0.dim_size[0],
-                               in0.dim_size[1]);
-      }
-      else if( in0.dim_size[1] == 1 ) {
-        r = sqdiff2_nn_n1<float>(out.addr,
-                               in1.addr,
-                               in0.addr,
-                               in1.dim_size[0],
-                               in1.dim_size[1]);
-      }
-    } else if (in0.dims == 2 && in1.dims == 2
-                && in0.dim_size[1] == in1.dim_size[1]
-                && in1.dim_size[0] == 1 ) {
-      r = sqdiff2_nn_1n<float>(out.addr,
-                            in0.addr,
-                            in1.addr,
-                            in0.dim_size[0],
-                            in0.dim_size[1]) ;
-    } else if (in0.dims == 3 && in1.dims == 3
-	         && in1.dim_size[0] == 1
-		 && in1.dim_size[1] == 1
-		 && in1.dim_size[2] == in0.dim_size[2]) {
-      r = sqdiff2_nn_1n<float>(out.addr,
-	                    in0.addr,
-                            in1.addr,
-                            in0.dim_size[0]*in0.dim_size[1],
-                            in0.dim_size[2]) ;
-    } else if (in0.dims == 3 && in1.dims == 3
-	         && in0.dim_size[0] == 1
-		 && in0.dim_size[1] == 1
-		 && in0.dim_size[2] == in1.dim_size[2]) {
-      r = sqdiff2_nn_1n<float>(out.addr,
-	                    in1.addr,
-                            in0.addr,
-                            in1.dim_size[0]*in1.dim_size[1],
-                            in1.dim_size[2]) ;
-    } else if (check_dim(out, {8, 16, 64, 8, 8})
-            && check_dim(in0, {8, 16, 64, 8, 8})
-            && check_dim(in1, {1, 16, 64, 1, 1})) {
-      r = sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<float>(out, in0, in1);
-    } else if (check_binop_dim5_x(out, in0, in1)) {
-      r = binop_dim5_x<float>(out, in0, in1, sqdiff_n1<float>);
-    } else if (IsSameDims(out, in0, in1)) {
-         r = binop_dimN<float, float>(out, in0, in1,
-                 [](float y, float z) -> float { return (y-z)*(y-z); });
+  if (in0.nelems == 1) {
+    return sqdiff_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
+  } else if (in1.nelems == 1) {
+    return sqdiff_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
+  } else if (IsSameSize(out, in0, in1)) {
+    return sqdiff_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  } else if (in0.dims == 2 && in1.dims == 2
+	     && in0.dim_size[0] == in1.dim_size[0] ) {
+    if( in1.dim_size[1] == 1 ) {
+      return sqdiff2_nn_n1<T>(out.addr, in0.addr, in1.addr,
+			      in0.dim_size[0], in0.dim_size[1]);
     }
-
-    return r;
+    else if( in0.dim_size[1] == 1 ) {
+      return sqdiff2_nn_n1<T>(out.addr, in1.addr, in0.addr,
+			      in1.dim_size[0], in1.dim_size[1]);
+    }
+  } else if (in0.dims == 2 && in1.dims == 2
+	     && in0.dim_size[1] == in1.dim_size[1]
+	     && in1.dim_size[0] == 1 ) {
+    return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr,
+                            in0.dim_size[0], in0.dim_size[1]) ;
+  } else if (in0.dims == 3 && in1.dims == 3
+	     && in1.dim_size[0] == 1
+	     && in1.dim_size[1] == 1
+	     && in1.dim_size[2] == in0.dim_size[2]) {
+    return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr,
+			    in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+  } else if (in0.dims == 3 && in1.dims == 3
+	     && in0.dim_size[0] == 1
+	     && in0.dim_size[1] == 1
+	     && in0.dim_size[2] == in1.dim_size[2]) {
+    return sqdiff2_nn_1n<T>(out.addr, in1.addr, in0.addr,
+			    in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+  } else if (check_dim(out, {8, 16, 64, 8, 8})
+	     && check_dim(in0, {8, 16, 64, 8, 8})
+	     && check_dim(in1, {1, 16, 64, 1, 1})) {
+    return sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+  } else if (check_binop_dim5_x(out, in0, in1)) {
+    return binop_dim5_x<T>(out, in0, in1, sqdiff_n1<T>);
+  } else if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T y, T z) -> T { return (y-z)*(y-z); });
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::sqdiff<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 namespace {
 
@@ -1581,6 +1688,10 @@ int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
+
+
+
+template <typename T>
 int op_rsqrt_grad(const BinaryOpArgs& args) {
 
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
@@ -1588,18 +1699,23 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
 //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
 //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
-  if (CheckTypesAll(args, DT_FLOAT)) {
-
-    int r=1;
-
-    // TODO : impl other patterns
-    if (args.in0.nelems == args.in1.nelems) {
-     r = rsqrt_grad_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                           args.in0.nelems);
-    }
-
-    return r;
+  // TODO : impl other patterns
+  if (IsSameSize(args)) {
+    return rsqrt_grad_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
+  return 1;
+}
+
+
+
+int op_rsqrt_grad(const BinaryOpArgs& args) {
+  if (CheckTypesAll(args, DT_FLOAT)) {
+    return op_rsqrt_grad<float>(args);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
   return 1;
 }
 
