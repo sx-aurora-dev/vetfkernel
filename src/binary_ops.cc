@@ -1604,6 +1604,7 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
 }
 
 
+
 // Minimum
 
 template <typename T>
@@ -1619,6 +1620,8 @@ int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1633,22 +1636,45 @@ int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 
 
+
+template <typename T>
 int op_minimum(const BinaryOpArgs& args)
 {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    if (args.in1.nelems == 1) {
-      return minimum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return minimum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
-    }
-    if (IsSameSize(args)) {
-      return minimum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return minimum_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return minimum_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+  }
+  if (IsSameSize(args)) {
+    return minimum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int op_minimum(const BinaryOpArgs& args)
+{
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_minimum<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_minimum<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_minimum<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 // Maximum
 
@@ -1665,6 +1691,8 @@ int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1678,22 +1706,46 @@ int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
+template <typename T>
 int op_maximum(const BinaryOpArgs& args)
 {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    if (args.in1.nelems == 1) {
-      return maximum_n1<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return maximum_n1<float>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
-    }
-    if (IsSameSize(args)) {
-      return maximum_nn<float>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return maximum_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return maximum_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+  }
+  if (IsSameSize(args)) {
+    return maximum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int op_maximum(const BinaryOpArgs& args)
+{
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_maximum<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_maximum<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_maximum<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 // Equal
 
@@ -1710,6 +1762,8 @@ int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1723,59 +1777,48 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
+template <typename T>
 int op_equal(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                             args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return equal_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-			     args.in1.nelems);
-    } 
-    if (IsSameSize(args)) {
-      return equal_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			     args.in0.nelems);
-    }
-    if (IsSameDims(args)) {
-      return binop_dimN<bool, float>(args.out, args.in0, args.in1,
-				     [](float y, float z) -> bool { return y == z; });
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return equal_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
-  else if (CheckTypes(args, DT_DOUBLE, DT_DOUBLE, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<double>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return equal_n1<double>(args.out.addr, args.in1.addr, args.in0.addr,
-                              args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return equal_nn<double>(args.out.addr, args.in0.addr, args.in1.addr,
-                              args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in0.nelems == 1) {
+    return equal_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  } 
+  if (IsSameSize(args)) {
+    return equal_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
-  else if (CheckTypes(args, DT_INT64, DT_INT64, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return equal_n1<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-			       args.in0.nelems);
-    }
-    if (args.in1.nelems == 1) {
-      return equal_n1<int64_t>(args.out.addr, args.in1.addr, args.in0.addr,
-			       args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return equal_nn<int64_t>(args.out.addr, args.in0.addr, args.in1.addr,
-			       args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T y, T z) -> bool { return y == z; });
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
 }
+
+
+
+int op_equal(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_equal<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_equal<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_equal<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 // NotEqual
 
@@ -1792,6 +1835,8 @@ int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1805,25 +1850,43 @@ int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
+template <typename T>
 int op_notEqual(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return notEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-				args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return notEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-				args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return notEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-				args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return notEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return notEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  }
+  if (IsSameSize(args)) {
+    return notEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
 }
+
+
+
+int op_notEqual(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_notEqual<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_notEqual<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_notEqual<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
 
 
 // Compaire operation
@@ -1841,6 +1904,8 @@ int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1853,6 +1918,8 @@ int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
+
+
 
 template <typename T>
 int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1867,6 +1934,8 @@ int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1879,6 +1948,8 @@ int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
+
+
 
 template <typename T>
 int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1919,6 +1990,8 @@ int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1931,6 +2004,8 @@ int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
+
+
 
 template <typename T>
 int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1971,6 +2046,8 @@ int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+
+
 template <typename T>
 int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1987,86 +2064,156 @@ int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
 
 // Less
+template <typename T>
 int op_less(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return less_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			    args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return greaterEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-				    args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return less_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			    args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return less_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return greaterEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  }
+  if (IsSameSize(args)) {
+    return less_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
+  return 1;
+}
+
+
+
+int op_less(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_less<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_less<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_less<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
   return 1;
 }
 
 
 
 // LessEqual
+template <typename T>
 int op_lessEqual(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return lessEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                                 args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return greater_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-			       args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return lessEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-				 args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return lessEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return greater_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  }
+  if (IsSameSize(args)) {
+    return lessEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
+
+
+
+int op_lessEqual(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_lessEqual<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_lessEqual<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_lessEqual<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 // Greater
+template <typename T>
 int op_greater(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return greater_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			       args.in0.nelems);
-    }
-    if (args.in0.nelems == 1) {
-      return lessEqual_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-				 args.in1.nelems);
-    }
-    if (IsSameSize(args)) {
-      return greater_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-			       args.in0.nelems);
-    }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  if (args.in1.nelems == 1) {
+    return greater_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+  if (args.in0.nelems == 1) {
+    return lessEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  }
+  if (IsSameSize(args)) {
+    return greater_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
   return 1;
 }
 
-// GreaterEqual
-int op_greaterEqual(const BinaryOpArgs& args) {
-  if (CheckTypes(args, DT_FLOAT, DT_FLOAT, DT_BOOL)) {
-    if (args.in1.nelems == 1) {
-      return greaterEqual_n1<float>(args.out.addr, args.in0.addr, args.in1.addr,
-                                    args.in0.nelems);
+
+
+int op_greater(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_greater<float>(args);
     }
-    if (args.in0.nelems == 1) {
-      return less_n1<float>(args.out.addr, args.in1.addr, args.in0.addr,
-			    args.in1.nelems);
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_greater<double>(args);
     }
-    if (IsSameSize(args)) {
-      return greaterEqual_nn<float>(args.out.addr, args.in0.addr, args.in1.addr,
-				    args.in0.nelems);
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_greater<int64_t>(args);
     }
-    LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
   return 1;
 }
+
+
+
+// GreaterEqual
+template <typename T>
+int op_greaterEqual(const BinaryOpArgs& args) {
+  if (args.in1.nelems == 1) {
+    return greaterEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  if (args.in0.nelems == 1) {
+    return less_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  }
+  if (IsSameSize(args)) {
+    return greaterEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+
+  return 1;
+}
+
+
+
+int op_greaterEqual(const BinaryOpArgs& args) {
+  if (args.out.dtype == DT_BOOL) {
+    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
+      return op_greaterEqual<float>(args);
+    }
+    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
+      return op_greaterEqual<double>(args);
+    }
+    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
+      return op_greaterEqual<int64_t>(args);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+
 
 } // namespace
 
