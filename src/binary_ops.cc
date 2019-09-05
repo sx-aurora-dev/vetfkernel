@@ -507,7 +507,6 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 
   // 2次元以下で配列の次元サイズを最大次元に合わせない旧呼び出しパターン用
   if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
-    LOG(LOG_ERROR) << __FUNCTION__ << " here.";
     return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
   }
 
