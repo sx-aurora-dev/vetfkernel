@@ -1111,11 +1111,17 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
     return mul_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
+  // 2次元以下で配列の次元サイズを最大次元に合わせない旧呼び出しパターン用
   if (in0.dims == 2 && in1.dims == 1  &&  in0.dim_size[1] == in1.dim_size[0] ) {
     return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
   }
 
   if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[1] == in1.dim_size[1]) {
+      if (in1.dim_size[0] == 1) {
+	return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+      }
+    }
     if (in0.dim_size[0] == in1.dim_size[0]) {
       if (in1.dim_size[1] == 1) {
 	return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
