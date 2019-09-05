@@ -51,11 +51,22 @@ bool CheckTypesAll(const BinaryOpArgs& args, int dtype) {
   return CheckTypes(args, dtype, dtype, dtype);
 }
 
+bool CheckDimsAll(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tensor &in1, size_t dims)
+{
+  bool ret = false;
+  if (out.dims == dims) {
+    if (in0.dims == dims) {
+      if (in1.dims == dims) {
+	ret = true;
+      }
+    }
+  }
+  return ret;
+}
+
 bool CheckDimsAll(const BinaryOpArgs& args, size_t dims)
 {
-    return args.in0.dims == dims
-        && args.in1.dims == dims
-        && args.out.dims == dims;
+  return CheckDimsAll(args.out, args.in0, args.in1, dims);
 }
 
 bool IsSameDims(vml::Tensor const& X,
@@ -486,35 +497,49 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 
   if (Y.nelems == 1) {
     return add_n1<T>(X.addr, Z.addr, Y.addr, X.nelems);
-  } else if (Z.nelems == 1) {
+  }
+  if (Z.nelems == 1) {
     return add_n1<T>(X.addr, Y.addr, Z.addr, X.nelems);
-  } else if (IsSameSize(X, Y, Z)) {
+  }
+  if (IsSameSize(X, Y, Z)) {
     return add_nn<T>(X.addr, Y.addr, Z.addr, Y.nelems);
-  } else if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
+  }
+
+  if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
     return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
-  } else if (Y.dims == 3 && Z.dims == 3
-	     && Z.dim_size[0] == 1
-	     && Z.dim_size[1] == 1
-	     && Z.dim_size[2] == Y.dim_size[2]) {
-    return add2_nn_1n<T>(X.addr, Y.addr, Z.addr,
-			 Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]) ;
-  } else if (Y.dims == 3 && Z.dims == 3
-	     && Y.dim_size[0] == 1
-	     && Y.dim_size[1] == 1
-	     && Y.dim_size[2] == Z.dim_size[2]) {
-    return add2_nn_1n<T>(X.addr, Z.addr, Y.addr,
-			 Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
-  } else if (check_dim(X, {8, 16, 64, 8, 8})
-	     && check_dim(Y, {8, 16, 64, 8, 8})
-	     && check_dim(Z, {1, 16, 64, 1, 1})) {
-    return add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(X, Y, Z);
-  } else if (check_dim(X, {8, 16, 64, 8, 8})
-	     && check_dim(Y, {8, 16, 64, 8, 8})
-	     && check_dim(Z, {1,  1, 64, 1, 1})) {
-    return add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(X, Y, Z);
-  } else if (check_binop_dim5_x(X, Y, Z)) {
-    return binop_dim5_x<T>(X, Y, Z, add_n1<T>);
-  } else if (IsSameDims(X, Y, Z)) {
+  }
+
+  if (CheckDimsAll(X, Y, Z, 3)) {
+    if (Z.dim_size[2] == Y.dim_size[2]) {
+      if (Z.dim_size[0] == 1  &&  Z.dim_size[1] == 1) {
+	return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]) ;
+      }
+      if (Y.dim_size[0] == 1  &&  Y.dim_size[1] == 1) {
+	return add2_nn_1n<T>(X.addr, Z.addr, Y.addr, Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
+      }
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(X, Y, Z, 5)) {
+    if (check_dim(X, {8, 16, 64, 8, 8}) &&
+	check_dim(Y, {8, 16, 64, 8, 8}) &&
+	check_dim(Z, {1, 16, 64, 1, 1})) {
+      return add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(X, Y, Z);
+    }
+    if (check_dim(X, {8, 16, 64, 8, 8}) &&
+	check_dim(Y, {8, 16, 64, 8, 8}) &&
+	check_dim(Z, {1,  1, 64, 1, 1})) {
+      return add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(X, Y, Z);
+    }
+    if (check_binop_dim5_x(X, Y, Z)) {
+      return binop_dim5_x<T>(X, Y, Z, add_n1<T>);
+    }
+    goto general_purpose_implementation;
+  }
+
+ general_purpose_implementation:
+  if (IsSameDims(X, Y, Z)) {
     return binop_dimN<T, T>(X, Y, Z,
 			    [](T y, T z) -> T { return y + z; });
   }
@@ -689,43 +714,54 @@ int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
   if (in0.nelems == 1) {
     return sub_1n<T>(out.addr, in0.addr, in1.addr, out.nelems);
-  } else if(in1.nelems == 1) {
+  }
+  if (in1.nelems == 1) {
     return sub_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
-  } else if (IsSameSize(out, in0, in1)) {
+  }
+  if (IsSameSize(out, in0, in1)) {
     return sub_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
-  } else if (in0.dims == 2 && in1.dims == 2
-	   && in0.dim_size[0] == in1.dim_size[0]
-	   && in1.dim_size[1] == 1) {
-    return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr,
-			 in0.dim_size[0], in0.dim_size[1]);
-  } else if (in0.dims == 2 && in1.dims == 2
-	   && in0.dim_size[1] == in1.dim_size[1]
-	   && in1.dim_size[0] == 1) {
-    return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr,
-			 in0.dim_size[0], in0.dim_size[1]);
-  } else if (check_dim(out, {8, 16, 64, 8, 8})
-            && check_dim(in0, {8, 16, 64, 8, 8})
-            && check_dim(in1, {1, 16, 64, 1, 1})) {
-    return sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
-  } else if (check_binop_dim5_x(out, in0, in1)) {
-    return  binop_dim5_x<T>(out, in0, in1, sub_n1<T>);
-  } else if (IsSameDims(out, in0, in1)) {
-    if (check_dim(out, {1, 16, 64, 1, 1})
-	&& check_dim(in0, {1, 1, 64, 1, 1})
-	&& check_dim(in1, {1, 16, 64, 1, 1})) {
-      return sub_MxN_1xN_MxN<T, 16, 64>(out, in0, in1);
-    } else if (check_dim(out, {1, 16, 32, 1, 1})
-	       && check_dim(in0, {1,  1, 32, 1, 1})
-	       && check_dim(in1, {1, 16, 32, 1, 1})) {
-      return sub_MxN_1xN_MxN<T, 16, 32>(out, in0, in1);
-    } else if (check_dim(out, {1, 16, 16, 1, 1})
-	       && check_dim(in0, {1,  1, 16, 1, 1})
-	       && check_dim(in1, {1, 16, 16, 1, 1})) {
-      return sub_MxN_1xN_MxN<T, 16, 16>(out, in0, in1);
-    } else {
-      return binop_dimN<T, T>(out, in0, in1,
-			      [](T y, T z) -> T { return y - z; });
+  }
+
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
+    if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
+      return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 5)) {
+    if (check_dim(out, {8, 16, 64, 8, 8}) &&
+	check_dim(in0, {8, 16, 64, 8, 8}) &&
+	check_dim(in1, {1, 16, 64, 1, 1})) {
+      return sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+    }
+    if (check_binop_dim5_x(out, in0, in1)) {
+      return  binop_dim5_x<T>(out, in0, in1, sub_n1<T>);
+    }
+    if (check_dim(out, {1, 16, 64, 1, 1}) &&
+	check_dim(in0, {1,  1, 64, 1, 1}) &&
+	check_dim(in1, {1, 16, 64, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 64>(out, in0, in1);
+    }
+    if (check_dim(out, {1, 16, 32, 1, 1}) &&
+	check_dim(in0, {1,  1, 32, 1, 1}) &&
+	check_dim(in1, {1, 16, 32, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 32>(out, in0, in1);
+    }
+    if (check_dim(out, {1, 16, 16, 1, 1}) &&
+	check_dim(in0, {1,  1, 16, 1, 1}) &&
+	check_dim(in1, {1, 16, 16, 1, 1})) {
+      return sub_MxN_1xN_MxN<T, 16, 16>(out, in0, in1);
+    }
+    goto general_purpose_implementation;
+  }
+ general_purpose_implementation:
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T y, T z) -> T { return y - z; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
@@ -1056,79 +1092,96 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
   if (in0.nelems == 1) {
     return mul_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
-  } else if (in1.nelems == 1) {
+  }
+  if (in1.nelems == 1) {
     return mul_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
-  } else if (IsSameSize(out, in0, in1)) {
+  }
+  if (IsSameSize(out, in0, in1)) {
     return mul_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
-  } else if (in0.dims == 2 && in1.dims == 2
-	     && in0.dim_size[0] == in1.dim_size[0] ) {
-    if( in1.dim_size[1] == 1 ) {
-      return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr,
-			   in0.dim_size[0], in0.dim_size[1]);
-    }
-    else if( in0.dim_size[1] == 1 ) {
-      return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr,
-			   in1.dim_size[0], in1.dim_size[1]);
-    }
-  } else if (in0.dims == 2 && in1.dims == 1
-	     && in0.dim_size[1] == in1.dim_size[0] ) {
-    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr,
-			 in0.dim_size[0], in0.dim_size[1]) ;
-  } else if (in0.dims == 3 && in1.dims == 3
-	     && in1.dim_size[0] == 1
-	     && in1.dim_size[1] == 1
-	     && in1.dim_size[2] == in0.dim_size[2]) {
-    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr,
-			 in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
-  } else if (in0.dims == 3 && in1.dims == 3
-	     && in0.dim_size[0] == 1
-	     && in0.dim_size[1] == 1
-	     && in0.dim_size[2] == in1.dim_size[2]) {
-    return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr,
-			 in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
-  } else if (check_dim(out, {8, 16, 64, 8, 8})
-	     && check_dim(in0, {8, 16, 64, 8, 8})
-	     && check_dim(in1, {1, 16, 64, 1, 1})) {
-    return mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
-  } else if (check_dim(out, {8, 16, 64, 8, 8})
-	     && check_dim(in0, {8, 16, 64, 8, 8})
-	     && check_dim(in1, {1,  1, 64, 1, 1})) {
-    return mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(out, in0, in1);
-  } else if (check_dim(out, {8, 16, 32, 16, 16})
-	     && check_dim(in0, {8, 16, 32, 16, 16})
-	     && check_dim(in1, {1, 16, 32,  1,  1})) {
-    return mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<T>(out, in0, in1);
-  } else if (check_dim(out, {8, 16, 16, 32, 32})
-	     && check_dim(in0, {8, 16, 16, 32, 32})
-	     && check_dim(in1, {1, 16, 16,  1,  1})) {
-    return mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<T>(out, in0, in1);
-  } else if (check_dim(out, {8, 16, 32, 16, 16})
-	     && check_dim(in0, {8, 16, 32, 16, 16})
-	     && check_dim(in1, {1,  1, 32,  1,  1})) {
-    return mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<T>(out, in0, in1);
+  }
 
-  } else if (check_dim(out, {8, 16, 16, 32, 32})
-	     && check_dim(in0, {8, 16, 16, 32, 32})
-	     && check_dim(in1, {1,  1, 16,  1,  1})) {
-    return mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<T>(out, in0, in1);
+  if (in0.dims == 2 && in1.dims == 1  &&  in0.dim_size[1] == in1.dim_size[0] ) {
+    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+  }
 
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]) {
+      if (in1.dim_size[1] == 1) {
+	return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+      }
+      if (in0.dim_size[1] == 1) {
+	return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
+      }
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 3)) {
+    if (in1.dim_size[0] == 1  &&  in1.dim_size[1] == 1  &&  in1.dim_size[2] == in0.dim_size[2]) {
+      return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
+      return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 5)) {
+    if (check_dim(out, {8, 16, 64, 8, 8}) &&
+	check_dim(in0, {8, 16, 64, 8, 8}) &&
+	check_dim(in1, {1, 16, 64, 1, 1})) {
+      return mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+    }
+    if (check_dim(out, {8, 16, 64, 8, 8}) &&
+	check_dim(in0, {8, 16, 64, 8, 8}) &&
+	check_dim(in1, {1,  1, 64, 1, 1})) {
+      return mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1<T>(out, in0, in1);
+    }
+    if (check_dim(out, {8, 16, 32, 16, 16}) &&
+	check_dim(in0, {8, 16, 32, 16, 16}) &&
+	check_dim(in1, {1, 16, 32,  1,  1})) {
+      return mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1<T>(out, in0, in1);
+    }
+    if (check_dim(out, {8, 16, 16, 32, 32}) &&
+	check_dim(in0, {8, 16, 16, 32, 32}) &&
+	check_dim(in1, {1, 16, 16,  1,  1})) {
+      return mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1<T>(out, in0, in1);
+    }
+    if (check_dim(out, {8, 16, 32, 16, 16}) &&
+	check_dim(in0, {8, 16, 32, 16, 16}) &&
+	check_dim(in1, {1,  1, 32,  1,  1})) {
+      return mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1<T>(out, in0, in1);
+    }
+    if (check_dim(out, {8, 16, 16, 32, 32}) &&
+	check_dim(in0, {8, 16, 16, 32, 32}) &&
+	check_dim(in1, {1,  1, 16,  1,  1})) {
+      return mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1<T>(out, in0, in1);
+    }
 #if 0
-  } else if (check_dim(out, {1, 16, 64, 1, 1})
-	     && check_dim(in0, {1, 16, 64, 1, 1})
-	     && check_dim(in1, {1, 1, 64, 1, 1})) {
-    return mul_MxN_1xN_MxN<T, 16, 64>(out, in1, in0);
-  } else if (check_dim(out, {1, 16, 16, 1, 1})
-	     && check_dim(in0, {1, 16, 16, 1, 1})
-	     && check_dim(in1, {1, 1, 16, 1, 1})) {
-    return mul_MxN_1xN_MxN<T, 16, 16>(out, in1, in0);
-  } else if (check_dim(out, {1, 16, 32, 1, 1})
-	     && check_dim(in0, {1, 16, 32, 1, 1})
-	     && check_dim(in1, {1, 1, 32, 1, 1})) {
-    return mul_MxN_1xN_MxN<T, 16, 32>(out, in1, in0);
+    if (check_dim(out, {1, 16, 64, 1, 1}) &&
+	check_dim(in0, {1, 16, 64, 1, 1})
+	check_dim(in1, {1,  1, 64, 1, 1})) {
+      return mul_MxN_1xN_MxN<T, 16, 64>(out, in1, in0);
+    }
+    if (check_dim(out, {1, 16, 16, 1, 1}) &&
+	check_dim(in0, {1, 16, 16, 1, 1}) &&
+	check_dim(in1, {1,  1, 16, 1, 1})) {
+      return mul_MxN_1xN_MxN<T, 16, 16>(out, in1, in0);
+    }
+    if (check_dim(out, {1, 16, 32, 1, 1}) &&
+	check_dim(in0, {1, 16, 32, 1, 1}) &&
+	check_dim(in1, {1,  1, 32, 1, 1})) {
+      return mul_MxN_1xN_MxN<T, 16, 32>(out, in1, in0);
+    }
 #endif
-  } else if (check_binop_dim5_x(out, in0, in1)) {
-    return binop_dim5_x<T>(out, in0, in1, mul_n1<T>);
-  } else if (IsSameDims(out, in0, in1)) {
+    if (check_binop_dim5_x(out, in0, in1)) {
+      return binop_dim5_x<T>(out, in0, in1, mul_n1<T>);
+    }
+    goto general_purpose_implementation;
+  }
+
+ general_purpose_implementation:
+  if (IsSameDims(out, in0, in1)) {
     return binop_dimN<T, T>(out, in0, in1,
 			    [](T a, T b) -> T { return a * b; });
   }
@@ -1257,13 +1310,15 @@ int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   if (IsSameSize(out, in0, in1)) {
     return div_nn<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
-  if (in0.dims == 2
-      && in1.dims == 2
-      && in0.dim_size[0] == in1.dim_size[0]
-      && in1.dim_size[1] == 1) {
-    return div2_nn_n1<T>(out.addr, in0.addr, in1.addr,
-			 in0.dim_size[0], in0.dim_size[1]);
+
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      return div2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    goto general_purpose_implementation;
   }
+
+ general_purpose_implementation:
   if (IsSameDims(out, in0, in1)) {
     return binop_dimN<T, T>(out, in0, in1,
 			    [](T y, T z) -> T { return y / z; });
@@ -1390,13 +1445,14 @@ int op_divnonan(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return divnonan_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   } 
-  if (args.in0.dims == 2
-      && args.in1.dims == 2
-      && args.in0.dim_size[0] == args.in1.dim_size[0]
-      && args.in1.dim_size[1] == 1) {
-    return divnonan2_nn_n1<T>(args.out.addr, args.in0.addr, args.in1.addr,
-			      args.in0.dim_size[0], args.in0.dim_size[1]);
+  if (CheckDimsAll(args, 2)) {
+    if (args.in0.dim_size[0] == args.in1.dim_size[0]  &&  args.in1.dim_size[1] == 1) {
+      return divnonan2_nn_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.dim_size[0], args.in0.dim_size[1]);
+    }
+    goto general_purpose_implementation;
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1482,6 +1538,7 @@ int op_pow(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return pow_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   
   return 1;
@@ -1609,44 +1666,53 @@ int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor cons
 
   if (in0.nelems == 1) {
     return sqdiff_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
-  } else if (in1.nelems == 1) {
+  }
+  if (in1.nelems == 1) {
     return sqdiff_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
-  } else if (IsSameSize(out, in0, in1)) {
+  }
+  if (IsSameSize(out, in0, in1)) {
     return sqdiff_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
-  } else if (in0.dims == 2 && in1.dims == 2
-	     && in0.dim_size[0] == in1.dim_size[0] ) {
-    if( in1.dim_size[1] == 1 ) {
-      return sqdiff2_nn_n1<T>(out.addr, in0.addr, in1.addr,
-			      in0.dim_size[0], in0.dim_size[1]);
+  }
+
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]) {
+      if (in1.dim_size[1] == 1) {
+	return sqdiff2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+      }
+      if (in0.dim_size[1] == 1) {
+	return sqdiff2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
+      }
     }
-    else if( in0.dim_size[1] == 1 ) {
-      return sqdiff2_nn_n1<T>(out.addr, in1.addr, in0.addr,
-			      in1.dim_size[0], in1.dim_size[1]);
+    if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
+      return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
     }
-  } else if (in0.dims == 2 && in1.dims == 2
-	     && in0.dim_size[1] == in1.dim_size[1]
-	     && in1.dim_size[0] == 1 ) {
-    return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr,
-                            in0.dim_size[0], in0.dim_size[1]) ;
-  } else if (in0.dims == 3 && in1.dims == 3
-	     && in1.dim_size[0] == 1
-	     && in1.dim_size[1] == 1
-	     && in1.dim_size[2] == in0.dim_size[2]) {
-    return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr,
-			    in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
-  } else if (in0.dims == 3 && in1.dims == 3
-	     && in0.dim_size[0] == 1
-	     && in0.dim_size[1] == 1
-	     && in0.dim_size[2] == in1.dim_size[2]) {
-    return sqdiff2_nn_1n<T>(out.addr, in1.addr, in0.addr,
-			    in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
-  } else if (check_dim(out, {8, 16, 64, 8, 8})
-	     && check_dim(in0, {8, 16, 64, 8, 8})
-	     && check_dim(in1, {1, 16, 64, 1, 1})) {
-    return sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
-  } else if (check_binop_dim5_x(out, in0, in1)) {
-    return binop_dim5_x<T>(out, in0, in1, sqdiff_n1<T>);
-  } else if (IsSameDims(out, in0, in1)) {
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 3)) {
+    if (in1.dim_size[0] == 1  &&  in1.dim_size[1] == 1  &&  in1.dim_size[2] == in0.dim_size[2]) {
+      return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
+      return sqdiff2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 5)) {
+    if (check_dim(out, {8, 16, 64, 8, 8}) &&
+	check_dim(in0, {8, 16, 64, 8, 8}) &&
+	check_dim(in1, {1, 16, 64, 1, 1})) {
+      return sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1<T>(out, in0, in1);
+    }
+    if (check_binop_dim5_x(out, in0, in1)) {
+      return binop_dim5_x<T>(out, in0, in1, sqdiff_n1<T>);
+    }
+    goto general_purpose_implementation;
+  }
+
+ general_purpose_implementation:
+  if (IsSameDims(out, in0, in1)) {
     return binop_dimN<T, T>(out, in0, in1,
 			    [](T y, T z) -> T { return (y-z)*(y-z); });
   }
@@ -1703,6 +1769,8 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return rsqrt_grad_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1765,6 +1833,8 @@ int op_minimum(const BinaryOpArgs& args)
   if (IsSameSize(args)) {
     return minimum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1836,6 +1906,8 @@ int op_maximum(const BinaryOpArgs& args)
   if (IsSameSize(args)) {
     return maximum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1910,6 +1982,8 @@ int op_equal(const BinaryOpArgs& args) {
     return binop_dimN<bool, T>(args.out, args.in0, args.in1,
 			       [](T y, T z) -> bool { return y == z; });
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1979,6 +2053,8 @@ int op_notEqual(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return notEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2191,6 +2267,8 @@ int op_less(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return less_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2229,6 +2307,8 @@ int op_lessEqual(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return lessEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2267,6 +2347,8 @@ int op_greater(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return greater_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2305,6 +2387,8 @@ int op_greaterEqual(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return greaterEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
+
+ general_purpose_implementation:
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
