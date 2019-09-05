@@ -505,8 +505,19 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
     return add_nn<T>(X.addr, Y.addr, Z.addr, Y.nelems);
   }
 
+  // 2次元以下で配列の次元サイズを最大次元に合わせない旧呼び出しパターン用
   if (Y.dims == 2 && Z.dims == 1 && Y.dim_size[1] == Z.dim_size[0] ) {
+    LOG(LOG_ERROR) << __FUNCTION__ << " here.";
     return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
+  }
+
+  if (CheckDimsAll(X, Y, Z, 2)) {
+    if (Y.dim_size[1] == Z.dim_size[1]) {
+      if (Z.dim_size[0] == 1) {
+	return add2_nn_1n<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]) ;
+      }
+    }
+    goto general_purpose_implementation;
   }
 
   if (CheckDimsAll(X, Y, Z, 3)) {
