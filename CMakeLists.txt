@@ -23,7 +23,7 @@ add_subdirectory(test)
 set(CLANG_RUNTIME ${LLVM_INSTALL_PREFIX}/lib/clang/10.0.0/lib/linux/libclang_rt.builtins-ve.a)
 
 add_custom_target(veorun_tf ALL
-        COMMAND ${CMAKE_COMMAND} -E env CC=${NCC} CXX=${NCXX} CFLAGS="-no-proginf;-no-perfcnt" ${CMAKE_SOURCE_DIR}/mk_veorun_static veorun_tf src/libvetfkernel.a -- ${BLAS} ${ASL} ${CLANG_RUNTIME} libs/vednn/src/libvednn_openmp.a -fopenmp -lveio -pthread -ldl -static
+        COMMAND ${CMAKE_COMMAND} -E env CC=${NCC} CXX=${NCXX} CFLAGS="-no-proginf;-no-perfcnt;-fopenmp;-static" mk_veorun_static -o veorun_tf --link-nosym=${BLAS} --link-nosym=${ASL} --link-nosym=${CLANG_RUNTIME} --link-nosym=libs/vednn/src/libvednn_openmp.a -lveio src/libvetfkernel.a 
   DEPENDS vednn_openmp vetfkernel)
 
 # for make clean
