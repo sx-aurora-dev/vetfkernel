@@ -12,10 +12,11 @@ struct BinaryOpArgs {
     vml::Tensor in0;
     vml::Tensor in1;
     vml::Tensor out;
-};
+} __attribute__((__packed__));
 
 template<typename T> struct dypte_s {};
 template<> struct dypte_s<float> { static const int type = 1; };
+template<> struct dypte_s<bool>  { static const int type = 10; };
 
 template <typename T>
 vml::Tensor makeTensor(size_t dims, std::vector<size_t> const& dim_size)
@@ -87,8 +88,13 @@ bool checkTensor(Tensor<T> const& a, Tensor<T> const& b)
 }
 
 template<typename T>
-void printTensor(Tensor<T> const& t, std::string fmt = " %8.3f")
+void printTensor(Tensor<T> const& t)
 {
+    std::string fmt = " %8.3f";
+    if (typeid(T) == typeid(bool)) {
+      fmt = std::string(" %d");
+    }
+
     std::vector<size_t> s(t.dims() + 1);
     s[t.dims()] = 1;
     for (int i = t.dims() - 1; i >= 0; --i)
@@ -99,7 +105,7 @@ void printTensor(Tensor<T> const& t, std::string fmt = " %8.3f")
     fprintf(stderr, "%d %d %d\n", s[0], s[1], s[2]);
 #endif
 
-    float const* p = t.data();
+    T const* p = t.data();
     size_t n = t.dim_size(t.dims() - 1); // innermost
 
     for (size_t i = 0; i < t.nelems(); ++i) {
@@ -197,12 +203,12 @@ DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
 // BinaryOp
 //
 
-template<typename T>
+template<typename TOUT, typename T>
 bool test_BinaryOp(TestParam const& param,
-                   Tensor<T>& out,
+                   Tensor<TOUT>& out,
                    Tensor<T> const& in0,
                    Tensor<T> const& in1,
-                   Tensor<T> const& exp,
+                   Tensor<TOUT> const& exp,
                    int (*op)(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1))
 {
     BinaryOpArgs args;
@@ -229,9 +235,57 @@ bool test_BinaryOp(TestParam const& param,
     return flag;
 }
 
-template <typename T, typename F>
-int ref_Binop(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z, F op,
-        T* pX, T const* pY, T const* pZ, int dim)
+
+
+// obsolute api
+extern "C" {
+  int op_minimum_(const BinaryOpArgs& args);
+  int op_maximum_(const BinaryOpArgs& args);
+  int op_equal_(const BinaryOpArgs& args);
+  int op_notEqual_(const BinaryOpArgs& args);
+  int op_less_(const BinaryOpArgs& args);
+  int op_lessEqual_(const BinaryOpArgs& args);
+  int op_greater_(const BinaryOpArgs& args);
+  int op_greaterEqual_(const BinaryOpArgs& args);
+}
+
+template<typename TOUT, typename T>
+bool test_BinaryOp_(TestParam const& param,
+                   Tensor<TOUT>& out,
+                   Tensor<T> const& in0,
+                   Tensor<T> const& in1,
+                   Tensor<TOUT> const& exp,
+                   int (*op)(const BinaryOpArgs& args))
+{
+    BinaryOpArgs args;
+    args.out = out.tensor();
+    args.in0 = in0.tensor();
+    args.in1 = in1.tensor();
+    int ret = op(args);
+
+    bool flag = false;
+    if (ret == 0)
+        flag = checkTensor(out, exp);
+
+    if (param.verbose > 1 || (!flag && param.verbose > 0)) {
+        fprintf(stderr, "in0 = \n");
+        printTensor(in0);
+        fprintf(stderr, "in1 = \n");
+        printTensor(in1);
+        fprintf(stderr, "out = \n");
+        printTensor(out);
+        fprintf(stderr, "expected = \n");
+        printTensor(exp);
+    }
+
+    return flag;
+}
+
+
+
+template <typename TOUT, typename T, typename F>
+int ref_Binop(Tensor<TOUT>& X, Tensor<T> const& Y, Tensor<T> const& Z, F op,
+        TOUT* pX, T const* pY, T const* pZ, int dim)
 {
   //fprintf(stderr, "%s: dim=%d X.stride[%d]=%d\n", __FUNCTION__, dim, dim, X.stride(dim));
   if (dim + 1 == X.dims()) {
@@ -247,7 +301,7 @@ int ref_Binop(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z, F op,
       fprintf(stderr, "%s: dim=%d X.dim_size[%d]=%d i=%d %d %d\n",
               __FUNCTION__, dim, dim, X.dim_size(dim), i, Y.dim_size(dim), Y.stride(dim));
 #endif
-      T* pX0 = pX + i * X.stride(dim);
+      TOUT* pX0 = pX + i * X.stride(dim);
       T const* pY0 = pY + (i % Y.dim_size(dim)) * Y.stride(dim);
       T const* pZ0 = pZ + (i % Z.dim_size(dim)) * Z.stride(dim);
       ref_Binop(X, Y, Z, op, pX0, pY0, pZ0, dim + 1);
@@ -288,6 +342,72 @@ int ref_SquaredDifference(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z)
 {
   return ref_Binop(X, Y, Z, [](T y, T z) -> T { return (y - z) * (y - z); },
           X.data(), Y.data(), Z.data(), 0);
+}
+
+
+
+template <typename TOUT, typename TIN>
+int ref_Minimum(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 < i1 ? i0 : i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_Maximum(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 > i1 ? i0 : i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_Equal(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 == i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_NotEqual(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 != i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_Less(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 < i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_LessEqual(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 <= i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_Greater(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 > i1; },
+		   out.data(), in0.data(), in1.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_GreaterEqual(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
+{
+  return ref_Binop(out, in0, in1,
+		   [](TIN i0, TIN i1) -> TOUT { return i0 >= i1; },
+		   out.data(), in0.data(), in1.data(), 0);
 }
 
 
@@ -586,6 +706,39 @@ bool test_Add_06(TestParam const& param)
   return test_BinaryOp_06<float>(param, ref_Add<float>, vml::add);
 }
 
+bool test_Add_generic(TestParam const& param)
+{
+  Tensor<float> exp({4, 8, 4});
+  Tensor<float> out({4, 8, 4});
+  Tensor<float> in0({1, 8, 2});
+  Tensor<float> in1({4, 4, 4});
+
+  for (size_t i = 0; i < 1; ++i) {
+    for (size_t j = 0; j < 8; ++j) {
+      for (size_t k = 0; k < 2; ++k) {
+	size_t index = (i * 8 + j) * 2 + k;
+	in0.data()[index] = (float)drand48();
+      }
+    }
+  }
+
+  for (size_t i = 0; i < 4; ++i) {
+    for (size_t j = 0; j < 4; ++j) {
+      for (size_t k = 0; k < 4; ++k) {
+	size_t index = (i * 4 + j) * 4 + k;
+	in1.data()[index] = (float)drand48();
+      }
+    }
+  }
+
+  ref_Add(exp, in0, in1);
+
+  return test_BinaryOp(param, out, in0, in1, exp, vml::add);
+}
+
+
+
+
 bool test_Sub_04(TestParam const& param)
 {
   return test_BinaryOp_04<float>(param, ref_Sub<float>, vml::sub);
@@ -762,6 +915,81 @@ bool test_AvgPool_02(TestParam const& param)
 }
 
 
+template<typename TOUT, typename TIN>
+bool test_generic_(TestParam const& param,
+		   int (*ref_op)(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1),
+		   int (*op)(const BinaryOpArgs& args))
+{
+  Tensor<TOUT> exp({4, 8, 4});
+  Tensor<TOUT> out({4, 8, 4});
+  Tensor<TIN>  in0({1, 8, 2});
+  Tensor<TIN>  in1({4, 4, 4});
+
+  for (size_t i = 0; i < 1; ++i) {
+    for (size_t j = 0; j < 8; ++j) {
+      for (size_t k = 0; k < 2; ++k) {
+	size_t index = (i * 8 + j) * 2 + k;
+	in0.data()[index] = (TIN)drand48();
+      }
+    }
+  }
+
+  for (size_t i = 0; i < 4; ++i) {
+    for (size_t j = 0; j < 4; ++j) {
+      for (size_t k = 0; k < 4; ++k) {
+	size_t index = (i * 4 + j) * 4 + k;
+	in1.data()[index] = (TIN)drand48();
+      }
+    }
+  }
+
+  ref_op(exp, in0, in1);
+
+  return test_BinaryOp_(param, out, in0, in1, exp, op);
+}
+
+bool test_Maximum_generic(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_Maximum, op_maximum_);
+}
+
+bool test_Minimum_generic(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_Minimum, op_minimum_);
+}
+
+bool test_Equal_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_Equal, op_equal_);
+}
+
+bool test_NotEqual_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_NotEqual, op_notEqual_);
+}
+
+bool test_Less_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_Less, op_less_);
+}
+
+bool test_LessEqual_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_LessEqual, op_lessEqual_);
+}
+
+bool test_Greater_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_Greater, op_greater_);
+}
+
+bool test_GreaterEqual_generic(TestParam const& param)
+{
+  return test_generic_<bool, float>(param, ref_GreaterEqual, op_greaterEqual_);
+}
+
+
+
 struct Test
 {
     std::string name;
@@ -777,6 +1005,7 @@ int main(int argc, char* argv[])
         { "Add_04", test_Add_04 },
         { "Add_05", test_Add_05 },
         { "Add_06", test_Add_06 },
+	// { "Add[generic]", test_Add_generic },
 
         { "Sub_04", test_Sub_04 },
         { "Sub_05", test_Sub_05 },
@@ -795,6 +1024,16 @@ int main(int argc, char* argv[])
 
         { "AvgPool_01", test_AvgPool_01 },
         { "AvgPool_02", test_AvgPool_02 },
+        { "Mul_12", test_Mul_12 },
+
+        { "Minimum[generic]",      test_Minimum_generic      },
+        { "Maximum[generic]",      test_Maximum_generic      },
+        { "Equal[generic]",        test_Equal_generic        },
+        { "NotEqual[generic]",     test_NotEqual_generic     },
+        { "Less[generic]",         test_Less_generic         },
+        { "LessEqual[generic]",    test_LessEqual_generic    },
+        { "Greater[generic]",      test_Greater_generic      },
+        { "GreaterEqual[generic]", test_GreaterEqual_generic },
 
 #define DEFINE_TEST_01(T) {#T "_01", test_##T##_01}
         DEFINE_TEST_01(Abs),

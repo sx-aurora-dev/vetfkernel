@@ -300,6 +300,8 @@ int binop_dim3(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z,
 template<typename TO, typename TI, typename F>
 int binop_dimN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
 {
+    LOG(LOG_TRACE) << __FUNCTION__ << ": general-purpose kernel is called";
+
     TO* px = reinterpret_cast<TO*>(X.addr);
     TI const* py = reinterpret_cast<TI*>(Y.addr);
     TI const* pz = reinterpret_cast<TI*>(Z.addr);
@@ -1851,6 +1853,10 @@ int op_minimum(const BinaryOpArgs& args)
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+			    [](T in0, T in1) -> T { return in0 < in1 ? in0 : in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1922,6 +1928,10 @@ int op_maximum(const BinaryOpArgs& args)
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+			    [](T in0, T in1) -> T { return in0 > in1 ? in0 : in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1990,12 +2000,12 @@ int op_equal(const BinaryOpArgs& args) {
   if (IsSameSize(args)) {
     return equal_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
-			       [](T y, T z) -> bool { return y == z; });
-  }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 == in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2067,6 +2077,10 @@ int op_notEqual(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 != in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2281,6 +2295,10 @@ int op_less(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 < in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2321,6 +2339,10 @@ int op_lessEqual(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 <= in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2361,12 +2383,14 @@ int op_greater(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 > in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
 }
-
-
 
 int op_greater(const BinaryOpArgs& args) {
   if (args.out.dtype == DT_BOOL) {
@@ -2385,8 +2409,6 @@ int op_greater(const BinaryOpArgs& args) {
   return 1;
 }
 
-
-
 // GreaterEqual
 template <typename T>
 int op_greaterEqual(const BinaryOpArgs& args) {
@@ -2401,12 +2423,14 @@ int op_greaterEqual(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+			       [](T in0, T in1) -> T { return in0 >= in1; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
 }
-
-
 
 int op_greaterEqual(const BinaryOpArgs& args) {
   if (args.out.dtype == DT_BOOL) {
@@ -2425,9 +2449,20 @@ int op_greaterEqual(const BinaryOpArgs& args) {
   return 1;
 }
 
-
-
 } // namespace
+
+
+// for TEST obsolute binary_op API
+extern "C" {
+  int op_minimum_(const BinaryOpArgs& args) { return op_minimum(args); };
+  int op_maximum_(const BinaryOpArgs& args) { return op_maximum(args); };
+  int op_equal_(const BinaryOpArgs& args) { return op_equal(args); };
+  int op_notEqual_(const BinaryOpArgs& args) { return op_notEqual(args); };
+  int op_less_(const BinaryOpArgs& args) { return op_less(args); };
+  int op_lessEqual_(const BinaryOpArgs& args) { return op_lessEqual(args); };
+  int op_greater_(const BinaryOpArgs& args) { return op_greater(args); };
+  int op_greaterEqual_(const BinaryOpArgs& args) { return op_greaterEqual(args); };
+}
 
 
 // Wrappers for TensorFlow kernel
