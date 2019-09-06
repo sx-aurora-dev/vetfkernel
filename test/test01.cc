@@ -239,6 +239,9 @@ bool test_BinaryOp(TestParam const& param,
 
 // obsolute api
 extern "C" {
+  int op_divnonan_(const BinaryOpArgs& args);
+  int op_pow_(const BinaryOpArgs& args);
+  int op_rsqrt_grad_(const BinaryOpArgs& args);
   int op_minimum_(const BinaryOpArgs& args);
   int op_maximum_(const BinaryOpArgs& args);
   int op_equal_(const BinaryOpArgs& args);
@@ -316,35 +319,61 @@ int ref_Binop(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z, F op)
   return ref_Binop(X, Y, Z, op, X.data(), Y.data(), Z.data(), 0);
 }
 
-template <typename T>
-int ref_Add(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z)
+template <typename TOUT, typename TIN>
+int ref_Add(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
 {
-  return ref_Binop(X, Y, Z, [](T y, T z) -> T { return y + z; },
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return y + z; },
           X.data(), Y.data(), Z.data(), 0);
 }
 
-template <typename T>
-int ref_Sub(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z)
+template <typename TOUT, typename TIN>
+int ref_Sub(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
 {
-  return ref_Binop(X, Y, Z, [](T y, T z) -> T { return y - z; },
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return y - z; },
           X.data(), Y.data(), Z.data(), 0);
 }
 
-template <typename T>
-int ref_Mul(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z)
+template <typename TOUT, typename TIN>
+int ref_Mul(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
 {
-  return ref_Binop(X, Y, Z, [](T y, T z) -> T { return y * z; },
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return y * z; },
           X.data(), Y.data(), Z.data(), 0);
 }
 
-template <typename T>
-int ref_SquaredDifference(Tensor<T>& X, Tensor<T> const& Y, Tensor<T> const& Z)
+template <typename TOUT, typename TIN>
+int ref_Div(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
 {
-  return ref_Binop(X, Y, Z, [](T y, T z) -> T { return (y - z) * (y - z); },
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return y / z; },
           X.data(), Y.data(), Z.data(), 0);
 }
 
+template <typename TOUT, typename TIN>
+int ref_DivNoNaN(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
+{
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return (z == TIN(0.)) ? TOUT(0.0) : (y / z); },
+          X.data(), Y.data(), Z.data(), 0);
+}
 
+template <typename TOUT, typename TIN>
+int ref_Pow(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
+{
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return std::pow(y, z); },
+          X.data(), Y.data(), Z.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_SquaredDifference(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
+{
+  return ref_Binop(X, Y, Z, [](TIN y, TIN z) -> TOUT { return (y - z) * (y - z); },
+          X.data(), Y.data(), Z.data(), 0);
+}
+
+template <typename TOUT, typename TIN>
+int ref_RsqrtGrad(Tensor<TOUT>& X, Tensor<TIN> const& Y, Tensor<TIN> const& Z)
+{
+  return ref_Binop(X, Y, Z, [](TIN out, TIN gradout) -> TOUT { return TIN(-0.5) * gradout * out * out * out; },
+          X.data(), Y.data(), Z.data(), 0);
+}
 
 template <typename TOUT, typename TIN>
 int ref_Minimum(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1)
@@ -693,110 +722,77 @@ bool test_BinaryOp_12(TestParam const& param, F0 f0, F1 f1)
 
 bool test_Add_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Add<float>, vml::add);
+  return test_BinaryOp_04<float>(param, ref_Add<float,float>, vml::add);
 }
 
 bool test_Add_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Add<float>, vml::add);
+  return test_BinaryOp_05<float>(param, ref_Add<float,float>, vml::add);
 }
 
 bool test_Add_06(TestParam const& param)
 {
-  return test_BinaryOp_06<float>(param, ref_Add<float>, vml::add);
+  return test_BinaryOp_06<float>(param, ref_Add<float,float>, vml::add);
 }
-
-bool test_Add_generic(TestParam const& param)
-{
-  Tensor<float> exp({4, 8, 4});
-  Tensor<float> out({4, 8, 4});
-  Tensor<float> in0({1, 8, 2});
-  Tensor<float> in1({4, 4, 4});
-
-  for (size_t i = 0; i < 1; ++i) {
-    for (size_t j = 0; j < 8; ++j) {
-      for (size_t k = 0; k < 2; ++k) {
-	size_t index = (i * 8 + j) * 2 + k;
-	in0.data()[index] = (float)drand48();
-      }
-    }
-  }
-
-  for (size_t i = 0; i < 4; ++i) {
-    for (size_t j = 0; j < 4; ++j) {
-      for (size_t k = 0; k < 4; ++k) {
-	size_t index = (i * 4 + j) * 4 + k;
-	in1.data()[index] = (float)drand48();
-      }
-    }
-  }
-
-  ref_Add(exp, in0, in1);
-
-  return test_BinaryOp(param, out, in0, in1, exp, vml::add);
-}
-
-
-
 
 bool test_Sub_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Sub<float>, vml::sub);
+  return test_BinaryOp_04<float>(param, ref_Sub<float,float>, vml::sub);
 }
 
 bool test_Sub_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Sub<float>, vml::sub);
+  return test_BinaryOp_05<float>(param, ref_Sub<float,float>, vml::sub);
 }
 
 bool test_Mul_04(TestParam const& param)
 {
-  return test_BinaryOp_04<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_04<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_05<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_06(TestParam const& param)
 {
-  return test_BinaryOp_06<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_06<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_07(TestParam const& param)
 {
-  return test_BinaryOp_07<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_07<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_08(TestParam const& param)
 {
-  return test_BinaryOp_08<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_08<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_09(TestParam const& param)
 {
-  return test_BinaryOp_09<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_09<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_10(TestParam const& param)
 {
-  return test_BinaryOp_10<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_10<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_11(TestParam const& param)
 {
-  return test_BinaryOp_11<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_11<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_Mul_12(TestParam const& param)
 {
-  return test_BinaryOp_12<float>(param, ref_Mul<float>, vml::mul);
+  return test_BinaryOp_12<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_SquaredDifference_05(TestParam const& param)
 {
-  return test_BinaryOp_05<float>(param, ref_SquaredDifference<float>, 
+  return test_BinaryOp_05<float>(param, ref_SquaredDifference<float,float>, 
                                  vml::sqdiff);
 }
 
@@ -915,6 +911,63 @@ bool test_AvgPool_02(TestParam const& param)
 }
 
 
+
+template<typename TOUT, typename TIN>
+bool test_generic(TestParam const& param,
+		  int (*ref_op)(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1),
+		  int (*op)(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1))
+{
+  Tensor<TOUT> exp({4, 8, 4});
+  Tensor<TOUT> out({4, 8, 4});
+  Tensor<TIN>  in0({1, 8, 2});
+  Tensor<TIN>  in1({4, 4, 4});
+
+  for (size_t i = 0; i < 1; ++i) {
+    for (size_t j = 0; j < 8; ++j) {
+      for (size_t k = 0; k < 2; ++k) {
+	size_t index = (i * 8 + j) * 2 + k;
+	in0.data()[index] = (TIN)drand48();
+      }
+    }
+  }
+
+  for (size_t i = 0; i < 4; ++i) {
+    for (size_t j = 0; j < 4; ++j) {
+      for (size_t k = 0; k < 4; ++k) {
+	size_t index = (i * 4 + j) * 4 + k;
+	in1.data()[index] = (TIN)drand48();
+      }
+    }
+  }
+
+  ref_op(exp, in0, in1);
+
+  return test_BinaryOp(param, out, in0, in1, exp, op);
+}
+
+bool test_Add_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Add, vml::add);
+}
+
+bool test_Sub_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Sub, vml::sub);
+}
+
+bool test_Mul_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Mul, vml::mul);
+}
+
+bool test_Div_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Div, vml::div);
+}
+
+
+
+// obsolute api
 template<typename TOUT, typename TIN>
 bool test_generic_(TestParam const& param,
 		   int (*ref_op)(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1),
@@ -946,6 +999,26 @@ bool test_generic_(TestParam const& param,
   ref_op(exp, in0, in1);
 
   return test_BinaryOp_(param, out, in0, in1, exp, op);
+}
+
+bool test_DivNoNaN_generic(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_DivNoNaN, op_divnonan_);
+}
+
+bool test_Pow_generic(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_Pow, op_pow_);
+}
+
+bool test_SquaredDifference(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_SquaredDifference, op_rsqrt_grad_);
+}
+
+bool test_RsqrtGrad(TestParam const& param)
+{
+  return test_generic_<float, float>(param, ref_RsqrtGrad, op_rsqrt_grad_);
 }
 
 bool test_Maximum_generic(TestParam const& param)
@@ -1005,7 +1078,6 @@ int main(int argc, char* argv[])
         { "Add_04", test_Add_04 },
         { "Add_05", test_Add_05 },
         { "Add_06", test_Add_06 },
-	// { "Add[generic]", test_Add_generic },
 
         { "Sub_04", test_Sub_04 },
         { "Sub_05", test_Sub_05 },
@@ -1026,14 +1098,22 @@ int main(int argc, char* argv[])
         { "AvgPool_02", test_AvgPool_02 },
         { "Mul_12", test_Mul_12 },
 
-        { "Minimum[generic]",      test_Minimum_generic      },
-        { "Maximum[generic]",      test_Maximum_generic      },
-        { "Equal[generic]",        test_Equal_generic        },
-        { "NotEqual[generic]",     test_NotEqual_generic     },
-        { "Less[generic]",         test_Less_generic         },
-        { "LessEqual[generic]",    test_LessEqual_generic    },
-        { "Greater[generic]",      test_Greater_generic      },
-        { "GreaterEqual[generic]", test_GreaterEqual_generic },
+	{ "Add[generic]",              test_Add_generic          },
+	{ "Sub[generic]",              test_Sub_generic          },
+	{ "Mul[generic]",              test_Mul_generic          },
+	{ "Div[generic]",              test_Div_generic          },
+	{ "Div No NaN[generic]",       test_DivNoNaN_generic     },
+	{ "Pow[generic]",              test_Pow_generic          },
+	{ "SquareDifference[generic]", test_SquaredDifference    },
+	{ "RsqrtGrad[generic]",        test_RsqrtGrad            },
+        { "Minimum[generic]",          test_Minimum_generic      },
+        { "Maximum[generic]",          test_Maximum_generic      },
+        { "Equal[generic]",            test_Equal_generic        },
+        { "NotEqual[generic]",         test_NotEqual_generic     },
+        { "Less[generic]",             test_Less_generic         },
+        { "LessEqual[generic]",        test_LessEqual_generic    },
+        { "Greater[generic]",          test_Greater_generic      },
+        { "GreaterEqual[generic]",     test_GreaterEqual_generic },
 
 #define DEFINE_TEST_01(T) {#T "_01", test_##T##_01}
         DEFINE_TEST_01(Abs),

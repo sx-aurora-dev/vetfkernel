@@ -1201,7 +1201,7 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
  general_purpose_implementation:
   if (IsSameDims(out, in0, in1)) {
     return binop_dimN<T, T>(out, in0, in1,
-			    [](T a, T b) -> T { return a * b; });
+			    [](T y, T z) -> T { return y * z; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
@@ -1471,6 +1471,10 @@ int op_divnonan(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+			    [](T y, T z) -> T { T r = T(0.); if (z != T(0.)) { r = y / z; }; return r; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -1557,6 +1561,10 @@ int op_pow(const BinaryOpArgs& args) {
     return pow_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
   }
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+			    [](T y, T z) -> T { return std::pow(y, z); });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
   
   return 1;
@@ -1789,6 +1797,10 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
   }
 
  general_purpose_implementation:
+  if (IsSameDims(args)) {
+    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+			    [](T y, T z) -> T { return T(-0.5) * z * y * y * y; });
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
 
   return 1;
@@ -2454,6 +2466,9 @@ int op_greaterEqual(const BinaryOpArgs& args) {
 
 // for TEST obsolute binary_op API
 extern "C" {
+  int op_divnonan_(const BinaryOpArgs& args) { return op_divnonan(args); };
+  int op_pow_(const BinaryOpArgs& args) { return op_pow(args); };
+  int op_rsqrt_grad_(const BinaryOpArgs& args) { return op_rsqrt_grad(args); };
   int op_minimum_(const BinaryOpArgs& args) { return op_minimum(args); };
   int op_maximum_(const BinaryOpArgs& args) { return op_maximum(args); };
   int op_equal_(const BinaryOpArgs& args) { return op_equal(args); };
