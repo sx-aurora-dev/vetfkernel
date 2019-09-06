@@ -1860,16 +1860,14 @@ int op_minimum(const BinaryOpArgs& args)
 
 int op_minimum(const BinaryOpArgs& args)
 {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_minimum<float>(args);
-    }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_minimum<double>(args);
-    }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_minimum<int64_t>(args);
-    }
+  if (CheckTypesAll(args, DT_FLOAT)) {
+    return op_minimum<float>(args);
+  }
+  if (CheckTypesAll(args, DT_DOUBLE)) {
+    return op_minimum<double>(args);
+  }
+  if (CheckTypesAll(args, DT_INT64)) {
+    return op_minimum<int64_t>(args);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1933,16 +1931,14 @@ int op_maximum(const BinaryOpArgs& args)
 
 int op_maximum(const BinaryOpArgs& args)
 {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_maximum<float>(args);
-    }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_maximum<double>(args);
-    }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_maximum<int64_t>(args);
-    }
+  if (CheckTypesAll(args, DT_FLOAT)) {
+    return op_maximum<float>(args);
+  }
+  if (CheckTypesAll(args, DT_DOUBLE)) {
+    return op_maximum<double>(args);
+  }
+  if (CheckTypesAll(args, DT_INT64)) {
+    return op_maximum<int64_t>(args);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
