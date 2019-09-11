@@ -912,6 +912,126 @@ bool test_AvgPool_02(TestParam const& param)
 
 
 
+bool test_Add_nn_1n_01(TestParam const& param)
+{
+    Tensor<float> out({5, 10});
+    Tensor<float> in0({5, 10});
+    Tensor<float> in1({10});
+    Tensor<float> in1_exp({1, 10});
+    Tensor<float> exp({5, 10});
+
+    int c = 0;
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            out.data()[i * 10 + j] = 0;
+            in0.data()[i * 10 + j] = c;
+            ++c;
+        }
+    }
+
+    for (size_t j = 0; j < 10; ++j) {
+      in1.data()[j] = c;
+      in1_exp.data()[j] = c;
+      c++;
+    }
+
+    ref_Add(exp, in0, in1_exp);
+
+    return test_BinaryOp(param, out, in0, in1, exp, vml::add);
+}
+
+
+
+bool test_Add_nn_1n_02(TestParam const& param)
+{
+    Tensor<float> out({5, 10});
+    Tensor<float> in0({5, 10});
+    Tensor<float> in1({1, 10});
+    Tensor<float> exp({5, 10});
+
+    int c = 0;
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            out.data()[i * 10 + j] = 0;
+            in0.data()[i * 10 + j] = c;
+            ++c;
+        }
+    }
+
+    for (size_t i = 0; i < 1; ++i) {
+      for (size_t j = 0; j < 10; ++j) {
+	in1.data()[j] = c;
+	c++;
+      }
+    }
+
+    ref_Add(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, vml::add);
+}
+
+
+
+bool test_Mul_nn_1n_01(TestParam const& param)
+{
+    Tensor<float> out({5, 10});
+    Tensor<float> in0({5, 10});
+    Tensor<float> in1({10});
+    Tensor<float> in1_exp({1, 10});
+    Tensor<float> exp({5, 10});
+
+    int c = 0;
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            out.data()[i * 10 + j] = 0;
+            in0.data()[i * 10 + j] = c;
+            ++c;
+        }
+    }
+
+    for (size_t j = 0; j < 10; ++j) {
+      in1.data()[j] = c;
+      in1_exp.data()[j] = c;
+      c++;
+    }
+
+    ref_Mul(exp, in0, in1_exp);
+
+    return test_BinaryOp(param, out, in0, in1, exp, vml::mul);
+}
+
+
+
+bool test_Mul_nn_1n_02(TestParam const& param)
+{
+    Tensor<float> out({5, 10});
+    Tensor<float> in0({5, 10});
+    Tensor<float> in1({1, 10});
+    Tensor<float> exp({5, 10});
+
+    int c = 0;
+    for (size_t i = 0; i < 5; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            out.data()[i * 10 + j] = 0;
+            in0.data()[i * 10 + j] = c;
+            ++c;
+        }
+    }
+
+    for (size_t i = 0; i < 1; ++i) {
+      for (size_t j = 0; j < 10; ++j) {
+	in1.data()[j] = c;
+	c++;
+      }
+    }
+
+    ref_Mul(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, vml::mul);
+}
+
+
+
 template<typename TOUT, typename TIN>
 bool test_generic(TestParam const& param,
 		  int (*ref_op)(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1),
@@ -1098,6 +1218,13 @@ int main(int argc, char* argv[])
         { "AvgPool_02", test_AvgPool_02 },
         { "Mul_12", test_Mul_12 },
 
+	// 配列の次元数を最大の次元数に変更(次元数2以下のケースの仕様変更)
+	{ "Add[nn_1n]_01 (obsolute)",  test_Add_nn_1n_01         },	// 次元数を合わせないケース
+	{ "Add[nn_1n]_02",             test_Add_nn_1n_02         },
+	{ "Mul[nn_1n]_01 (obsolute)",  test_Mul_nn_1n_01         },	// 次元数を合わせないケース
+	{ "Mul[nn_1n]_02",             test_Mul_nn_1n_02         },
+
+	// 汎用kernelに落ちるケース
 	{ "Add[generic]",              test_Add_generic          },
 	{ "Sub[generic]",              test_Sub_generic          },
 	{ "Mul[generic]",              test_Mul_generic          },
