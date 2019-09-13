@@ -237,55 +237,6 @@ bool test_BinaryOp(TestParam const& param,
 
 
 
-// obsolute api
-extern "C" {
-  int op_divnonan_(const BinaryOpArgs& args);
-  int op_pow_(const BinaryOpArgs& args);
-  int op_rsqrt_grad_(const BinaryOpArgs& args);
-  int op_minimum_(const BinaryOpArgs& args);
-  int op_maximum_(const BinaryOpArgs& args);
-  int op_equal_(const BinaryOpArgs& args);
-  int op_notEqual_(const BinaryOpArgs& args);
-  int op_less_(const BinaryOpArgs& args);
-  int op_lessEqual_(const BinaryOpArgs& args);
-  int op_greater_(const BinaryOpArgs& args);
-  int op_greaterEqual_(const BinaryOpArgs& args);
-}
-
-template<typename TOUT, typename T>
-bool test_BinaryOp_(TestParam const& param,
-                   Tensor<TOUT>& out,
-                   Tensor<T> const& in0,
-                   Tensor<T> const& in1,
-                   Tensor<TOUT> const& exp,
-                   int (*op)(const BinaryOpArgs& args))
-{
-    BinaryOpArgs args;
-    args.out = out.tensor();
-    args.in0 = in0.tensor();
-    args.in1 = in1.tensor();
-    int ret = op(args);
-
-    bool flag = false;
-    if (ret == 0)
-        flag = checkTensor(out, exp);
-
-    if (param.verbose > 1 || (!flag && param.verbose > 0)) {
-        fprintf(stderr, "in0 = \n");
-        printTensor(in0);
-        fprintf(stderr, "in1 = \n");
-        printTensor(in1);
-        fprintf(stderr, "out = \n");
-        printTensor(out);
-        fprintf(stderr, "expected = \n");
-        printTensor(exp);
-    }
-
-    return flag;
-}
-
-
-
 template <typename TOUT, typename T, typename F>
 int ref_Binop(Tensor<TOUT>& X, Tensor<T> const& Y, Tensor<T> const& Z, F op,
         TOUT* pX, T const* pY, T const* pZ, int dim)
@@ -1085,100 +1036,64 @@ bool test_Div_generic(TestParam const& param)
   return test_generic<float, float>(param, ref_Div, vml::div);
 }
 
-
-
-// obsolute api
-template<typename TOUT, typename TIN>
-bool test_generic_(TestParam const& param,
-		   int (*ref_op)(Tensor<TOUT>& out, Tensor<TIN> const& in0, Tensor<TIN> const& in1),
-		   int (*op)(const BinaryOpArgs& args))
-{
-  Tensor<TOUT> exp({4, 8, 4});
-  Tensor<TOUT> out({4, 8, 4});
-  Tensor<TIN>  in0({1, 8, 2});
-  Tensor<TIN>  in1({4, 4, 4});
-
-  for (size_t i = 0; i < 1; ++i) {
-    for (size_t j = 0; j < 8; ++j) {
-      for (size_t k = 0; k < 2; ++k) {
-	size_t index = (i * 8 + j) * 2 + k;
-	in0.data()[index] = (TIN)drand48();
-      }
-    }
-  }
-
-  for (size_t i = 0; i < 4; ++i) {
-    for (size_t j = 0; j < 4; ++j) {
-      for (size_t k = 0; k < 4; ++k) {
-	size_t index = (i * 4 + j) * 4 + k;
-	in1.data()[index] = (TIN)drand48();
-      }
-    }
-  }
-
-  ref_op(exp, in0, in1);
-
-  return test_BinaryOp_(param, out, in0, in1, exp, op);
-}
-
 bool test_DivNoNaN_generic(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_DivNoNaN, op_divnonan_);
+  return test_generic<float, float>(param, ref_DivNoNaN, vml::divnonan);
 }
 
 bool test_Pow_generic(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_Pow, op_pow_);
+  return test_generic<float, float>(param, ref_Pow, vml::pow);
 }
 
 bool test_SquaredDifference(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_SquaredDifference, op_rsqrt_grad_);
+  return test_generic<float, float>(param, ref_SquaredDifference, vml::rsqrt_grad);
 }
 
 bool test_RsqrtGrad(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_RsqrtGrad, op_rsqrt_grad_);
+  return test_generic<float, float>(param, ref_RsqrtGrad, vml::rsqrt_grad);
 }
 
 bool test_Maximum_generic(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_Maximum, op_maximum_);
+  return test_generic<float, float>(param, ref_Maximum, vml::maximum);
 }
 
 bool test_Minimum_generic(TestParam const& param)
 {
-  return test_generic_<float, float>(param, ref_Minimum, op_minimum_);
+  return test_generic<float, float>(param, ref_Minimum, vml::minimum);
 }
 
 bool test_Equal_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_Equal, op_equal_);
+  return test_generic<bool, float>(param, ref_Equal, vml::equal);
 }
 
 bool test_NotEqual_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_NotEqual, op_notEqual_);
+  return test_generic<bool, float>(param, ref_NotEqual, vml::notEqual);
 }
 
 bool test_Less_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_Less, op_less_);
+  return test_generic<bool, float>(param, ref_Less, vml::less);
 }
 
 bool test_LessEqual_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_LessEqual, op_lessEqual_);
+  return test_generic<bool, float>(param, ref_LessEqual, vml::lessEqual);
 }
 
 bool test_Greater_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_Greater, op_greater_);
+  return test_generic<bool, float>(param, ref_Greater, vml::greater);
 }
 
 bool test_GreaterEqual_generic(TestParam const& param)
 {
-  return test_generic_<bool, float>(param, ref_GreaterEqual, op_greaterEqual_);
+  return test_generic<bool, float>(param, ref_GreaterEqual, vml::greaterEqual);
 }
 
 

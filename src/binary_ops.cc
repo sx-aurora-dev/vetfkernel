@@ -159,43 +159,6 @@ int op_Binary(const void* args, size_t len,
 
 
 
-// obsolete
-int op_Binary_(const void* args, size_t len, 
-              int (*func)(const BinaryOpArgs&),
-              const char* name)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": begin";
-  int ret = 1;
-
-  if (sizeof(BinaryOpArgs) == len) {
-    const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
-
-    LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
-      << " in0=" << p->in0.to_s()
-      << " in1=" << p->in1.to_s()
-      << " out=" << p->out.to_s();
-
-    if (func) {
-#ifdef TIMER
-      double t0 = second();
-#endif
-      ret = func(*p);
-#ifdef TIMER
-      double ms = (second() - t0) * 1e3;
-      LOG(LOG_TIMER) << __FUNCTION__ << "::" << name << ": " << ms << " msec";
-#endif
-    }
-  } else {
-    LOG(LOG_ERROR) << name << ": illegal args size " << len
-      << " bytes. but " << sizeof(BinaryOpArgs) << " bytes expected";
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << "::" << name << ": end. ret=" << ret;
-  return ret;
-}
-
-
-
 // Add
 template <typename T>
 int add_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1444,35 +1407,37 @@ int divnonan2_nn_n1(uint64_t out,
   return 0;
 }
 
+} // namespace
+
 
 
 template <typename T>
-int op_divnonan(const BinaryOpArgs& args) {
+int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  // printf("args.in0.dims = %ld\n", args.in0.dims) ;
+  // for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
+  // printf("args.in1.dims = %ld\n", args.in1.dims) ;
+  // for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
-
-  if (args.in1.nelems == 1) {
-    return divnonan_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (in1.nelems == 1) {
+    return divnonan_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return divnonan_1n<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (in0.nelems == 1) {
+    return divnonan_1n<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
-  if (IsSameSize(args)) {
-    return divnonan_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return divnonan_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   } 
-  if (CheckDimsAll(args, 2)) {
-    if (args.in0.dim_size[0] == args.in1.dim_size[0]  &&  args.in1.dim_size[1] == 1) {
-      return divnonan2_nn_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.dim_size[0], args.in0.dim_size[1]);
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      return divnonan2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
     goto general_purpose_implementation;
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
 			    [](T y, T z) -> T { T r = T(0.); if (z != T(0.)) { r = y / z; }; return r; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -1482,9 +1447,10 @@ int op_divnonan(const BinaryOpArgs& args) {
 
 
 
-int op_divnonan(const BinaryOpArgs& args) {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    return op_divnonan<float>(args);
+int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::divnonan<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1492,6 +1458,8 @@ int op_divnonan(const BinaryOpArgs& args) {
 }
 
 
+
+namespace {
 
 // Pow
 template <typename T>
@@ -1540,29 +1508,31 @@ int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template<typename T>
-int op_pow(const BinaryOpArgs& args) {
-
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
+  //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
+  //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
+  //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
   // TODO : impl other patterns
-  if (args.in0.nelems == 1) {
-    return pow_1n<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (in0.nelems == 1) {
+    return pow_1n<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in1.nelems == 1) {
-    return pow_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (in1.nelems == 1) {
+    return pow_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (IsSameSize(args)) {
-    return pow_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return pow_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
 			    [](T y, T z) -> T { return std::pow(y, z); });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -1572,9 +1542,10 @@ int op_pow(const BinaryOpArgs& args) {
 
 
 
-int op_pow(const BinaryOpArgs& args) {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    return op_pow<float>(args);
+int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::pow<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
   
@@ -1582,6 +1553,8 @@ int op_pow(const BinaryOpArgs& args) {
 }
 
 
+
+namespace {
 
 // SquaredDifference
 template <typename T>
@@ -1763,7 +1736,6 @@ int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor cons
 
 namespace {
 
-
 // RsqrtGrad
 template <typename T>
 int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1781,24 +1753,26 @@ int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template <typename T>
-int op_rsqrt_grad(const BinaryOpArgs& args) {
-
-//  printf("args.in0.dims = %ld\n", args.in0.dims) ;
-//  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
-//  printf("args.in1.dims = %ld\n", args.in1.dims) ;
-//  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
+  //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
+  //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
+  //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
 
   // TODO : impl other patterns
-  if (IsSameSize(args)) {
-    return rsqrt_grad_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return rsqrt_grad_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
 			    [](T y, T z) -> T { return T(-0.5) * z * y * y * y; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -1808,9 +1782,10 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
 
 
 
-int op_rsqrt_grad(const BinaryOpArgs& args) {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    return op_rsqrt_grad<float>(args);
+int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::rsqrt_grad<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1818,6 +1793,8 @@ int op_rsqrt_grad(const BinaryOpArgs& args) {
 }
 
 
+
+namespace {
 
 // Minimum
 
@@ -1849,24 +1826,26 @@ int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template <typename T>
-int op_minimum(const BinaryOpArgs& args)
+int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-  if (args.in1.nelems == 1) {
-    return minimum_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (in1.nelems == 1) {
+    return minimum_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return minimum_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+  if (in0.nelems == 1) {
+    return minimum_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
   }
-  if (IsSameSize(args)) {
-    return minimum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return minimum_nn<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
 			    [](T in0, T in1) -> T { return in0 < in1 ? in0 : in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -1876,16 +1855,16 @@ int op_minimum(const BinaryOpArgs& args)
 
 
 
-int op_minimum(const BinaryOpArgs& args)
+int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    return op_minimum<float>(args);
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::minimum<float>(out, in0, in1);
   }
-  if (CheckTypesAll(args, DT_DOUBLE)) {
-    return op_minimum<double>(args);
+  if (CheckTypesAll(out, in0, in1, DT_DOUBLE)) {
+    return vml::minimum<double>(out, in0, in1);
   }
-  if (CheckTypesAll(args, DT_INT64)) {
-    return op_minimum<int64_t>(args);
+  if (CheckTypesAll(out, in0, in1, DT_INT64)) {
+    return vml::minimum<int64_t>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1893,6 +1872,8 @@ int op_minimum(const BinaryOpArgs& args)
 }
 
 
+
+namespace {
 
 // Maximum
 
@@ -1924,24 +1905,26 @@ int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template <typename T>
-int op_maximum(const BinaryOpArgs& args)
+int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-  if (args.in1.nelems == 1) {
-    return maximum_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (in1.nelems == 1) {
+    return maximum_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return maximum_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.out.nelems);
+  if (in0.nelems == 1) {
+    return maximum_n1<T>(out.addr, in1.addr, in0.addr, out.nelems);
   }
-  if (IsSameSize(args)) {
-    return maximum_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.out.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return maximum_nn<T>(out.addr, in0.addr, in1.addr, out.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<T, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
 			    [](T in0, T in1) -> T { return in0 > in1 ? in0 : in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -1951,16 +1934,16 @@ int op_maximum(const BinaryOpArgs& args)
 
 
 
-int op_maximum(const BinaryOpArgs& args)
+int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
-  if (CheckTypesAll(args, DT_FLOAT)) {
-    return op_maximum<float>(args);
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return vml::maximum<float>(out, in0, in1);
   }
-  if (CheckTypesAll(args, DT_DOUBLE)) {
-    return op_maximum<double>(args);
+  if (CheckTypesAll(out, in0, in1, DT_DOUBLE)) {
+    return vml::maximum<double>(out, in0, in1);
   }
-  if (CheckTypesAll(args, DT_INT64)) {
-    return op_maximum<int64_t>(args);
+  if (CheckTypesAll(out, in0, in1, DT_INT64)) {
+    return vml::maximum<int64_t>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1968,6 +1951,8 @@ int op_maximum(const BinaryOpArgs& args)
 }
 
 
+
+namespace {
 
 // Equal
 
@@ -1999,23 +1984,26 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template <typename T>
-int op_equal(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return equal_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return equal_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return equal_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return equal_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   } 
-  if (IsSameSize(args)) {
-    return equal_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return equal_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 == in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2025,16 +2013,17 @@ int op_equal(const BinaryOpArgs& args) {
 
 
 
-int op_equal(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_equal<float>(args);
+int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::equal<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_equal<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::equal<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_equal<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::equal<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2043,6 +2032,8 @@ int op_equal(const BinaryOpArgs& args) {
 }
 
 
+
+namespace {
 
 // NotEqual
 
@@ -2074,23 +2065,26 @@ int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 template <typename T>
-int op_notEqual(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return notEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return notEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return notEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return notEqual_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   }
-  if (IsSameSize(args)) {
-    return notEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return notEqual_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 != in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2100,16 +2094,17 @@ int op_notEqual(const BinaryOpArgs& args) {
 
 
 
-int op_notEqual(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_notEqual<float>(args);
+int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::notEqual<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_notEqual<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::notEqual<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_notEqual<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::notEqual<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2118,6 +2113,8 @@ int op_notEqual(const BinaryOpArgs& args) {
 }
 
 
+
+namespace {
 
 // Compaire operation
 
@@ -2291,24 +2288,28 @@ int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+} // namspace
+
 
 
 // Less
+
 template <typename T>
-int op_less(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return less_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return less_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return greaterEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return greaterEqual_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   }
-  if (IsSameSize(args)) {
-    return less_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return less_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 < in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2318,16 +2319,17 @@ int op_less(const BinaryOpArgs& args) {
 
 
 
-int op_less(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_less<float>(args);
+int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::less<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_less<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::less<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_less<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::less<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2338,21 +2340,23 @@ int op_less(const BinaryOpArgs& args) {
 
 
 // LessEqual
+
 template <typename T>
-int op_lessEqual(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return lessEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return lessEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return greater_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return greater_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   }
-  if (IsSameSize(args)) {
-    return lessEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return lessEqual_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 <= in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2362,16 +2366,17 @@ int op_lessEqual(const BinaryOpArgs& args) {
 
 
 
-int op_lessEqual(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_lessEqual<float>(args);
+int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::lessEqual<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_lessEqual<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::lessEqual<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_lessEqual<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::lessEqual<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2382,21 +2387,23 @@ int op_lessEqual(const BinaryOpArgs& args) {
 
 
 // Greater
+
 template <typename T>
-int op_greater(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return greater_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return greater_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return lessEqual_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return lessEqual_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   }
-  if (IsSameSize(args)) {
-    return greater_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return greater_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 > in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2404,16 +2411,19 @@ int op_greater(const BinaryOpArgs& args) {
   return 1;
 }
 
-int op_greater(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_greater<float>(args);
+
+
+int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::greater<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_greater<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::greater<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_greater<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::greater<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2421,22 +2431,26 @@ int op_greater(const BinaryOpArgs& args) {
   return 1;
 }
 
+
+
 // GreaterEqual
+
 template <typename T>
-int op_greaterEqual(const BinaryOpArgs& args) {
-  if (args.in1.nelems == 1) {
-    return greaterEqual_n1<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (in1.nelems == 1) {
+    return greaterEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
-  if (args.in0.nelems == 1) {
-    return less_n1<T>(args.out.addr, args.in1.addr, args.in0.addr, args.in1.nelems);
+  if (in0.nelems == 1) {
+    return less_n1<T>(out.addr, in1.addr, in0.addr, in1.nelems);
   }
-  if (IsSameSize(args)) {
-    return greaterEqual_nn<T>(args.out.addr, args.in0.addr, args.in1.addr, args.in0.nelems);
+  if (IsSameSize(out, in0, in1)) {
+    return greaterEqual_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
  general_purpose_implementation:
-  if (IsSameDims(args)) {
-    return binop_dimN<bool, T>(args.out, args.in0, args.in1,
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<bool, T>(out, in0, in1,
 			       [](T in0, T in1) -> T { return in0 >= in1; });
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
@@ -2444,16 +2458,19 @@ int op_greaterEqual(const BinaryOpArgs& args) {
   return 1;
 }
 
-int op_greaterEqual(const BinaryOpArgs& args) {
-  if (args.out.dtype == DT_BOOL) {
-    if (args.in0.dtype == DT_FLOAT && args.in1.dtype == DT_FLOAT) {
-      return op_greaterEqual<float>(args);
+
+
+int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return vml::greaterEqual<float>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_DOUBLE && args.in1.dtype == DT_DOUBLE) {
-      return op_greaterEqual<double>(args);
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return vml::greaterEqual<double>(out, in0, in1);
     }
-    if (args.in0.dtype == DT_INT64 && args.in1.dtype == DT_INT64) {
-      return op_greaterEqual<int64_t>(args);
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return vml::greaterEqual<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2461,23 +2478,6 @@ int op_greaterEqual(const BinaryOpArgs& args) {
   return 1;
 }
 
-} // namespace
-
-
-// for TEST obsolute binary_op API
-extern "C" {
-  int op_divnonan_(const BinaryOpArgs& args) { return op_divnonan(args); };
-  int op_pow_(const BinaryOpArgs& args) { return op_pow(args); };
-  int op_rsqrt_grad_(const BinaryOpArgs& args) { return op_rsqrt_grad(args); };
-  int op_minimum_(const BinaryOpArgs& args) { return op_minimum(args); };
-  int op_maximum_(const BinaryOpArgs& args) { return op_maximum(args); };
-  int op_equal_(const BinaryOpArgs& args) { return op_equal(args); };
-  int op_notEqual_(const BinaryOpArgs& args) { return op_notEqual(args); };
-  int op_less_(const BinaryOpArgs& args) { return op_less(args); };
-  int op_lessEqual_(const BinaryOpArgs& args) { return op_lessEqual(args); };
-  int op_greater_(const BinaryOpArgs& args) { return op_greater(args); };
-  int op_greaterEqual_(const BinaryOpArgs& args) { return op_greaterEqual(args); };
-}
 
 
 // Wrappers for TensorFlow kernel
@@ -2504,18 +2504,16 @@ REGISTER_KERNEL(#name, "_op_"#name);
 DEFINE_BINARY_OP(Add, vml::add);
 DEFINE_BINARY_OP(Div, vml::div);
 DEFINE_BINARY_OP(Mul, vml::mul);
-DEFINE_BINARY_OP(SquaredDifference, vml::sqdiff);
 DEFINE_BINARY_OP(Sub, vml::sub);
-
-// FIXME: add vml interface as above
-DEFINE_BINARY_OP_DEP(DivNoNan, op_divnonan);
-DEFINE_BINARY_OP_DEP(Pow, op_pow);
-DEFINE_BINARY_OP_DEP(RsqrtGrad, op_rsqrt_grad);
-DEFINE_BINARY_OP_DEP(Minimum, op_minimum);
-DEFINE_BINARY_OP_DEP(Maximum, op_maximum);
-DEFINE_BINARY_OP_DEP(Equal, op_equal);
-DEFINE_BINARY_OP_DEP(NotEqual, op_notEqual);
-DEFINE_BINARY_OP_DEP(Less, op_less);
-DEFINE_BINARY_OP_DEP(LessEqual, op_lessEqual);
-DEFINE_BINARY_OP_DEP(Greater, op_greater);
-DEFINE_BINARY_OP_DEP(GreaterEqual, op_greaterEqual);
+DEFINE_BINARY_OP(DivNoNan, vml::divnonan);
+DEFINE_BINARY_OP(Pow, vml::pow);
+DEFINE_BINARY_OP(SquaredDifference, vml::sqdiff);
+DEFINE_BINARY_OP(RsqrtGrad, vml::rsqrt_grad);
+DEFINE_BINARY_OP(Minimum, vml::minimum);
+DEFINE_BINARY_OP(Maximum, vml::maximum);
+DEFINE_BINARY_OP(Equal, vml::equal);
+DEFINE_BINARY_OP(NotEqual, vml::notEqual);
+DEFINE_BINARY_OP(Less, vml::less);
+DEFINE_BINARY_OP(LessEqual, vml::lessEqual);
+DEFINE_BINARY_OP(Greater, vml::greater);
+DEFINE_BINARY_OP(GreaterEqual, vml::greaterEqual);
