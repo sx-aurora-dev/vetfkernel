@@ -8,12 +8,6 @@
 #include <vml.h>
 #include <types.h>
 
-struct BinaryOpArgs {
-    vml::Tensor in0;
-    vml::Tensor in1;
-    vml::Tensor out;
-} __attribute__((__packed__));
-
 template<typename T> struct dypte_s {};
 template<> struct dypte_s<float> { static const int type = 1; };
 template<> struct dypte_s<bool>  { static const int type = 10; };
@@ -211,11 +205,7 @@ bool test_BinaryOp(TestParam const& param,
                    Tensor<TOUT> const& exp,
                    int (*op)(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1))
 {
-    BinaryOpArgs args;
-    args.out = out.tensor();
-    args.in0 = in0.tensor();
-    args.in1 = in1.tensor();
-    int ret = op(args.out, args.in0, args.in1);
+    int ret = op(out.tensor(), in0.tensor(), in1.tensor());
 
     bool flag = false;
     if (ret == 0)
