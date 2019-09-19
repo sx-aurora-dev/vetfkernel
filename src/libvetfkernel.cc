@@ -6,6 +6,11 @@
 #include <sched.h>
 #include <omp.h>
 
+#include <vednn.h>
+#if VEDNN_VERSION < 1001
+#error Require vednn version 1.0.1 or higher
+#endif
+
 #include "asl.h"
 #include "kernel.h"
 #include "log.h"

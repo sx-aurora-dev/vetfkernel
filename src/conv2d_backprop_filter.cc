@@ -108,6 +108,7 @@ int conv2d_backprop_filter(const void* arg, size_t len)
     ParamGradOut.height  = p.out_bp_param.h ;
     
     ParamGradFilter.dtype      = DTYPE_FLOAT ;
+    ParamGradFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
     ParamGradFilter.inChannel  = p.in_param.c ;
     ParamGradFilter.outChannel = p.out_bp_param.c ;
     ParamGradFilter.width      = p.filter_bp_param.w ;

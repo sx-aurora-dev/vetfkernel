@@ -118,6 +118,7 @@ int conv2d(const void* arg, size_t len)
     ParamIn.width   = p.in_param.w ;
 
     ParamFilter.dtype      = DTYPE_FLOAT ;
+    ParamFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
     ParamFilter.inChannel  = p.in_param.c ;
     ParamFilter.outChannel = p.out_param.c ;
     ParamFilter.width      = p.filter_param.w ;
