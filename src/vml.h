@@ -2,7 +2,7 @@
 
 // VML: VE Machile Learning Kernels
 
-#include <sstream>
+#include <ostream>
 
 namespace vml
 {
@@ -23,25 +23,9 @@ struct Tensor {
   template <typename T> T ptr() const {
     return reinterpret_cast<T>(addr);
   }
-
-  // FIXME
-  std::string to_s() const {
-    std::stringstream s;
-
-    s << "[dtype=" << dtype
-      << ",dims=" << dims
-      << ",nelems=" << nelems
-      << ",dim_size=[";
-
-    for (size_t i = 0; i < dims; ++i) {
-      s << dim_size[i];
-      if (i < dims - 1)
-        s << ",";
-    }
-    s << "]]";
-    return s.str();
-  }
 } __attribute__((__packed__));
+
+std::ostream& operator<<(std::ostream& s, Tensor const& t);
 
 struct PoolingParam {
   int64_t ksize[4];

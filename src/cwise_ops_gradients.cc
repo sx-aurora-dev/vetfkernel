@@ -49,9 +49,9 @@ int op_CwiseGradients(const void* args, size_t len,
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
     LOG(LOG_PARAM) << name << ":"
-      << " out="  << p->in0.to_s()
-      << " gout=" << p->in1.to_s()
-      << " gin="  << p->out.to_s();
+      << " out="  << p->in0
+      << " gout=" << p->in1
+      << " gin="  << p->out;
 
     if (func)
       ret = func(*p);

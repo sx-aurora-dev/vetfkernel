@@ -43,10 +43,10 @@ int op_select(const VEOpArgs& args)
     const vml::Tensor *t3 = args.arg<vml::Tensor>(3) ;
 
     LOG(LOG_PARAM) << __FUNCTION__ << ":"
-	   << " in0=" << t0->to_s()
-	   << " in1=" << t1->to_s()
-	   << " in2=" << t2->to_s()
-	   << " out=" << t3->to_s();
+	   << " in0=" << t0
+	   << " in1=" << t1
+	   << " in2=" << t2
+	   << " out=" << t3;
 
     if (t0->dtype == DT_BOOL) {
         if (t1->dtype == DT_FLOAT && t2->dtype == DT_FLOAT &&
@@ -194,7 +194,7 @@ int op_cast(const VEOpArgs& args)
     if (!ti || !to)
         return 1;
 
-    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti->to_s() << " to=" << to->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti << " to=" << to;
 
     if (ti->nelems != to->nelems)
         return 1;
@@ -406,7 +406,7 @@ int tile_dim5(vml::Tensor const& X, vml::Tensor const& Y)
 
 int vml::tile(vml::Tensor const& X, vml::Tensor const& Y)
 {
-    LOG(LOG_PARAM) << __FUNCTION__ << " Y=" << Y.to_s() << " X=" << X.to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << " Y=" << Y << " X=" << X;
 
     int rc = 1 ;
 
@@ -490,8 +490,8 @@ int op_softmax(const VEOpArgs& args)
     const bool use_log = *args.arg<int64_t>(2) == 1 ? true : false ;
 
     LOG(LOG_PARAM) << __FUNCTION__
-           << " logits_in="   << logits_in->to_s()
-           << " softmax_out=" << softmax_out->to_s()
+           << " logits_in="   << logits_in
+           << " softmax_out=" << softmax_out
 	   << " use_log=" << use_log ;
 
     int ret=1;
@@ -677,11 +677,11 @@ int op_softmax_xent_with_logits(const VEOpArgs& args)
     const vml::Tensor* back_out = args.arg<vml::Tensor>(4);
 
     LOG(LOG_PARAM) << __FUNCTION__
-           << " logits_in=" << logits_in->to_s()
-           << " labels_in=" << labels_in->to_s()
-           << " scratch="   << scratch->to_s()
-           << " loss_out="  << loss_out->to_s()
-           << " back_out="  << back_out->to_s() ;
+           << " logits_in=" << logits_in
+           << " labels_in=" << labels_in
+           << " scratch="   << scratch
+           << " loss_out="  << loss_out
+           << " back_out="  << back_out ;
 
     if ( logits_in->dtype == DT_FLOAT
          && labels_in->dtype == DT_FLOAT

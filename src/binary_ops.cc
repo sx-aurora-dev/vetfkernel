@@ -134,9 +134,9 @@ int op_Binary(const void* args, size_t len,
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
     LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
-      << " in0=" << p->in0.to_s()
-      << " in1=" << p->in1.to_s()
-      << " out=" << p->out.to_s();
+      << " in0=" << p->in0
+      << " in1=" << p->in1
+      << " out=" << p->out;
 
     if (func) {
 #ifdef TIMER

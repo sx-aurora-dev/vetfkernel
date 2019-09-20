@@ -139,7 +139,7 @@ int avgpool_nchw_11hw_1111_same(T* out, T const* in, int64_t const* dim_size,
 int avgpool(vml::Tensor const& out, vml::Tensor const& in, 
             vml::PoolingParam const& param)
 {
-  LOG(LOG_PARAM) << __FUNCTION__ << ": in=" << in.to_s() << " out=" << out.to_s();
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in=" << in << " out=" << out;
   LOG(LOG_PARAM) << __FUNCTION__ << ": param: ksize=[" << param.ksize[0] 
     << "," << param.ksize[1] 
     << "," << param.ksize[2]
@@ -284,7 +284,7 @@ int avgpoolgrad_nchw_1133_1111_same(T* out, T const* in, int64_t const* dim_size
 
 int avgpoolgrad(vml::Tensor const& out, vml::Tensor const& in, PoolingParam const& param)
 {
-  LOG(LOG_PARAM) << __FUNCTION__ << ": in=" << in.to_s() << " out=" << out.to_s();
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in=" << in << " out=" << out;
   LOG(LOG_PARAM) << __FUNCTION__ << ": param: ksize=[" << param.ksize[0] 
     << "," << param.ksize[1] 
     << "," << param.ksize[2]

@@ -35,7 +35,8 @@ set(SOURCES
   fused_batch_norm.cc
   relu.cc
   reverse.cc
-  revision.h)
+  revision.h
+  vml.cc)
 
 add_library(vetfkernel STATIC
   ${SOURCES}

@@ -140,7 +140,7 @@ int op_FusedBatchNorm(VEOpArgs const& args)
     int Utype = *args.arg<int64_t>(13);
 
 #define PT(T) \
-    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T
     PT(x_input);
     PT(scale_input);
     PT(offset_input);
@@ -372,7 +372,7 @@ int op_FusedBatchNormGrad(VEOpArgs const& args)
     int Utype = *args.arg<int64_t>(14);
 
 #define PT(T) \
-    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T->to_s();
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << T
     PT(y_backprop);
     PT(x);
     PT(scale);
