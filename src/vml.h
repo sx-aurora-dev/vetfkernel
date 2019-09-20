@@ -1,4 +1,8 @@
+#pragma once
+
 // VML: VE Machile Learning Kernels
+
+#include <sstream>
 
 namespace vml
 {
@@ -8,7 +12,7 @@ struct Tensor {
   uint64_t addr;
   int32_t dims;
   int64_t nelems;
-  int64_t dim_size[8];
+  int64_t dim_size[8]; // FIXME
 
 #if 0
   size_t size() const {
@@ -20,6 +24,7 @@ struct Tensor {
     return reinterpret_cast<T>(addr);
   }
 
+  // FIXME
   std::string to_s() const {
     std::stringstream s;
 
@@ -49,6 +54,13 @@ struct PoolingParam {
 
 int avgpool(Tensor const& out, Tensor const& in, PoolingParam const& param);
 int avgpoolgrad(Tensor const& out, Tensor const& in, PoolingParam const& param);
+
+// activation op
+int leaky_relu(vml::Tensor const& out, vml::Tensor const& in, double alpha);
+int leaky_relu_grad(vml::Tensor const& backprops,
+                    vml::Tensor const& gradients,
+                    vml::Tensor const& features,
+                    double alpha);
 
 // unary op
 int abs(vml::Tensor const& out, vml::Tensor const& in);

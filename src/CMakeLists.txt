@@ -33,6 +33,7 @@ set(SOURCES
   sparse_xent_ops.cc
   cwise_ops_gradients.cc
   fused_batch_norm.cc
+  relu.cc
   reverse.cc
   revision.h)
 

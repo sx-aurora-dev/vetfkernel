@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0")
 
 set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 
-add_executable(test01 test01.cc)
+add_executable(test01 test01.cc relu.cc)
 target_include_directories(test01 PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(test01 PRIVATE 
   vetfkernel
