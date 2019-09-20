@@ -8,122 +8,17 @@
 #include <vml.h>
 #include <types.h>
 
-template<typename T> struct dypte_s {};
-template<> struct dypte_s<float> { static const int type = 1; };
-template<> struct dypte_s<bool>  { static const int type = 10; };
+#include "test.h"
+using namespace test;
 
-template <typename T>
-vml::Tensor makeTensor(size_t dims, std::vector<size_t> const& dim_size)
-{
-    vml::Tensor t;
+namespace test {
+std::vector<Test> test_vec_;
 
-    t.dtype = dypte_s<T>::type;
-    t.dims = dims;
-    t.nelems = 1;
-    for (int i = 0; i < dims; ++i) {
-        t.dim_size[i] = dim_size[i];
-        t.nelems *= dim_size[i];
-    }
-
-    t.addr = reinterpret_cast<uint64_t>(new T[t.nelems]);
-
-    return t;
+void register_test(std::string const& name, 
+                   bool (*func)(TestParam const& param)) {
+      test_vec_.push_back({name, func});
 }
-
-template<typename T>
-class Tensor {
-    public:
-        Tensor(std::vector<size_t> const& shape) {
-          shape_ = shape;
-          t = makeTensor<T>(shape.size(), shape);
-          stride_.resize(shape.size());
-          size_t dim = t.dims;
-          stride_[dim - 1] = 1;
-          for (int i = dim - 2; i >= 0; --i) {
-            stride_[i] = stride_[i + 1] * t.dim_size[i + 1];
-          }
-        }
-        ~Tensor() { delete[] reinterpret_cast<T*>(t.addr); }
-        std::vector<size_t> const& shape() const { return shape_; }
-        T* data() { return reinterpret_cast<T*>(t.addr); }
-        T const* data() const { return reinterpret_cast<T const*>(t.addr); }
-        size_t nelems() const { return t.nelems; }
-        size_t dims() const { return t.dims; }
-        size_t dim_size(size_t i) const { return t.dim_size[i]; }
-        size_t stride(size_t i) const { return stride_[i]; }
-
-        vml::Tensor tensor() const { return t; }
-
-    private:
-        vml::Tensor t;
-        std::vector<size_t> stride_;
-        std::vector<size_t> shape_;
-};
-
-template<typename T>
-bool checkTensor(Tensor<T> const& a, Tensor<T> const& b)
-{
-    if (a.nelems() != b.nelems())
-        return false;
-
-    for (size_t i = 0; i < a.nelems(); ++i) {
-#if 0
-        if (a.data()[i] != b.data()[i])
-            return false;
-#else
-        T ai = a.data()[i];
-        T bi = b.data()[i];
-        double err = ai - bi;
-        if (err * err / (ai * bi) > 1e-8)
-          return false;
-#endif
-    }
-    return true;
-}
-
-template<typename T>
-void printTensor(Tensor<T> const& t)
-{
-    std::string fmt = " %8.3f";
-    if (typeid(T) == typeid(bool)) {
-      fmt = std::string(" %d");
-    }
-
-    std::vector<size_t> s(t.dims() + 1);
-    s[t.dims()] = 1;
-    for (int i = t.dims() - 1; i >= 0; --i)
-        s[i] = s[i + 1] * t.dim_size(i);
-
-#if 0
-    fprintf(stderr, "%d %d %d\n", t.dim_size(0), t.dim_size(1), t.dim_size(2));
-    fprintf(stderr, "%d %d %d\n", s[0], s[1], s[2]);
-#endif
-
-    T const* p = t.data();
-    size_t n = t.dim_size(t.dims() - 1); // innermost
-
-    for (size_t i = 0; i < t.nelems(); ++i) {
-        if (i % n == 0) {
-            for (int j = 0; j < t.dims(); ++j) {
-                fprintf(stderr, "%c", i % s[j] == 0 ? '[' : ' ');
-            }
-        }
-        fprintf(stderr, fmt.c_str(), p[i]);
-        if ((i + 1) % n == 0) {
-            fprintf(stderr, " ");
-            for (int j = 0; j < t.dims(); ++j) {
-                if ((i + 1) % s[j] == 0) 
-                    fprintf(stderr, "]");
-            }
-            fprintf(stderr, "\n");
-        }
-    }
-}
-
-struct TestParam
-{
-    int verbose;
-};
+} // namespace test
 
 //
 // UnaryOp
@@ -1086,14 +981,6 @@ bool test_GreaterEqual_generic(TestParam const& param)
   return test_generic<bool, float>(param, ref_GreaterEqual, vml::greaterEqual);
 }
 
-
-
-struct Test
-{
-    std::string name;
-    bool (*func)(TestParam const&);
-};
-
 int main(int argc, char* argv[])
 {
     Test tests[] = {
@@ -1163,20 +1050,35 @@ int main(int argc, char* argv[])
     TestParam param;
     param.verbose = 0;
 
+    char const* name = nullptr;
+
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-v") == 0) {
             ++param.verbose;
+        } else if (strcmp(argv[i], "-t") == 0) {
+          name = argv[++i];
+        } else if (argv[i][0] == '-') {
+          fprintf(stderr, "unknown option: %s\n", argv[i]);
+          return 1;
         }
     }
 
     int ntests = sizeof(tests) / sizeof(Test);
-    int ok = 0;
     for (size_t i = 0; i < ntests; ++i) {
-        bool flag = tests[i].func(param);
-        fprintf(stderr, "%-30s %s\n", tests[i].name.c_str(), flag ? "OK" : "NG");
+      test_vec_.push_back({tests[i].name, tests[i].func});
+    }
+
+    int ok = 0;
+    int run = 0;
+    for (Test& test : test_vec_) {
+      if (name == nullptr || test.name == name) {
+        ++run;
+        bool flag = test.func(param);
+        fprintf(stderr, "%-30s %s\n", test.name.c_str(), flag ? "OK" : "NG");
         if (flag)
             ++ok;
+      }
     }
-    fprintf(stderr, "%d tests failed\n", ntests - ok);
+    fprintf(stderr, "%d tests failed\n", run - ok);
     return 0;
 }
