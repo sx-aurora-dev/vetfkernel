@@ -7,8 +7,8 @@ See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/d
 
 # build
 
-   % mkdir build
-   % (cd build && cmake3 -DNCC=/opt/nec/ve/bin/ncc-2.3.1 -DNCXX=/opt/nec/ve/bin/nc++-2.3.1 ..)
+    % mkdir build
+    % (cd build && cmake3 -DNCC=/opt/nec/ve/bin/ncc-2.3.1 -DNCXX=/opt/nec/ve/bin/nc++-2.3.1 ..)
 
 
 ## test
