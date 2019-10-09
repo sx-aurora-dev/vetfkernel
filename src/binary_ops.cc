@@ -229,6 +229,27 @@ int add2_nn_1n(uint64_t out,
   return 0;
 }
 
+template <typename T>
+int add2_nm_n1(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n0,
+               size_t m0,
+	       size_t n1)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      po[i * n1 + j] = pi0[i * n1 + j] + pi1[i % m0];
+    }
+  }
+  return 0;
+}
+
 
 
 // X = Y op Z
@@ -496,6 +517,13 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
     goto general_purpose_implementation;
   }
 
+  if (CheckDimsAll(X, Y, Z, 4)) {
+    if (Z.dim_size[0] == 1  &&  (Y.dim_size[1] == Z.dim_size[1]) && Z.dim_size[2] == 1  &&  Z.dim_size[3] == 1 ) {
+      return add2_nm_n1<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0]*Y.dim_size[1], Z.dim_size[1], Y.dim_size[2]*Y.dim_size[3]) ;
+    }
+    goto general_purpose_implementation;
+  }
+
   if (CheckDimsAll(X, Y, Z, 5)) {
     if (check_dim(X, {8, 16, 64, 8, 8}) &&
 	check_dim(Y, {8, 16, 64, 8, 8}) &&
@@ -635,7 +663,26 @@ int sub2_nn_1n(uint64_t out,
   return 0;
 }
 
+template <typename T>
+int sub2_nm_n1(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n0,
+               size_t m0,
+	       size_t n1)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      po[i * n1 + j] = pi0[i * n1 + j] - pi1[i % m0];
+    }
+  }
+  return 0;
+}
 
 template <typename T, int M, int N>
 int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -703,6 +750,13 @@ int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
     }
     if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
       return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 4)) {
+    if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      return sub2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     goto general_purpose_implementation;
   }
@@ -863,6 +917,27 @@ int mul2_nn_1n(uint64_t out,
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] * pi1[j];
+    }
+  }
+  return 0;
+}
+
+template <typename T>
+int mul2_nm_n1(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n0,
+               size_t m0,
+	       size_t n1)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      po[i * n1 + j] = pi0[i * n1 + j] * pi1[i % m0];
     }
   }
   return 0;
@@ -1103,6 +1178,13 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
     }
     if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
       return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 4)) {
+    if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      return mul2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     goto general_purpose_implementation;
   }
@@ -1629,6 +1711,28 @@ int sqdiff2_nn_1n(uint64_t out,
 }
 
 template <typename T>
+int sqdiff2_nm_n1(uint64_t out,
+                  uint64_t in0,
+                  uint64_t in1,
+                  size_t n0,
+                  size_t m0,
+	          size_t n1)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      T diff = pi0[i * n1 + j] - pi1[i % m0] ;
+      po[i * n1 + j] = diff * diff ;
+    }
+  }
+  return 0;
+}
+
+template <typename T>
 int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -1694,6 +1798,13 @@ int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor cons
     }
     if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
       return sqdiff2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 4)) {
+    if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      return sqdiff2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     goto general_purpose_implementation;
   }
