@@ -15,7 +15,7 @@ message("nc++: ${NCXX}")
 message("blas: ${BLAS}")
 message("asl:  ${ASL}")
 
-add_subdirectory(libs/vednn)
+add_subdirectory(libs/vednn EXCLUDE_FROM_ALL)
 add_subdirectory(src/intrinsic)
 add_subdirectory(src)
 add_subdirectory(test)
