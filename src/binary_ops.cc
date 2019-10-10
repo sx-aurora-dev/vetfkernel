@@ -1186,6 +1186,9 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
     if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
       return mul2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
+    if (in0.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in0.dim_size[2] == 1  &&  in0.dim_size[3] == 1 ) {
+      return mul2_nm_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in0.dim_size[1], in1.dim_size[2]*in1.dim_size[3]) ;
+    }
     goto general_purpose_implementation;
   }
 
