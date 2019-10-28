@@ -5,7 +5,8 @@ option(USE_INTRINSIC "Use intrinsic" ON)
 set(CMAKE_C_COMPILER ${NCC})
 set(CMAKE_CXX_COMPILER ${NCXX})
 
-set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -report-all -assembly-list")
+#set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -report-all -assembly-list")
+set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
@@ -18,6 +19,7 @@ set(SOURCES
   conv2d.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc
+  depthwise_conv.cc
   maxpooling.cc
   maxpooling_backprop.cc
   ops.cc
