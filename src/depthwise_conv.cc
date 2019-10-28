@@ -97,7 +97,7 @@ int depthwise_conv2d(const void* arg, size_t len)
 	      int64_t i = y * strideHeight - padHeight;
 	      for (int64_t x=0; x<outWidth; x++) {
 		int64_t j = x * strideWidth - padWidth;
-		int64_t outIndex  = ((n * (depth_multiplier + inChannel) + k) * outHeight + y) * outWidth + x;
+		int64_t outIndex  = ((n * (depth_multiplier * inChannel) + k) * outHeight + y) * outWidth + x;
 		float sum = 0.0;
 
 		for (int64_t r=0; r<kernHeight; r++) {
