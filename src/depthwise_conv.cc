@@ -67,7 +67,7 @@ int depthwise_conv2d(const void* arg, size_t len)
     fprintf(stderr, "depthwise_conv2d: out_rows=%d out_cols=%d out_depth=%d\n", p.out_rows, p.out_cols, p.out_depth) ;
 #endif
 
-#if 1	// naive-version
+#if 0	// naive-version
     {
       int64_t batch	= p.batch ;
       int64_t inChannel = p.in_depth ;
@@ -122,13 +122,13 @@ int depthwise_conv2d(const void* arg, size_t len)
 	} // inChannel
       } // batch
     }
-#else // [bug] vednn version
+#else // vednn version
     float * transformed_filter = NULL ;
     if( p.depth_multiplier > 1 || p.in_depth > 1 ) {
       const int N = p.depth_multiplier ;
       const int C = p.in_depth ;
-      const int H = p.in_rows ;
-      const int W = p.in_cols ;
+      const int H = p.filter_rows ;
+      const int W = p.filter_cols ;
 
       float * filter = (float *) p.filter_ptr ;
 
