@@ -10,7 +10,7 @@
 #include "vml.h"
 
 #ifdef LIBVETF_INTRINSIC
-#include "libvetfkernel.h"
+#include "intrinsic/intrinsic.h"
 #endif
 
 //#define TIMER

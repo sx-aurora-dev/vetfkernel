@@ -6,7 +6,7 @@
 
 
 
-#include "libvetfkernel.h"
+#include "intrinsic.h"
 
 #include "velintrin.h"
 #define VLEN	(256)

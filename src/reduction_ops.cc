@@ -10,7 +10,7 @@
 #include <omp.h>
 
 #ifdef LIBVETF_INTRINSIC
-#include "libvetfkernel.h"
+#include "intrinsic/intrinsic.h"
 #endif
 
 REGISTER_KERNEL("Max", "op_Max");

@@ -50,7 +50,7 @@ if (USE_INTRINSIC)
 endif()
 
 target_include_directories(vetfkernel PRIVATE ${VEDNN_PATH}/src)
-target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/intrinsic)
+target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(vetfkernel PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_target(check_revision
