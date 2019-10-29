@@ -13,7 +13,7 @@
 #include "vednn.h"
 
 #ifdef LIBVETF_INTRINSIC
-#include "libvetfkernel.h"
+#include "intrinsic/intrinsic.h"
 #endif
 
 #define ADD_
