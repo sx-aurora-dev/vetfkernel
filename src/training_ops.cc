@@ -9,7 +9,7 @@
 
 #include <omp.h>
 
-#include "libvetfkernel.h"
+#include "intrinsic/intrinsic.h"
 
 REGISTER_KERNEL("ApplyGradientDescent", "op_ApplyGradientDescent");
 REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");

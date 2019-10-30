@@ -9,7 +9,7 @@
 #include "vml.h"
 
 #ifdef LIBVETF_INTRINSIC
-#include "intrinsic/libvetfkernel.h"
+#include "intrinsic/intrinsic.h"
 #endif
 
 #define DEFINE_UNARY_OP(NAME, FUNC) \
