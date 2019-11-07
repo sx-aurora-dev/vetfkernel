@@ -167,8 +167,8 @@ int depthwise_conv2d(const void* arg, size_t len)
       vednnConvolutionParam_t ParamConv ;
 
       ParamIn.dtype   = DTYPE_FLOAT ;
-      ParamIn.batch   = 1 ;
-      ParamIn.channel = 1 ;
+      ParamIn.batch   = p.batch ;
+      ParamIn.channel = p.in_depth ;
       ParamIn.height  = p.in_rows ;
       ParamIn.width   = p.in_cols ;
 
@@ -180,12 +180,12 @@ int depthwise_conv2d(const void* arg, size_t len)
       ParamFilter.width      = p.filter_cols ;
 
       ParamOut.dtype   = DTYPE_FLOAT ;
-      ParamOut.batch   = 1 ;
-      ParamOut.channel = p.depth_multiplier ;
+      ParamOut.batch   = p.batch ;
+      ParamOut.channel = p.depth_multiplier * p.in_depth ;
       ParamOut.height  = p.out_rows ;
       ParamOut.width   = p.out_cols ;
 
-      ParamConv.group          = 1 ;
+      ParamConv.group          = p.in_depth ;
       ParamConv.strideWidth    = p.stride ;
       ParamConv.strideHeight   = p.stride ;
       ParamConv.padHeight      = p.pad_rows ;
@@ -195,21 +195,15 @@ int depthwise_conv2d(const void* arg, size_t len)
 
       float * pIn  =  (float *) (p.input_ptr) ;
       float * pOut =  (float *) (p.output_ptr) ;
-      for(int n=0; n<p.batch; n++) {
-	float * pFilter = ((transformed_filter != NULL) ? transformed_filter : (float*) (p.filter_ptr)) ;
-	for(int c=0; c<p.in_depth; c++) {
-	  vednnConvolutionForward(&ParamIn,     (void*) pIn,
-				  &ParamFilter, (void*) pFilter,
-				  &ParamOut,    (void*) pOut,
-				  &ParamConv,
-				  VEDNN_CONV_ALGORITHM_DIRECT );
+      float * pFilter = ((transformed_filter != NULL) ? transformed_filter : (float*) (p.filter_ptr)) ;
 
-	  pIn += p.in_rows * p.in_cols ;
-	  pOut += p.depth_multiplier * p.out_rows * p.out_cols ;
-	  pFilter += p.depth_multiplier * p.filter_rows * p.filter_cols ;
-	}
-      }
+      vednnConvolutionForward(&ParamIn,     (void*) pIn,
+			      &ParamFilter, (void*) pFilter,
+			      &ParamOut,    (void*) pOut,
+			      &ParamConv,
+			      VEDNN_CONV_ALGORITHM_DIRECT );
     }
+
 
     if( transformed_filter != NULL ) free(transformed_filter) ;
 #endif
@@ -367,8 +361,8 @@ int depthwise_conv2d_grad_data(const void* arg, size_t len)
       vednnConvolutionParam_t ParamConv ;
 
       ParamIn.dtype   = DTYPE_FLOAT ;
-      ParamIn.batch   = 1 ;
-      ParamIn.channel = 1 ;
+      ParamIn.batch   = p.batch ;
+      ParamIn.channel = p.in_depth ;
       ParamIn.height  = p.in_rows ;
       ParamIn.width   = p.in_cols ;
 
@@ -380,12 +374,12 @@ int depthwise_conv2d_grad_data(const void* arg, size_t len)
       ParamFilter.width      = p.filter_cols ;
 
       ParamOut.dtype   = DTYPE_FLOAT ;
-      ParamOut.batch   = 1 ;
-      ParamOut.channel = p.depth_multiplier ;
+      ParamOut.batch   = p.batch ;
+      ParamOut.channel = p.depth_multiplier * p.in_depth ;
       ParamOut.height  = p.out_rows ;
       ParamOut.width   = p.out_cols ;
 
-      ParamConv.group          = 1 ;
+      ParamConv.group          = p.in_depth ;
       ParamConv.strideWidth    = p.stride ;
       ParamConv.strideHeight   = p.stride ;
       ParamConv.padHeight      = p.pad_rows ;
@@ -395,20 +389,12 @@ int depthwise_conv2d_grad_data(const void* arg, size_t len)
 
       float * pIn  =  (float *) (p.input_ptr) ;
       float * pOut =  (float *) (p.output_ptr) ;
-      for(int n=0; n<p.batch; n++) {
-	float * pFilter = ((transformed_filter != NULL) ? transformed_filter : (float*) (p.filter_ptr)) ;
-	for(int c=0; c<p.in_depth; c++) {
-	  vednnConvolutionBackwardData(&ParamOut,    (void*) pOut,
-				       &ParamFilter, (void*) pFilter,
-				       &ParamIn,     (void*) pIn,
-				       &ParamConv,
-				       VEDNN_CONV_ALGORITHM_DIRECT );
-
-	  pIn += p.in_rows * p.in_cols ;
-	  pOut += p.depth_multiplier * p.out_rows * p.out_cols ;
-	  pFilter += p.depth_multiplier * p.filter_rows * p.filter_cols ;
-	}
-      }
+      float * pFilter = ((transformed_filter != NULL) ? transformed_filter : (float*) (p.filter_ptr)) ;
+      vednnConvolutionBackwardData(&ParamOut,    (void*) pOut,
+				   &ParamFilter, (void*) pFilter,
+				   &ParamIn,     (void*) pIn,
+				   &ParamConv,
+				   VEDNN_CONV_ALGORITHM_DIRECT );
     }
 
     if( transformed_filter != NULL ) free(transformed_filter) ;
@@ -531,10 +517,14 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
 
     const int64_t fsize = p.depth_multiplier * p.in_depth * p.filter_rows * p.filter_cols ;
 
-    float * filter_sum = (float *) malloc(sizeof(float)*fsize) ;
-#pragma omp parallel for
-    for(int64_t f=0; f<fsize; f++) {
-      filter_sum[f] = 0.f ;
+    float * transformed_filter = NULL ;
+    if( p.depth_multiplier > 1 || p.in_depth > 1 ) {
+      const int N = p.depth_multiplier ;
+      const int C = p.in_depth ;
+      const int H = p.filter_rows ;
+      const int W = p.filter_cols ;
+
+      transformed_filter = (float *) malloc(sizeof(float)*N*C*H*W) ;
     }
 
     {
@@ -545,8 +535,8 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
       vednnConvolutionParam_t ParamConv ;
 
       ParamIn.dtype   = DTYPE_FLOAT ;
-      ParamIn.batch   = 1 ;
-      ParamIn.channel = 1 ;
+      ParamIn.batch   = p.batch ;
+      ParamIn.channel = p.in_depth ;
       ParamIn.height  = p.in_rows ;
       ParamIn.width   = p.in_cols ;
 
@@ -558,12 +548,12 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
       ParamFilter.width      = p.filter_cols ;
 
       ParamOut.dtype   = DTYPE_FLOAT ;
-      ParamOut.batch   = 1 ;
-      ParamOut.channel = p.depth_multiplier ;
+      ParamOut.batch   = p.batch ;
+      ParamOut.channel = p.depth_multiplier * p.in_depth ;
       ParamOut.height  = p.out_rows ;
       ParamOut.width   = p.out_cols ;
 
-      ParamConv.group          = 1 ;
+      ParamConv.group          = p.in_depth ;
       ParamConv.strideWidth    = p.stride ;
       ParamConv.strideHeight   = p.stride ;
       ParamConv.padHeight      = p.pad_rows ;
@@ -573,28 +563,12 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
 
       float * pIn  =  (float *) (p.input_ptr) ;
       float * pOut =  (float *) (p.output_ptr) ;
-      for(int n=0; n<p.batch; n++) {
-	float * pFilter = (float*) (p.filter_ptr) ;
-	for(int64_t f=0; f<fsize; f++) {
-	  pFilter[f] = 0.f ;
-	}
-	for(int c=0; c<p.in_depth; c++) {
-	  vednnConvolutionBackwardFilter(&ParamIn,     (void*) pIn,
-	                                 &ParamOut,    (void*) pOut,
-				         &ParamFilter, (void*) pFilter,
-				         &ParamConv,
-				         VEDNN_CONV_ALGORITHM_DIRECT );
-
-	  pIn += p.in_rows * p.in_cols ;
-	  pOut += p.depth_multiplier * p.out_rows * p.out_cols ;
-	  pFilter += p.depth_multiplier * p.filter_rows * p.filter_cols ;
-	}
-
-	pFilter = (float*) (p.filter_ptr) ;
-	for(int64_t f=0; f<fsize; f++) {
-	  filter_sum[f] += pFilter[f]  ;
-	}
-      }
+      float * pFilter = ((transformed_filter != NULL) ? transformed_filter : (float*) (p.filter_ptr)) ;
+      vednnConvolutionBackwardFilter(&ParamIn,     (void*) pIn,
+				     &ParamOut,    (void*) pOut,
+				     &ParamFilter, (void*) pFilter,
+				     &ParamConv,
+				     VEDNN_CONV_ALGORITHM_DIRECT );
     }
 
     if( p.depth_multiplier > 1 || p.in_depth > 1 ) {
@@ -610,7 +584,7 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
         for(int c=0; c<C ; c++) {
           for(int h=0; h<H ; h++) {
             for(int w=0; w<W ; w++) {
-              filter[((h*W+w)*C+c)*N+n] = filter_sum[((n*C+c)*H+h)*W+w] ;
+              filter[((h*W+w)*C+c)*N+n] = transformed_filter[((n*C+c)*H+h)*W+w] ;
  	    }
           }
         }
@@ -620,17 +594,12 @@ int depthwise_conv2d_grad_filter(const void* arg, size_t len)
       for(int n=0; n<N ; n++) {
         for(int c=0; c<C ; c++) {
           for(int hw=0; hw<H*W ; hw++) {
-            filter[((hw)*C+c)*N+n] = filter_sum[((n*C+c)*H)*W+hw] ;
+            filter[((hw)*C+c)*N+n] = transformed_filter[((n*C+c)*H)*W+hw] ;
           }
         }
       }
 #endif
-    }
-    else {
-      float * filter = (float *) p.filter_ptr ;
-      for(int64_t f=0; f<fsize; f++) {
-	filter[f] = filter_sum[f] ;
-      }
+      free(transformed_filter) ;
     }
 #endif
 
