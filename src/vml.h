@@ -40,6 +40,10 @@ int avgpool(Tensor const& out, Tensor const& in, PoolingParam const& param);
 int avgpoolgrad(Tensor const& out, Tensor const& in, PoolingParam const& param);
 
 // activation op
+int relu6(vml::Tensor const& out, vml::Tensor const& in);
+int relu6_grad(vml::Tensor const& backprops,
+               vml::Tensor const& gradients,
+	       vml::Tensor const& features ) ;
 int leaky_relu(vml::Tensor const& out, vml::Tensor const& in, double alpha);
 int leaky_relu_grad(vml::Tensor const& backprops,
                     vml::Tensor const& gradients,
