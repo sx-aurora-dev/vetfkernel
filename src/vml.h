@@ -52,6 +52,7 @@ int leaky_relu_grad(vml::Tensor const& backprops,
 
 // unary op
 int abs(vml::Tensor const& out, vml::Tensor const& in);
+int sign(vml::Tensor const& out, vml::Tensor const& in);
 int exp(vml::Tensor const& out, vml::Tensor const& in);
 int floor(vml::Tensor const& out, vml::Tensor const& in);
 int log(vml::Tensor const& out, vml::Tensor const& in);

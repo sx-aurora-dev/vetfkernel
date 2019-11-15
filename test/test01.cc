@@ -76,6 +76,7 @@ bool test_##name##_01(TestParam const& param) { \
 }
 
 DEFINE_TEST_UNARY_OP_01(Abs, vml::abs, std::abs);
+DEFINE_TEST_UNARY_OP_01(Sign, vml::sign, [](float x) { return (float)((x > 0.0) - (x < 0.0)); });
 DEFINE_TEST_UNARY_OP_01(Exp, vml::exp, expf);
 DEFINE_TEST_UNARY_OP_01(Floor, vml::floor, std::floor);
 DEFINE_TEST_UNARY_OP_01(Neg, vml::neg, [](float x) { return -x; });
@@ -1036,6 +1037,7 @@ int main(int argc, char* argv[])
 
 #define DEFINE_TEST_01(T) {#T "_01", test_##T##_01}
         DEFINE_TEST_01(Abs),
+        DEFINE_TEST_01(Sign),
         DEFINE_TEST_01(Exp),
         DEFINE_TEST_01(Floor),
         DEFINE_TEST_01(Neg),

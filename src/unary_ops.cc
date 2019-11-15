@@ -98,6 +98,35 @@ int vml::abs(vml::Tensor const& out, vml::Tensor const& in)
 }
 
 //
+// Sign
+//
+
+int vml::sign(vml::Tensor const& out, vml::Tensor const& in)
+{
+  if (in.dtype == DT_FLOAT) {
+    float* po = out.ptr<float*>();
+    float const* pi = in.ptr<float const*>();
+    for (size_t i = 0; i < in.nelems; ++i)
+      po[i] = (float)((pi[i] > 0.0) - (pi[i] < 0.0));
+    return 0;
+  } else if (in.dtype == DT_DOUBLE) {
+    double* po = out.ptr<double*>();
+    double const* pi = in.ptr<double const*>();
+    for (size_t i = 0; i < in.nelems; ++i)
+      po[i] = (double)((pi[i] > 0.0) - (pi[i] < 0.0));
+    return 0;
+  } else if (in.dtype == DT_INT64) {
+    int64_t* po = out.ptr<int64_t*>();
+    int64_t const* pi = in.ptr<int64_t const*>();
+    for (size_t i = 0; i < in.nelems; ++i)
+      po[i] = (int64_t)((pi[i] > 0) - (pi[i] < 0));
+    return 0;
+  }
+
+  return 1;
+}
+
+//
 // Exp
 //
 
@@ -344,6 +373,7 @@ int unary_op_helper(const void* args, size_t len,
 } // namespace
 
 REGISTER_UNARY_OP(Abs, vml::abs);
+REGISTER_UNARY_OP(Sign, vml::sign);
 REGISTER_UNARY_OP(Exp, vml::exp);
 REGISTER_UNARY_OP(Floor, vml::floor);
 REGISTER_UNARY_OP(Neg, vml::neg);
