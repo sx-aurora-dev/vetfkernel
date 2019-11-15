@@ -14,13 +14,21 @@
 
 #define DEFINE_UNARY_OP(NAME, FUNC) \
 int vml::NAME(vml::Tensor const& out, vml::Tensor const& in) { \
-  return unary_op_wrapper(out, in, FUNC<float, float>); \
+  return unary_op_wrapper(out, in, FUNC<float, float>, \
+                          FUNC<double, double>, \
+                          FUNC<int64_t, int64_t>); \
+}
+#define DEFINE_UNARY_OP3(NAME, FUNC1, FUNC2, FUNC3) \
+int vml::NAME(vml::Tensor const& out, vml::Tensor const& in) { \
+  return unary_op_wrapper(out, in, FUNC1, FUNC2, FUNC3); \
 }
 
 namespace {
 
 inline int unary_op_wrapper(vml::Tensor const& out, vml::Tensor const& in,
-                            int (*func_f32_f32)(float*, float const*, size_t))
+                            int (*func_f32_f32)(float*, float const*, size_t),
+                            int (*func_f64_f64)(double*, double const*, size_t),
+                            int (*func_i64_i64)(int64_t*, int64_t const*, size_t))
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
   LOG(LOG_PARAM) << __FUNCTION__ << ": in.dtype=" << in.dtype
@@ -52,6 +60,56 @@ inline int unary_op_wrapper(vml::Tensor const& out, vml::Tensor const& in,
     else {
       ret = func_f32_f32(po, pi, in.nelems);
     }
+  } else if (in.dtype == DT_DOUBLE && out.dtype == DT_DOUBLE) {
+    double* po = reinterpret_cast<double*>(out.addr);
+    double const* pi = reinterpret_cast<double const*>(in.addr);
+    if( in.nelems >= 2048 ) {
+#pragma omp parallel
+      {
+        int64_t nthreads = omp_get_num_threads() ;
+        int64_t threadid = omp_get_thread_num() ;
+
+        int64_t chunkSize = in.nelems / nthreads ;
+        int64_t remain    = in.nelems % nthreads ;
+
+        int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+        int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+        int64_t offset    = chunkBegin ;
+
+        if( myChunk > 0 ) {
+          ret = func_f64_f64(po + offset, pi + offset, myChunk);
+        }
+      }
+    }
+    else {
+      ret = func_f64_f64(po, pi, in.nelems);
+    }
+  } else if (in.dtype == DT_INT64 && out.dtype == DT_INT64) {
+    int64_t* po = reinterpret_cast<int64_t*>(out.addr);
+    int64_t const* pi = reinterpret_cast<int64_t const*>(in.addr);
+    if( in.nelems >= 2048 ) {
+#pragma omp parallel
+      {
+        int64_t nthreads = omp_get_num_threads() ;
+        int64_t threadid = omp_get_thread_num() ;
+
+        int64_t chunkSize = in.nelems / nthreads ;
+        int64_t remain    = in.nelems % nthreads ;
+
+        int64_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+        int64_t myChunk    = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+        int64_t offset    = chunkBegin ;
+
+        if( myChunk > 0 ) {
+          ret = func_i64_i64(po + offset, pi + offset, myChunk);
+        }
+      }
+    }
+    else {
+      ret = func_i64_i64(po, pi, in.nelems);
+    }
   }
 
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
@@ -64,67 +122,33 @@ inline int unary_op_wrapper(vml::Tensor const& out, vml::Tensor const& in,
 // Abs
 //
 
-int vml::abs(vml::Tensor const& out, vml::Tensor const& in)
+template<typename Tout, typename Tin>
+int op_abs(Tout* po, Tin const* pi, size_t nelems)
 {
-  if (in.dtype == DT_FLOAT) {
-    float* po = out.ptr<float*>();
-    float const* pi = in.ptr<float const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = fabsf(pi[i]);
-    return 0;
-  } else if (in.dtype == DT_DOUBLE) {
-    double* po = out.ptr<double*>();
-    double const* pi = in.ptr<double const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = fabs(pi[i]);
-    return 0;
-#if 0 // do int32 type's abs in CPU.
-  } else if (in.dtype == DT_INT32) {
-    int32_t* po = out.ptr<int32_t*>();
-    int32_t const* pi = in.ptr<int32_t const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = ::abs(pi[i]);
-    return 0;
-#endif
-  } else if (in.dtype == DT_INT64) {
-    int64_t* po = out.ptr<int64_t*>();
-    int64_t const* pi = in.ptr<int64_t const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = labs(pi[i]);
-    return 0;
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::abs(pi[i]) ;
   }
 
-  return 1;
+  return 0;
 }
+
+DEFINE_UNARY_OP(abs, op_abs);
 
 //
 // Sign
 //
 
-int vml::sign(vml::Tensor const& out, vml::Tensor const& in)
+template<typename Tout, typename Tin>
+int op_sign(Tout* po, Tin const* pi, size_t nelems)
 {
-  if (in.dtype == DT_FLOAT) {
-    float* po = out.ptr<float*>();
-    float const* pi = in.ptr<float const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = (float)((pi[i] > 0.0) - (pi[i] < 0.0));
-    return 0;
-  } else if (in.dtype == DT_DOUBLE) {
-    double* po = out.ptr<double*>();
-    double const* pi = in.ptr<double const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = (double)((pi[i] > 0.0) - (pi[i] < 0.0));
-    return 0;
-  } else if (in.dtype == DT_INT64) {
-    int64_t* po = out.ptr<int64_t*>();
-    int64_t const* pi = in.ptr<int64_t const*>();
-    for (size_t i = 0; i < in.nelems; ++i)
-      po[i] = (int64_t)((pi[i] > 0) - (pi[i] < 0));
-    return 0;
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = (Tout)((pi[i] > (Tin)0) - (pi[i] < (Tin)0));
   }
 
-  return 1;
+  return 0;
 }
+
+DEFINE_UNARY_OP(sign, op_sign);
 
 //
 // Exp
@@ -141,6 +165,22 @@ int op_exp(Tout* po, Tin const* pi, size_t nelems)
 }
 
 DEFINE_UNARY_OP(exp, op_exp);
+
+//
+// Expm1
+//
+
+template<typename Tout, typename Tin>
+int op_expm1(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::exp(pi[i]) - 1.0;
+  }
+
+  return 0;
+}
+
+DEFINE_UNARY_OP(expm1, op_expm1);
 
 //
 // Floor
@@ -173,6 +213,22 @@ int op_log(Tout* po, Tin const* pi, size_t nelems)
 }
 
 DEFINE_UNARY_OP(log, op_log);
+
+//
+// Log1p
+//
+
+template<typename Tout, typename Tin>
+int op_log1p(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::log1p(pi[i]) ;
+  }
+
+  return 0;
+}
+
+DEFINE_UNARY_OP(log1p, op_log1p);
 
 //
 // Neg
@@ -311,6 +367,36 @@ int square<float, float>(float* out, float const* in, size_t nelems)
 DEFINE_UNARY_OP(square, ::square);
 
 //
+// Sinh
+// 
+
+template<typename Tout, typename Tin>
+int op_sinh(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::sinh(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(sinh, op_sinh);
+
+//
+// Cosh
+// 
+
+template<typename Tout, typename Tin>
+int op_cosh(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::cosh(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(cosh, op_cosh);
+
+//
 // Tanh
 // 
 
@@ -324,6 +410,51 @@ int op_tanh(Tout* po, Tin const* pi, size_t nelems)
 }
 
 DEFINE_UNARY_OP(tanh, op_tanh);
+
+//
+// Asinh
+// 
+
+template<typename Tout, typename Tin>
+int op_asinh(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::asinh(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(asinh, op_asinh);
+
+//
+// Acosh
+// 
+
+template<typename Tout, typename Tin>
+int op_acosh(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::acosh(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(acosh, op_acosh);
+
+//
+// Atanh
+// 
+
+template<typename Tout, typename Tin>
+int op_atanh(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::atanh(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(atanh, op_atanh);
 
 // ----------------------------------------------------------------------
 
@@ -375,13 +506,20 @@ int unary_op_helper(const void* args, size_t len,
 REGISTER_UNARY_OP(Abs, vml::abs);
 REGISTER_UNARY_OP(Sign, vml::sign);
 REGISTER_UNARY_OP(Exp, vml::exp);
+REGISTER_UNARY_OP(Expm1, vml::expm1);
 REGISTER_UNARY_OP(Floor, vml::floor);
 REGISTER_UNARY_OP(Neg, vml::neg);
 REGISTER_UNARY_OP(Log, vml::log);
+REGISTER_UNARY_OP(Log1p, vml::log1p);
 REGISTER_UNARY_OP(Reciprocal, vml::reciprocal);
 REGISTER_UNARY_OP(Rsqrt, vml::rsqrt);
 REGISTER_UNARY_OP(Sigmoid, vml::sigmoid);
 REGISTER_UNARY_OP(Sqrt, vml::sqrt);
 REGISTER_UNARY_OP(Square, vml::square);
+REGISTER_UNARY_OP(Sinh, vml::sinh);
+REGISTER_UNARY_OP(Cosh, vml::cosh);
 REGISTER_UNARY_OP(Tanh, vml::tanh);
+REGISTER_UNARY_OP(Asinh, vml::asinh);
+REGISTER_UNARY_OP(Acosh, vml::acosh);
+REGISTER_UNARY_OP(Atanh, vml::atanh);
 
