@@ -89,6 +89,9 @@ DEFINE_TEST_UNARY_OP_01(Sigmoid, vml::sigmoid,
                         [](float x) { return 1/(1+std::exp(-x)); });
 DEFINE_TEST_UNARY_OP_01(Sqrt, vml::sqrt, std::sqrt);
 DEFINE_TEST_UNARY_OP_01(Square, vml::square, [](float x) { return x * x; });
+DEFINE_TEST_UNARY_OP_01(Sin, vml::sin, std::sin);
+DEFINE_TEST_UNARY_OP_01(Cos, vml::cos, std::cos);
+DEFINE_TEST_UNARY_OP_01(Tan, vml::tan, std::tan);
 DEFINE_TEST_UNARY_OP_01(Sinh, vml::sinh, std::sinh);
 DEFINE_TEST_UNARY_OP_01(Cosh, vml::cosh, std::cosh);
 DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
@@ -1055,6 +1058,9 @@ int main(int argc, char* argv[])
         DEFINE_TEST_01(Rsqrt),
         DEFINE_TEST_01(Sigmoid),
         DEFINE_TEST_01(Square),
+        DEFINE_TEST_01(Sin),
+        DEFINE_TEST_01(Cos),
+        DEFINE_TEST_01(Tan),
         DEFINE_TEST_01(Sinh),
         DEFINE_TEST_01(Cosh),
         DEFINE_TEST_01(Tanh),

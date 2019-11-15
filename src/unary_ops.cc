@@ -367,6 +367,51 @@ int square<float, float>(float* out, float const* in, size_t nelems)
 DEFINE_UNARY_OP(square, ::square);
 
 //
+// Sin
+// 
+
+template<typename Tout, typename Tin>
+int op_sin(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::sin(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(sin, op_sin);
+
+//
+// Cos
+// 
+
+template<typename Tout, typename Tin>
+int op_cos(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::cos(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(cos, op_cos);
+
+//
+// Tan
+// 
+
+template<typename Tout, typename Tin>
+int op_tan(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::tan(pi[i]) ;
+  }
+  return 0;
+}
+
+DEFINE_UNARY_OP(tan, op_tan);
+
+//
 // Sinh
 // 
 
@@ -516,6 +561,9 @@ REGISTER_UNARY_OP(Rsqrt, vml::rsqrt);
 REGISTER_UNARY_OP(Sigmoid, vml::sigmoid);
 REGISTER_UNARY_OP(Sqrt, vml::sqrt);
 REGISTER_UNARY_OP(Square, vml::square);
+REGISTER_UNARY_OP(Sin, vml::sin);
+REGISTER_UNARY_OP(Cos, vml::cos);
+REGISTER_UNARY_OP(Tan, vml::tan);
 REGISTER_UNARY_OP(Sinh, vml::sinh);
 REGISTER_UNARY_OP(Cosh, vml::cosh);
 REGISTER_UNARY_OP(Tanh, vml::tanh);
