@@ -76,17 +76,28 @@ bool test_##name##_01(TestParam const& param) { \
 }
 
 DEFINE_TEST_UNARY_OP_01(Abs, vml::abs, std::abs);
+DEFINE_TEST_UNARY_OP_01(Sign, vml::sign, [](float x) { return (float)((x > 0.0f) - (x < 0.0f)); });
 DEFINE_TEST_UNARY_OP_01(Exp, vml::exp, expf);
+DEFINE_TEST_UNARY_OP_01(Expm1, vml::expm1, [](float x) { return expf(x) - 1.0f; });
 DEFINE_TEST_UNARY_OP_01(Floor, vml::floor, std::floor);
 DEFINE_TEST_UNARY_OP_01(Neg, vml::neg, [](float x) { return -x; });
 DEFINE_TEST_UNARY_OP_01(Log, vml::log, std::log);
+DEFINE_TEST_UNARY_OP_01(Log1p, vml::log1p, std::log1p);
 DEFINE_TEST_UNARY_OP_01(Reciprocal, vml::reciprocal, [](float x) { return 1/x; });
 DEFINE_TEST_UNARY_OP_01(Rsqrt, vml::rsqrt, [](float x) { return 1/std::sqrt(x); });
 DEFINE_TEST_UNARY_OP_01(Sigmoid, vml::sigmoid,
                         [](float x) { return 1/(1+std::exp(-x)); });
 DEFINE_TEST_UNARY_OP_01(Sqrt, vml::sqrt, std::sqrt);
 DEFINE_TEST_UNARY_OP_01(Square, vml::square, [](float x) { return x * x; });
+DEFINE_TEST_UNARY_OP_01(Sin, vml::sin, std::sin);
+DEFINE_TEST_UNARY_OP_01(Cos, vml::cos, std::cos);
+DEFINE_TEST_UNARY_OP_01(Tan, vml::tan, std::tan);
+DEFINE_TEST_UNARY_OP_01(Sinh, vml::sinh, std::sinh);
+DEFINE_TEST_UNARY_OP_01(Cosh, vml::cosh, std::cosh);
 DEFINE_TEST_UNARY_OP_01(Tanh, vml::tanh, std::tanh);
+DEFINE_TEST_UNARY_OP_01(Asinh, vml::asinh, std::asinh);
+DEFINE_TEST_UNARY_OP_01(Acosh, vml::acosh, std::acosh);
+DEFINE_TEST_UNARY_OP_01(Atanh, vml::atanh, std::atanh);
 
 //
 // BinaryOp
@@ -1036,15 +1047,26 @@ int main(int argc, char* argv[])
 
 #define DEFINE_TEST_01(T) {#T "_01", test_##T##_01}
         DEFINE_TEST_01(Abs),
+        DEFINE_TEST_01(Sign),
         DEFINE_TEST_01(Exp),
+        DEFINE_TEST_01(Expm1),
         DEFINE_TEST_01(Floor),
         DEFINE_TEST_01(Neg),
         DEFINE_TEST_01(Log),
+        DEFINE_TEST_01(Log1p),
         DEFINE_TEST_01(Reciprocal),
         DEFINE_TEST_01(Rsqrt),
         DEFINE_TEST_01(Sigmoid),
         DEFINE_TEST_01(Square),
+        DEFINE_TEST_01(Sin),
+        DEFINE_TEST_01(Cos),
+        DEFINE_TEST_01(Tan),
+        DEFINE_TEST_01(Sinh),
+        DEFINE_TEST_01(Cosh),
         DEFINE_TEST_01(Tanh),
+        DEFINE_TEST_01(Asinh),
+        DEFINE_TEST_01(Acosh),
+        DEFINE_TEST_01(Atanh),
     };
 
     TestParam param;

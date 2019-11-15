@@ -52,16 +52,27 @@ int leaky_relu_grad(vml::Tensor const& backprops,
 
 // unary op
 int abs(vml::Tensor const& out, vml::Tensor const& in);
+int sign(vml::Tensor const& out, vml::Tensor const& in);
 int exp(vml::Tensor const& out, vml::Tensor const& in);
+int expm1(vml::Tensor const& out, vml::Tensor const& in);
 int floor(vml::Tensor const& out, vml::Tensor const& in);
 int log(vml::Tensor const& out, vml::Tensor const& in);
+int log1p(vml::Tensor const& out, vml::Tensor const& in);
 int neg(vml::Tensor const& out, vml::Tensor const& in);
 int reciprocal(vml::Tensor const& out, vml::Tensor const& in);
 int rsqrt(vml::Tensor const& out, vml::Tensor const& in);
 int sigmoid(vml::Tensor const& out, vml::Tensor const& in);
 int sqrt(vml::Tensor const& out, vml::Tensor const& in);
 int square(vml::Tensor const& out, vml::Tensor const& in);
+int sin(vml::Tensor const& out, vml::Tensor const& in);
+int cos(vml::Tensor const& out, vml::Tensor const& in);
+int tan(vml::Tensor const& out, vml::Tensor const& in);
+int sinh(vml::Tensor const& out, vml::Tensor const& in);
+int cosh(vml::Tensor const& out, vml::Tensor const& in);
 int tanh(vml::Tensor const& out, vml::Tensor const& in);
+int asinh(vml::Tensor const& out, vml::Tensor const& in);
+int acosh(vml::Tensor const& out, vml::Tensor const& in);
+int atanh(vml::Tensor const& out, vml::Tensor const& in);
 
 // binary op
 int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
