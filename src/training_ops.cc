@@ -1,15 +1,15 @@
-#include <cstdio>
-#include <cstdint>
-#include <cstdint>
-#include <cassert>
-#include <algorithm>
 #include "kernel.h"
 #include "types.h"
 #include "log.h"
 
+#include "ve_ops_common.h"
+#include "vml.h"
+
 #include <omp.h>
 
+#ifdef LIBVETF_INTRINSIC
 #include "intrinsic/intrinsic.h"
+#endif
 
 REGISTER_KERNEL("ApplyGradientDescent", "op_ApplyGradientDescent");
 REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
@@ -343,3 +343,121 @@ int op_ApplyMomentum(const void* args, size_t len)
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
+
+
+//
+// AdaDelta
+//
+
+namespace {
+
+template <typename T>
+void ApplyAdadelta(
+    const vml::Tensor* var_tensor,
+    const vml::Tensor* accum_tensor,
+    const vml::Tensor* accum_update_tensor,
+    const vml::Tensor* grad_tensor,
+    const T lr,
+    const T rho,
+    const T epsilon
+)
+{
+#if 0	// Eigen Impl
+  accum.device(d) =
+      accum * rho() + grad.square() * (static_cast<T>(1) - rho());
+  const auto update =
+      (accum_update + epsilon()).sqrt() * (accum + epsilon()).rsqrt() * grad;
+  var.device(d) -= update * lr();
+  accum_update.device(d) =
+      accum_update * rho() + update.square() * (static_cast<T>(1) - rho());
+#endif
+
+    const size_t nelems = var_tensor->nelems ;
+
+    T* pVar          = reinterpret_cast<T*>(var_tensor->addr) ;
+    T* pAccum        = reinterpret_cast<T*>(accum_tensor->addr) ;
+    T* pAccumUpdate  = reinterpret_cast<T*>(accum_update_tensor->addr) ;
+    const T* pGrad   = reinterpret_cast<T*>(grad_tensor->addr) ;
+
+    for (size_t i = 0; i < nelems; ++i) {
+      const T grad   = pGrad[i] ;
+      T accum        = pAccum[i] ;
+      T accum_update = pAccumUpdate[i] ;
+      T var          = pVar[i] ;
+
+      const T update = std::sqrt(accum_update + epsilon) /std::sqrt(accum_update + epsilon) * grad ;
+
+      accum =  accum * rho + grad * grad * (T(1.)-rho);
+      accum_update = accum_update * rho + update * update * (T(1.)-rho);
+      var-= update * lr ;
+
+      pAccum[i] = accum ;
+      pAccumUpdate[i] = accum_update ;
+      pVar[i] = var ;
+    }
+}
+
+
+int op_ApplyAdadelta(const VEOpArgs& args)
+{
+    if (args.nArguments() != 7)
+        return 1;
+
+    const vml::Tensor* var          = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor* accum        = args.arg<vml::Tensor>(1) ;
+    const vml::Tensor* accum_update = args.arg<vml::Tensor>(2) ;
+    const vml::Tensor* lr           = args.arg<vml::Tensor>(3) ; // scalar
+    const vml::Tensor* rho          = args.arg<vml::Tensor>(4) ; // scalar
+    const vml::Tensor* epsilon      = args.arg<vml::Tensor>(5) ; // scalar
+    const vml::Tensor* grad         = args.arg<vml::Tensor>(6) ;
+
+
+    if (!var || !accum || !accum_update || !lr || !rho || !epsilon || !grad)
+        return 1;
+
+    LOG(LOG_PARAM)
+        << __FUNCTION__  << ":"
+	<< " var="     << var
+	<< " accum="   << accum
+	<< " accum_update=" << accum_update
+	<< " lr="      << lr
+	<< " rho="     << rho
+	<< " epsilon=" << epsilon
+	<< " grad="    << grad ;
+
+    if( lr->nelems != 1 || rho->nelems != 1 || epsilon->nelems != 1 )
+        return 1;
+
+    if( var->nelems != accum->nelems
+	  || var->nelems != accum_update->nelems
+	  || var->nelems != grad->nelems )
+        return 1 ;
+
+    if( var->dtype != accum->dtype
+	  ||  var->dtype != accum_update->dtype
+	  ||  var->dtype != lr->dtype
+	  ||  var->dtype != rho->dtype
+	  ||  var->dtype != epsilon->dtype
+	  ||  var->dtype != grad->dtype )
+        return 1 ;
+
+    if (var->dtype == DT_FLOAT ) {
+      ApplyAdadelta<float>(
+	  var,
+	  accum,
+	  accum_update,
+	  grad,
+	  reinterpret_cast<const float*>(lr->addr)[0],
+	  reinterpret_cast<const float*>(rho->addr)[0],
+	  reinterpret_cast<const float*>(epsilon->addr)[0]
+      );
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+} // namespace
+
+DEFINE_KERNEL(ApplyAdadelta, op_ApplyAdadelta);
