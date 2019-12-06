@@ -11,7 +11,6 @@
 #include "intrinsic/intrinsic.h"
 #endif
 
-REGISTER_KERNEL("ApplyGradientDescent", "op_ApplyGradientDescent");
 REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
 REGISTER_KERNEL("ApplyMomentum", "op_ApplyMomentum");
 
@@ -22,67 +21,10 @@ REGISTER_KERNEL("ApplyMomentum", "op_ApplyMomentum");
   }
 
 extern "C" {
-  int op_ApplyGradientDescent(const void *arg, size_t len) ;
   int op_ApplyAdam(const void* arg, size_t len);
   int op_ApplyMomentum(const void* arg, size_t len);
 }
 
-//
-// ApplyGradientDescent
-//
-
-namespace {
-
-template <typename T>
-int apply_gradient_descent(int64_t num_elements,
-                           uint64_t var_ptr, uint64_t delta_ptr,
-			   uint64_t alpha_ptr )
-{
-  T* var = reinterpret_cast<T*>(var_ptr);
-  const T* delta  = reinterpret_cast<const T*>(delta_ptr);
-  const T  alpha = *reinterpret_cast<T*>(alpha_ptr);
-
-  for(int64_t i=0; i<num_elements; i++) {
-    var[i] -= alpha * delta[i] ;
-  }
-
-  return 0 ;
-}
-
-}
-
-int op_ApplyGradientDescent(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    int dtype;
-    int64_t num_elements ;
-    uint64_t var_ptr, delta_ptr ;
-    uint64_t alpha_ptr ;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  int ret = 1;
-
-  if (p->dtype == DT_FLOAT) {
-    ret = apply_gradient_descent<float> (p->num_elements,
-	                                 p->var_ptr, p->delta_ptr,
-					 p->alpha_ptr) ;
-  }
-  else if (p->dtype == DT_DOUBLE) {
-    ret = apply_gradient_descent<double>(p->num_elements,
-	                                 p->var_ptr, p->delta_ptr,
-					 p->alpha_ptr) ;
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
 
 
 //
@@ -345,6 +287,77 @@ int op_ApplyMomentum(const void* args, size_t len)
 }
 
 
+
+//
+// AdaDelta
+//
+
+namespace {
+
+template <typename T>
+void ApplyGradientDescent(
+    const vml::Tensor* var_tensor,
+    const vml::Tensor* delta_tensor,
+    const T alpha
+)
+{
+    const size_t nelems = var_tensor->nelems ;
+
+    T* pVar          = reinterpret_cast<T*>(var_tensor->addr) ;
+    T* pDelta        = reinterpret_cast<T*>(delta_tensor->addr) ;
+
+    for (size_t i = 0; i < nelems; ++i) {
+      pVar[i] -= alpha * pDelta[i] ;
+    }
+}
+
+
+int op_ApplyGradientDescent(const VEOpArgs& args)
+{
+    if (args.nArguments() != 3)
+        return 1;
+
+    const vml::Tensor* var   = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor* alpha = args.arg<vml::Tensor>(1) ; // scalar
+    const vml::Tensor* delta = args.arg<vml::Tensor>(2) ;
+
+    if (!var || !alpha || !delta)
+        return 1;
+
+    LOG(LOG_PARAM)
+        << __FUNCTION__  << ":"
+	<< " var="     << var
+	<< " alpha="   << alpha
+	<< " delta="   << delta ;
+
+    if( alpha->nelems != 1 )
+        return 1;
+
+    if( var->nelems != delta->nelems )
+        return 1 ;
+
+    if( var->dtype != alpha->dtype ||  var->dtype != delta->dtype )
+        return 1 ;
+
+    if (var->dtype == DT_FLOAT ) {
+      ApplyGradientDescent<float>(
+	  var,
+	  delta,
+	  reinterpret_cast<const float*>(alpha->addr)[0]
+      );
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+} // namespace
+
+DEFINE_KERNEL(ApplyGradientDescent, op_ApplyGradientDescent);
+
+
+
 //
 // AdaDelta
 //
@@ -385,9 +398,10 @@ void ApplyAdadelta(
       T accum_update = pAccumUpdate[i] ;
       T var          = pVar[i] ;
 
-      const T update = std::sqrt(accum_update + epsilon) /std::sqrt(accum_update + epsilon) * grad ;
 
       accum =  accum * rho + grad * grad * (T(1.)-rho);
+
+      const T update = std::sqrt(accum_update + epsilon) / std::sqrt(accum + epsilon) * grad ;
       accum_update = accum_update * rho + update * update * (T(1.)-rho);
       var-= update * lr ;
 
