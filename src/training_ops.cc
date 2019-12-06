@@ -1,7 +1,5 @@
-#include "kernel.h"
 #include "types.h"
 #include "log.h"
-
 #include "ve_ops_common.h"
 #include "vml.h"
 
@@ -10,200 +8,6 @@
 #ifdef LIBVETF_INTRINSIC
 #include "intrinsic/intrinsic.h"
 #endif
-
-REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
-
-#define CHECK_ARG_LEN(l0, l1) \
-  if ((l0) != (l1)) { \
-      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << (l1) << " expected but " << (l0); \
-      return 1; \
-  }
-
-extern "C" {
-  int op_ApplyAdam(const void* arg, size_t len);
-}
-
-
-
-//
-// ApplyAdam
-//
-
-namespace {
-
-template <typename T>
-int apply_adam(bool use_nesterov, int64_t num_elements,
-               uint64_t var_ptr, uint64_t m_ptr, uint64_t v_ptr,
-               uint64_t beta1_power_ptr, uint64_t beta2_power_ptr,
-               uint64_t lr_ptr,
-               uint64_t beta1_ptr, uint64_t beta2_ptr, uint64_t epsilon_ptr,
-               uint64_t grd_ptr )
-{
-  T* var = reinterpret_cast<T*>(var_ptr);
-  T* m   = reinterpret_cast<T*>(m_ptr);
-  T* v   = reinterpret_cast<T*>(v_ptr);
-
-  const T* grd = reinterpret_cast<const T*>(grd_ptr);
-
-  const T beta1_power = reinterpret_cast<const T*>(beta1_power_ptr)[0];
-  const T beta2_power = reinterpret_cast<const T*>(beta2_power_ptr)[0];
-  const T lr = reinterpret_cast<const T*>(lr_ptr)[0];
-  const T beta1 = reinterpret_cast<const T*>(beta1_ptr)[0];
-  const T beta2 = reinterpret_cast<const T*>(beta2_ptr)[0];
-  const T epsilon = reinterpret_cast<const T*>(epsilon_ptr)[0];
-
-  const T one = T(1.) ; 
-
-#if 1 // optimized
- 
-  const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
-
-#pragma omp parallel
-  { 
-    int64_t nthreads = omp_get_num_threads() ;
-    int64_t threadid = omp_get_thread_num() ;
-
-    int64_t eachNElement = num_elements / nthreads ;
-    int64_t remain       = num_elements % nthreads ;
-
-    int64_t elementBegin = eachNElement * threadid + ( threadid < remain ? threadid : remain ) ;
-    int64_t myElement    = eachNElement + ( threadid < remain ? 1 : 0 ) ;
-
-    if( use_nesterov ) {
-      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
-        m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
-        v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
-        var[i] -= k * ( m[i] * beta1 + (one-beta1) * grd[i] ) / ( epsilon + std::sqrt(v[i])) ;
-      }
-    }
-    else {
-      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
-        m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
-        v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
-        var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
-      }
-    }
-  }
-#else // original
-  for(int64_t i=0; i<num_elements; i++) {
-    m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
-  }
-  for(int64_t i=0; i<num_elements; i++) {
-    v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
-  }
-  
-  const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
-  if( use_nesterov ) {
-    for(int64_t i=0; i<num_elements; i++) {
-      var[i] -= k * ( m[i] * beta1 + (one-beta1) * grd[i] ) / ( epsilon + std::sqrt(v[i])) ;
-    }
-  }
-  else {
-    for(int64_t i=0; i<num_elements; i++) {
-      var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
-    }
-  }
-#endif
-
-  return 0 ;
-}
-
-#ifdef LIBVETF_INTRINSIC
-template <>
-int apply_adam<float>(bool use_nesterov, int64_t num_elements,
-                      uint64_t var_ptr, uint64_t m_ptr, uint64_t v_ptr,
-                      uint64_t beta1_power_ptr, uint64_t beta2_power_ptr,
-                      uint64_t lr_ptr,
-                      uint64_t beta1_ptr, uint64_t beta2_ptr, uint64_t epsilon_ptr,
-                      uint64_t grd_ptr )
-{
-  float* var = reinterpret_cast<float*>(var_ptr);
-  float* m   = reinterpret_cast<float*>(m_ptr);
-  float* v   = reinterpret_cast<float*>(v_ptr);
-
-  const float* grd = reinterpret_cast<const float*>(grd_ptr);
-
-  const float beta1_power = reinterpret_cast<const float*>(beta1_power_ptr)[0];
-  const float beta2_power = reinterpret_cast<const float*>(beta2_power_ptr)[0];
-  const float lr = reinterpret_cast<const float*>(lr_ptr)[0];
-  const float beta1 = reinterpret_cast<const float*>(beta1_ptr)[0];
-  const float beta2 = reinterpret_cast<const float*>(beta2_ptr)[0];
-  const float epsilon = reinterpret_cast<const float*>(epsilon_ptr)[0];
-
-  const float one = 1.f ; 
-
-  const float k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
-
-#pragma omp parallel
-  { 
-    int64_t nthreads = omp_get_num_threads() ;
-    int64_t threadid = omp_get_thread_num() ;
-
-    int64_t eachNElement = num_elements / nthreads ;
-    int64_t remain       = num_elements % nthreads ;
-
-    int64_t elementBegin = eachNElement * threadid + ( threadid < remain ? threadid : remain ) ;
-    int64_t myElement    = eachNElement + ( threadid < remain ? 1 : 0 ) ;
-
-    if( use_nesterov ) {
-      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
-        m[i] = m[i] + (one - beta1) * (grd[i] - m[i]) ;
-        v[i] = v[i] + (one - beta2) * (grd[i]*grd[i] - v[i]) ;
-        var[i] -= k * ( m[i] * beta1 + (one-beta1) * grd[i] ) / ( epsilon + std::sqrt(v[i])) ;
-      }
-    }
-    else {
-      _apply_adam_f32(var+elementBegin, m+elementBegin, v+elementBegin,
-                      beta1, beta2, epsilon, k, myElement, grd+elementBegin ) ;
-    }
-  }
-  return 0 ;
-}
-#endif
-
-}
-
-int op_ApplyAdam(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    int dtype;
-    bool use_nesterov_ ;
-    int64_t num_elements ;
-    uint64_t var_ptr, m_ptr, v_ptr ;
-    uint64_t beta1_power_ptr, beta2_power_ptr ;
-    uint64_t lr ;
-    uint64_t beta1_ptr, beta2_ptr, epsilon_ptr ;
-    uint64_t grad_ptr;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  int ret = 1;
-
-  if (p->dtype == DT_FLOAT) {
-    ret = apply_adam<float> (p->use_nesterov_, p->num_elements,
-                             p->var_ptr, p->m_ptr, p->v_ptr,
-                             p->beta1_power_ptr, p->beta2_power_ptr, p->lr,
-                             p->beta1_ptr, p->beta2_ptr, p->epsilon_ptr,
-                             p->grad_ptr ) ;
-  }
-  else if (p->dtype == DT_DOUBLE) {
-    ret = apply_adam<double>(p->use_nesterov_, p->num_elements,
-                             p->var_ptr, p->m_ptr, p->v_ptr,
-                             p->beta1_power_ptr, p->beta2_power_ptr, p->lr,
-                             p->beta1_ptr, p->beta2_ptr, p->epsilon_ptr,
-                             p->grad_ptr ) ;
-  }
-
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
 
 
 //
@@ -489,3 +293,224 @@ int op_ApplyMomentum(const VEOpArgs& args)
 } // namespace
 
 DEFINE_KERNEL(ApplyMomentum, op_ApplyMomentum);
+
+
+//
+// ApplyAdam
+//
+
+namespace {
+
+template <typename T>
+void ApplyAdam(
+    const vml::Tensor* var_tensor,
+    const vml::Tensor* m_tensor,
+    const vml::Tensor* v_tensor,
+    const vml::Tensor* grad_tensor,
+    const T beta1_power,
+    const T beta2_power,
+    const T lr,
+    const T beta1,
+    const T beta2,
+    const T epsilon,
+    const bool use_nesterov
+)
+{
+    const size_t nelems = var_tensor->nelems ;
+
+    T* var        = reinterpret_cast<T*>(var_tensor->addr) ;
+    T* m          = reinterpret_cast<T*>(m_tensor->addr) ;
+    T* v          = reinterpret_cast<T*>(v_tensor->addr) ;
+    const T* grad = reinterpret_cast<T*>(grad_tensor->addr) ;
+
+    const T one = T(1.) ;
+
+#if 1 // optimized
+
+    const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
+
+#pragma omp parallel
+    {
+      int64_t nthreads = omp_get_num_threads() ;
+      int64_t threadid = omp_get_thread_num() ;
+
+      int64_t eachNElement = nelems / nthreads ;
+      int64_t remain       = nelems % nthreads ;
+
+      int64_t elementBegin = eachNElement * threadid + ( threadid < remain ? threadid : remain ) ;
+      int64_t myElement    = eachNElement + ( threadid < remain ? 1 : 0 ) ;
+
+      if( use_nesterov ) {
+	for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
+	  m[i] = m[i] + (one - beta1) * (grad[i] - m[i]) ;
+	  v[i] = v[i] + (one - beta2) * (grad[i]*grad[i] - v[i]) ;
+	  var[i] -= k * ( m[i] * beta1 + (one-beta1) * grad[i] ) / ( epsilon + std::sqrt(v[i])) ;
+	}
+      }
+      else {
+	for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
+	  m[i] = m[i] + (one - beta1) * (grad[i] - m[i]) ;
+	  v[i] = v[i] + (one - beta2) * (grad[i]*grad[i] - v[i]) ;
+	  var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
+	}
+      }
+    }
+#else // original
+    for(int64_t i=0; i<nelems; i++) {
+      m[i] = m[i] + (one - beta1) * (grad[i] - m[i]) ;
+    }
+    for(int64_t i=0; i<nelems; i++) {
+      v[i] = v[i] + (one - beta2) * (grad[i]*grad[i] - v[i]) ;
+    }
+
+    const T k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
+    if( use_nesterov ) {
+      for(int64_t i=0; i<nelems; i++) {
+	var[i] -= k * ( m[i] * beta1 + (one-beta1) * grad[i] ) / ( epsilon + std::sqrt(v[i])) ;
+      }
+    }
+    else {
+      for(int64_t i=0; i<nelems; i++) {
+	var[i] -= k * m[i] / (epsilon + std::sqrt(v[i])) ;
+      }
+    }
+#endif
+}
+
+#ifdef LIBVETF_INTRINSIC
+template<>
+void ApplyAdam<float>(
+    const vml::Tensor* var_tensor,
+    const vml::Tensor* m_tensor,
+    const vml::Tensor* v_tensor,
+    const vml::Tensor* grad_tensor,
+    const float beta1_power,
+    const float beta2_power,
+    const float lr,
+    const float beta1,
+    const float beta2,
+    const float epsilon,
+    const bool use_nesterov
+)
+{
+  const size_t nelems = var_tensor->nelems ;
+
+  float* var        = reinterpret_cast<float*>(var_tensor->addr) ;
+  float* m          = reinterpret_cast<float*>(m_tensor->addr) ;
+  float* v          = reinterpret_cast<float*>(v_tensor->addr) ;
+  const float* grad = reinterpret_cast<float*>(grad_tensor->addr) ;
+
+  const float one = 1.f ;
+
+  const float k = (lr * std::sqrt( one - beta2_power) / ( one - beta1_power)) ;
+
+#pragma omp parallel
+  {
+    int64_t nthreads = omp_get_num_threads() ;
+    int64_t threadid = omp_get_thread_num() ;
+
+    int64_t eachNElement = nelems / nthreads ;
+    int64_t remain       = nelems % nthreads ;
+
+    int64_t elementBegin = eachNElement * threadid + ( threadid < remain ? threadid : remain ) ;
+    int64_t myElement    = eachNElement + ( threadid < remain ? 1 : 0 ) ;
+
+    if( use_nesterov ) {
+      for(int64_t i=elementBegin; i<elementBegin+myElement; i++) {
+        m[i] = m[i] + (one - beta1) * (grad[i] - m[i]) ;
+        v[i] = v[i] + (one - beta2) * (grad[i]*grad[i] - v[i]) ;
+        var[i] -= k * ( m[i] * beta1 + (one-beta1) * grad[i] ) / ( epsilon + std::sqrt(v[i])) ;
+      }
+    }
+    else {
+      _apply_adam_f32(var+elementBegin, m+elementBegin, v+elementBegin,
+                      beta1, beta2, epsilon, k, myElement, grad+elementBegin ) ;
+    }
+  }
+}
+#endif
+
+
+int op_ApplyAdam(const VEOpArgs& args)
+{
+    if (args.nArguments() != 11)
+        return 1;
+
+    const vml::Tensor* var          = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor* m            = args.arg<vml::Tensor>(1) ;
+    const vml::Tensor* v            = args.arg<vml::Tensor>(2) ;
+    const vml::Tensor* beta1_power  = args.arg<vml::Tensor>(3) ; // scalar
+    const vml::Tensor* beta2_power  = args.arg<vml::Tensor>(4) ; // scalar
+    const vml::Tensor* lr           = args.arg<vml::Tensor>(5) ; // scalar
+    const vml::Tensor* beta1        = args.arg<vml::Tensor>(6) ; // scalar
+    const vml::Tensor* beta2        = args.arg<vml::Tensor>(7) ; // scalar
+    const vml::Tensor* epsilon      = args.arg<vml::Tensor>(8) ; // scalar
+    const vml::Tensor* grad         = args.arg<vml::Tensor>(9) ;
+    const bool use_nesterov         = *args.arg<bool>(10) == 1 ? true : false ;
+
+
+    if ( !var || !m || !v || !beta1_power || !beta2_power || !lr || !beta1 || !beta2 || !epsilon || !grad )
+        return 1;
+
+    LOG(LOG_PARAM)
+        << __FUNCTION__  << ":"
+	<< " var="     << var
+	<< " m="       << m
+	<< " v="       << v
+	<< " beta1_power=" << beta1_power
+	<< " beta2_power=" << beta2_power
+	<< " lr="      << lr
+	<< " beta1="   << beta1
+	<< " beta2="   << beta2
+	<< " epsilon=" << epsilon
+	<< " grad="    << grad
+	<< " use_nesterov ="    << use_nesterov  ;
+
+    if( beta1_power->nelems != 1
+	  || beta2_power->nelems !=1
+	  || lr->nelems != 1
+	  || beta1->nelems != 1
+	  || beta2->nelems != 1
+	  || epsilon->nelems !=1 )
+        return 1 ;
+
+    if( var->nelems != m->nelems
+	  || var->nelems != v->nelems
+	  || var->nelems != grad->nelems )
+        return 1 ;
+
+    if( var->dtype != m->dtype
+	  ||  var->dtype != v->dtype
+	  ||  var->dtype != beta1_power->dtype
+	  ||  var->dtype != beta2_power->dtype
+	  ||  var->dtype != lr->dtype
+	  ||  var->dtype != beta1->dtype
+	  ||  var->dtype != beta2->dtype
+	  ||  var->dtype != epsilon->dtype
+	  ||  var->dtype != grad->dtype )
+        return 1 ;
+
+    if (var->dtype == DT_FLOAT ) {
+      ApplyAdam<float>(
+	  var,
+	  m,
+	  v,
+	  grad,
+	  reinterpret_cast<const float*>(beta1_power->addr)[0],
+	  reinterpret_cast<const float*>(beta2_power->addr)[0],
+	  reinterpret_cast<const float*>(lr->addr)[0],
+	  reinterpret_cast<const float*>(beta1->addr)[0],
+	  reinterpret_cast<const float*>(beta2->addr)[0],
+	  reinterpret_cast<const float*>(epsilon->addr)[0],
+	  use_nesterov
+      );
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+} // namespace
+
+DEFINE_KERNEL(ApplyAdam, op_ApplyAdam);
