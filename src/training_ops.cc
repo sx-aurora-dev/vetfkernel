@@ -12,7 +12,6 @@
 #endif
 
 REGISTER_KERNEL("ApplyAdam", "op_ApplyAdam");
-REGISTER_KERNEL("ApplyMomentum", "op_ApplyMomentum");
 
 #define CHECK_ARG_LEN(l0, l1) \
   if ((l0) != (l1)) { \
@@ -22,7 +21,6 @@ REGISTER_KERNEL("ApplyMomentum", "op_ApplyMomentum");
 
 extern "C" {
   int op_ApplyAdam(const void* arg, size_t len);
-  int op_ApplyMomentum(const void* arg, size_t len);
 }
 
 
@@ -209,87 +207,7 @@ int op_ApplyAdam(const void* args, size_t len)
 
 
 //
-// ApplyMomentum
-//
-
-namespace {
-
-template <typename T>
-int apply_momentum(bool use_nesterov, int64_t num_elements,
-               uint64_t var_ptr, uint64_t accum_ptr,
-               uint64_t lr_ptr, uint64_t momentum_ptr,
-               uint64_t grd_ptr )
-{
-  T* var   = reinterpret_cast<T*>(var_ptr);
-  T* accum = reinterpret_cast<T*>(accum_ptr);
-
-  const T* grd = reinterpret_cast<const T*>(grd_ptr);
-
-  const T lr       = reinterpret_cast<const T*>(lr_ptr)[0];
-  const T momentum = reinterpret_cast<const T*>(momentum_ptr)[0];
-
-  const T one = T(1.) ;
-
-
-  for(int64_t i=0; i<num_elements; i++) {
-    accum[i] = accum[i] * momentum + grd[i] ;
-  }
-  if (use_nesterov) {
-    for(int64_t i=0; i<num_elements; i++) {
-      var[i] -= grd[i] * lr + accum[i] * momentum * lr ;
-    }
-  } else {
-    for(int64_t i=0; i<num_elements; i++) {
-      var[i] -= accum[i] * lr ;
-    }
-  }
-  return 0 ;
-}
-
-}
-
-int op_ApplyMomentum(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    int dtype;
-    bool use_nesterov_ ;
-    int64_t num_elements ;
-    uint64_t var_ptr, accum_ptr ;
-    uint64_t lr_ptr, momentum_ptr ;
-    uint64_t grad_ptr;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  int ret = 1;
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  if (p->dtype == DT_FLOAT) {
-    ret = apply_momentum<float> (p->use_nesterov_, p->num_elements,
-                                 p->var_ptr, p->accum_ptr,
-				 p->lr_ptr, p->momentum_ptr,
-				 p->grad_ptr ) ;
-  }
-  else if (p->dtype == DT_DOUBLE) {
-    ret = apply_momentum<double>(p->use_nesterov_, p->num_elements,
-                                 p->var_ptr, p->accum_ptr,
-				 p->lr_ptr, p->momentum_ptr,
-				 p->grad_ptr ) ;
-  }
-
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
-
-
-
-//
-// AdaDelta
+// ApplyGradientDescent
 //
 
 namespace {
@@ -357,9 +275,8 @@ int op_ApplyGradientDescent(const VEOpArgs& args)
 DEFINE_KERNEL(ApplyGradientDescent, op_ApplyGradientDescent);
 
 
-
 //
-// AdaDelta
+// ApplyAdaDelta
 //
 
 namespace {
@@ -475,3 +392,100 @@ int op_ApplyAdadelta(const VEOpArgs& args)
 } // namespace
 
 DEFINE_KERNEL(ApplyAdadelta, op_ApplyAdadelta);
+
+
+//
+// ApplyMomentum
+//
+
+namespace {
+
+template <typename T>
+void ApplyMomentum(
+    const vml::Tensor* var_tensor,
+    const vml::Tensor* accum_tensor,
+    const vml::Tensor* grad_tensor,
+    const T lr,
+    const T momentum,
+    const bool use_nesterov
+)
+{
+    const size_t nelems = var_tensor->nelems ;
+
+    T* pVar          = reinterpret_cast<T*>(var_tensor->addr) ;
+    T* pAccum        = reinterpret_cast<T*>(accum_tensor->addr) ;
+    const T* pGrad   = reinterpret_cast<T*>(grad_tensor->addr) ;
+
+    const T one = T(1.) ;
+
+    for(int64_t i=0; i<nelems; i++) {
+      pAccum[i] = pAccum[i] * momentum + pGrad[i] ;
+    }
+    if (use_nesterov) {
+      for(int64_t i=0; i<nelems; i++) {
+	pVar[i] -= pGrad[i] * lr + pAccum[i] * momentum * lr ;
+      }
+    } else {
+      for(int64_t i=0; i<nelems; i++) {
+	pVar[i] -= pAccum[i] * lr ;
+      }
+    }
+}
+
+
+int op_ApplyMomentum(const VEOpArgs& args)
+{
+    if (args.nArguments() != 6)
+        return 1;
+
+    const vml::Tensor* var          = args.arg<vml::Tensor>(0) ;
+    const vml::Tensor* accum        = args.arg<vml::Tensor>(1) ;
+    const vml::Tensor* lr           = args.arg<vml::Tensor>(2) ; // scalar
+    const vml::Tensor* grad         = args.arg<vml::Tensor>(3) ;
+    const vml::Tensor* momentum     = args.arg<vml::Tensor>(4) ; // scalar
+    const bool use_nesterov         = *args.arg<bool>(5) == 1 ? true : false ;
+
+    if (!var || !accum || !lr || !grad || !momentum )
+        return 1;
+
+    LOG(LOG_PARAM)
+        << __FUNCTION__  << ":"
+	<< " var="     << var
+	<< " accum="   << accum
+	<< " lr="      << lr
+	<< " grad="     << grad
+	<< " momentum=" << momentum
+	<< " use_nesterov ="    << use_nesterov  ;
+
+    if( lr->nelems != 1 || momentum->nelems != 1 )
+        return 1;
+
+    if( var->nelems != accum->nelems
+	  || var->nelems != grad->nelems )
+        return 1 ;
+
+    if( var->dtype != accum->dtype
+	  ||  var->dtype != lr->dtype
+	  ||  var->dtype != grad->dtype
+	  ||  var->dtype != momentum->dtype )
+        return 1 ;
+
+    if (var->dtype == DT_FLOAT ) {
+      ApplyMomentum<float>(
+	  var,
+	  accum,
+	  grad,
+	  reinterpret_cast<const float*>(lr->addr)[0],
+	  reinterpret_cast<const float*>(momentum->addr)[0],
+	  use_nesterov
+      );
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
+} // namespace
+
+DEFINE_KERNEL(ApplyMomentum, op_ApplyMomentum);
