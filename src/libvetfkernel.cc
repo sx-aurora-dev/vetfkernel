@@ -44,7 +44,6 @@ public :
     LOG(LOG_INFO) << "vednn revision: " << VEDNN_REVISION;
     setaffinity() ;
     vml::initialize();
-    //ASL::initialize() ;
 
 #ifdef PROF
     if (const char* tmp = getenv("VE_PROF")) {
@@ -58,7 +57,6 @@ public :
   ~InitVETFKernel() {
     LOG(LOG_TRACE) << "~InitVETFKernel";
     vml::finalize();
-    //ASL::finalize() ;
   }
 
 private :
