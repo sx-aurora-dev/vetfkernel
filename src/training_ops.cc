@@ -17,7 +17,7 @@
 namespace {
 
 template <typename T>
-void ApplyGradientDescent(
+void apply_gradient_descent(
     const vml::Tensor* var_tensor,
     const vml::Tensor* delta_tensor,
     const T alpha
@@ -32,8 +32,37 @@ void ApplyGradientDescent(
       pVar[i] -= alpha * pDelta[i] ;
     }
 }
+}
 
+int vml::ApplyGradientDescent(
+    vml::Tensor const& var,
+    vml::Tensor const& alpha,	// scalar
+    vml::Tensor const& delta
+)
+{
+  if( alpha.nelems != 1 )
+      return 1;
 
+  if( var.nelems != delta.nelems )
+      return 1 ;
+
+  if( var.dtype != alpha.dtype ||  var.dtype != delta.dtype )
+      return 1 ;
+
+  if (var.dtype == DT_FLOAT ) {
+    apply_gradient_descent<float>(
+	  &var,
+	  &delta,
+	  reinterpret_cast<const float*>(alpha.addr)[0]
+    );
+  } else {
+      return 1;
+  }
+
+  return 0;
+}
+
+namespace {
 int op_ApplyGradientDescent(const VEOpArgs& args)
 {
     if (args.nArguments() != 3)
@@ -52,26 +81,7 @@ int op_ApplyGradientDescent(const VEOpArgs& args)
 	<< " alpha="   << alpha
 	<< " delta="   << delta ;
 
-    if( alpha->nelems != 1 )
-        return 1;
-
-    if( var->nelems != delta->nelems )
-        return 1 ;
-
-    if( var->dtype != alpha->dtype ||  var->dtype != delta->dtype )
-        return 1 ;
-
-    if (var->dtype == DT_FLOAT ) {
-      ApplyGradientDescent<float>(
-	  var,
-	  delta,
-	  reinterpret_cast<const float*>(alpha->addr)[0]
-      );
-    } else {
-        return 1;
-    }
-
-    return 0;
+    return vml::ApplyGradientDescent(*var, *alpha, *delta) ;
 }
 
 } // namespace
@@ -86,7 +96,7 @@ DEFINE_KERNEL(ApplyGradientDescent, op_ApplyGradientDescent);
 namespace {
 
 template <typename T>
-void ApplyAdadelta(
+void apply_adadelta(
     const vml::Tensor* var_tensor,
     const vml::Tensor* accum_tensor,
     const vml::Tensor* accum_update_tensor,
@@ -131,8 +141,52 @@ void ApplyAdadelta(
       pVar[i] = var ;
     }
 }
+}
 
+int vml::ApplyAdadelta(
+    vml::Tensor const& var,
+    vml::Tensor const& accum,
+    vml::Tensor const& accum_update,
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& rho,		// scalar
+    vml::Tensor const& epsilon,		// scalar
+    vml::Tensor const& grad
+)
+{
+  if( lr.nelems != 1 || rho.nelems != 1 || epsilon.nelems != 1 )
+      return 1;
 
+  if( var.nelems != accum.nelems
+	  || var.nelems != accum_update.nelems
+	  || var.nelems != grad.nelems )
+      return 1 ;
+
+  if( var.dtype != accum.dtype
+	  ||  var.dtype != accum_update.dtype
+	  ||  var.dtype != lr.dtype
+	  ||  var.dtype != rho.dtype
+	  ||  var.dtype != epsilon.dtype
+	  ||  var.dtype != grad.dtype )
+      return 1 ;
+
+  if (var.dtype == DT_FLOAT ) {
+    apply_adadelta<float>(
+	  &var,
+	  &accum,
+	  &accum_update,
+	  &grad,
+	  reinterpret_cast<const float*>(lr.addr)[0],
+	  reinterpret_cast<const float*>(rho.addr)[0],
+	  reinterpret_cast<const float*>(epsilon.addr)[0]
+    );
+  } else {
+      return 1;
+  }
+
+  return 0;
+}
+
+namespace {
 int op_ApplyAdadelta(const VEOpArgs& args)
 {
     if (args.nArguments() != 7)
@@ -160,37 +214,10 @@ int op_ApplyAdadelta(const VEOpArgs& args)
 	<< " epsilon=" << epsilon
 	<< " grad="    << grad ;
 
-    if( lr->nelems != 1 || rho->nelems != 1 || epsilon->nelems != 1 )
-        return 1;
-
-    if( var->nelems != accum->nelems
-	  || var->nelems != accum_update->nelems
-	  || var->nelems != grad->nelems )
-        return 1 ;
-
-    if( var->dtype != accum->dtype
-	  ||  var->dtype != accum_update->dtype
-	  ||  var->dtype != lr->dtype
-	  ||  var->dtype != rho->dtype
-	  ||  var->dtype != epsilon->dtype
-	  ||  var->dtype != grad->dtype )
-        return 1 ;
-
-    if (var->dtype == DT_FLOAT ) {
-      ApplyAdadelta<float>(
-	  var,
-	  accum,
-	  accum_update,
-	  grad,
-	  reinterpret_cast<const float*>(lr->addr)[0],
-	  reinterpret_cast<const float*>(rho->addr)[0],
-	  reinterpret_cast<const float*>(epsilon->addr)[0]
-      );
-    } else {
-        return 1;
-    }
-
-    return 0;
+    return vml::ApplyAdadelta(
+	*var, *accum, *accum_update,
+	*lr, *rho, *epsilon,
+	*grad ) ;
 }
 
 } // namespace
@@ -205,7 +232,7 @@ DEFINE_KERNEL(ApplyAdadelta, op_ApplyAdadelta);
 namespace {
 
 template <typename T>
-void ApplyMomentum(
+void apply_momentum(
     const vml::Tensor* var_tensor,
     const vml::Tensor* accum_tensor,
     const vml::Tensor* grad_tensor,
@@ -235,8 +262,50 @@ void ApplyMomentum(
       }
     }
 }
+}
 
 
+int vml::applyMomentum(
+    vml::Tensor const& var,
+    vml::Tensor const& accum,
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& grad,
+    vml::Tensor const& momentum,	// scalar
+    const bool use_nesterov
+)
+{
+
+  if( lr.nelems != 1 || momentum.nelems != 1 )
+      return 1;
+
+  if( var.nelems != accum.nelems
+	  || var.nelems != grad.nelems )
+      return 1 ;
+
+  if( var.dtype != accum.dtype
+	  ||  var.dtype != lr.dtype
+	  ||  var.dtype != grad.dtype
+	  ||  var.dtype != momentum.dtype )
+      return 1 ;
+
+  if (var.dtype == DT_FLOAT ) {
+    apply_momentum<float>(
+	  &var,
+	  &accum,
+	  &grad,
+	  reinterpret_cast<const float*>(lr.addr)[0],
+	  reinterpret_cast<const float*>(momentum.addr)[0],
+	  use_nesterov
+    );
+  } else {
+      return 1;
+  }
+
+  return 0;
+
+}
+
+namespace {
 int op_ApplyMomentum(const VEOpArgs& args)
 {
     if (args.nArguments() != 6)
@@ -261,33 +330,7 @@ int op_ApplyMomentum(const VEOpArgs& args)
 	<< " momentum=" << momentum
 	<< " use_nesterov ="    << use_nesterov  ;
 
-    if( lr->nelems != 1 || momentum->nelems != 1 )
-        return 1;
-
-    if( var->nelems != accum->nelems
-	  || var->nelems != grad->nelems )
-        return 1 ;
-
-    if( var->dtype != accum->dtype
-	  ||  var->dtype != lr->dtype
-	  ||  var->dtype != grad->dtype
-	  ||  var->dtype != momentum->dtype )
-        return 1 ;
-
-    if (var->dtype == DT_FLOAT ) {
-      ApplyMomentum<float>(
-	  var,
-	  accum,
-	  grad,
-	  reinterpret_cast<const float*>(lr->addr)[0],
-	  reinterpret_cast<const float*>(momentum->addr)[0],
-	  use_nesterov
-      );
-    } else {
-        return 1;
-    }
-
-    return 0;
+    return vml::applyMomentum(*var, *accum, *lr, *grad, *momentum, use_nesterov ) ;
 }
 
 } // namespace
@@ -299,10 +342,11 @@ DEFINE_KERNEL(ApplyMomentum, op_ApplyMomentum);
 // ApplyAdam
 //
 
+
 namespace {
 
 template <typename T>
-void ApplyAdam(
+void apply_adam(
     const vml::Tensor* var_tensor,
     const vml::Tensor* m_tensor,
     const vml::Tensor* v_tensor,
@@ -379,7 +423,7 @@ void ApplyAdam(
 
 #ifdef LIBVETF_INTRINSIC
 template<>
-void ApplyAdam<float>(
+void apply_adam<float>(
     const vml::Tensor* var_tensor,
     const vml::Tensor* m_tensor,
     const vml::Tensor* v_tensor,
@@ -429,8 +473,69 @@ void ApplyAdam<float>(
   }
 }
 #endif
+}
 
+int vml::applyAdam(
+    vml::Tensor const& var,
+    vml::Tensor const& m,
+    vml::Tensor const& v,
+    vml::Tensor const& beta1_power,	// scalar
+    vml::Tensor const& beta2_power,	// scalar
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& beta1,		// scalar
+    vml::Tensor const& beta2,		// scalar
+    vml::Tensor const& epsilon,		// scalar
+    vml::Tensor const& grad,
+    const bool use_nesterov
+) {
 
+  if( beta1_power.nelems != 1
+	  || beta2_power.nelems !=1
+	  || lr.nelems != 1
+	  || beta1.nelems != 1
+	  || beta2.nelems != 1
+	  || epsilon.nelems !=1 )
+      return 1 ;
+
+  if( var.nelems != m.nelems
+	  || var.nelems != v.nelems
+	  || var.nelems != grad.nelems )
+      return 1 ;
+
+  if( var.dtype != m.dtype
+	  ||  var.dtype != v.dtype
+	  ||  var.dtype != beta1_power.dtype
+	  ||  var.dtype != beta2_power.dtype
+	  ||  var.dtype != lr.dtype
+	  ||  var.dtype != beta1.dtype
+	  ||  var.dtype != beta2.dtype
+	  ||  var.dtype != epsilon.dtype
+	  ||  var.dtype != grad.dtype )
+      return 1 ;
+
+  if (var.dtype == DT_FLOAT ) {
+    apply_adam<float>(
+	  &var,
+	  &m,
+	  &v,
+	  &grad,
+	  reinterpret_cast<const float*>(beta1_power.addr)[0],
+	  reinterpret_cast<const float*>(beta2_power.addr)[0],
+	  reinterpret_cast<const float*>(lr.addr)[0],
+	  reinterpret_cast<const float*>(beta1.addr)[0],
+	  reinterpret_cast<const float*>(beta2.addr)[0],
+	  reinterpret_cast<const float*>(epsilon.addr)[0],
+	  use_nesterov
+    );
+  } else {
+      return 1;
+  }
+
+  return 0 ;
+
+}
+
+namespace {
 int op_ApplyAdam(const VEOpArgs& args)
 {
     if (args.nArguments() != 11)
@@ -454,61 +559,24 @@ int op_ApplyAdam(const VEOpArgs& args)
 
     LOG(LOG_PARAM)
         << __FUNCTION__  << ":"
-	<< " var="     << var
-	<< " m="       << m
-	<< " v="       << v
-	<< " beta1_power=" << beta1_power
-	<< " beta2_power=" << beta2_power
-	<< " lr="      << lr
-	<< " beta1="   << beta1
-	<< " beta2="   << beta2
-	<< " epsilon=" << epsilon
-	<< " grad="    << grad
-	<< " use_nesterov ="    << use_nesterov  ;
+  	<< " var="     << var
+  	<< " m="       << m
+  	<< " v="       << v
+  	<< " beta1_power=" << beta1_power
+  	<< " beta2_power=" << beta2_power
+  	<< " lr="      << lr
+  	<< " beta1="   << beta1
+  	<< " beta2="   << beta2
+  	<< " epsilon=" << epsilon
+  	<< " grad="    << grad
+  	<< " use_nesterov ="    << use_nesterov  ;
 
-    if( beta1_power->nelems != 1
-	  || beta2_power->nelems !=1
-	  || lr->nelems != 1
-	  || beta1->nelems != 1
-	  || beta2->nelems != 1
-	  || epsilon->nelems !=1 )
-        return 1 ;
-
-    if( var->nelems != m->nelems
-	  || var->nelems != v->nelems
-	  || var->nelems != grad->nelems )
-        return 1 ;
-
-    if( var->dtype != m->dtype
-	  ||  var->dtype != v->dtype
-	  ||  var->dtype != beta1_power->dtype
-	  ||  var->dtype != beta2_power->dtype
-	  ||  var->dtype != lr->dtype
-	  ||  var->dtype != beta1->dtype
-	  ||  var->dtype != beta2->dtype
-	  ||  var->dtype != epsilon->dtype
-	  ||  var->dtype != grad->dtype )
-        return 1 ;
-
-    if (var->dtype == DT_FLOAT ) {
-      ApplyAdam<float>(
-	  var,
-	  m,
-	  v,
-	  grad,
-	  reinterpret_cast<const float*>(beta1_power->addr)[0],
-	  reinterpret_cast<const float*>(beta2_power->addr)[0],
-	  reinterpret_cast<const float*>(lr->addr)[0],
-	  reinterpret_cast<const float*>(beta1->addr)[0],
-	  reinterpret_cast<const float*>(beta2->addr)[0],
-	  reinterpret_cast<const float*>(epsilon->addr)[0],
-	  use_nesterov
-      );
-    } else {
-        return 1;
-    }
-
-    return 0;
+    return vml::applyAdam(
+	*var, *m, *v,
+	*beta1_power, *beta2_power,
+	*lr, *beta1, *beta2, *epsilon,
+	*grad,
+	use_nesterov ) ;
 }
 
 } // namespace
