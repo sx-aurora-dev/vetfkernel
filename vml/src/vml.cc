@@ -1,6 +1,18 @@
 #include "vml.h"
+#include "asl.h"
+
 namespace vml
 {
+
+int initialize() {
+  ASL::initialize();
+  return 0;
+}
+
+int finalize() {
+  ASL::finalize();
+  return 0;
+}
 
 std::ostream& operator<<(std::ostream& s, Tensor const& t)
 {

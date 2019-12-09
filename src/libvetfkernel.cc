@@ -11,7 +11,7 @@
 #error Require vednn version 1.0.1 or higher
 #endif
 
-#include "asl.h"
+#include <vml.h>
 #include "kernel.h"
 #include "log.h"
 #include "revision.h"
@@ -43,7 +43,8 @@ public :
     LOG(LOG_INFO) << "vetfkernel revision: " << VETFKERNEL_REVISION;
     LOG(LOG_INFO) << "vednn revision: " << VEDNN_REVISION;
     setaffinity() ;
-    ASL::initialize() ;
+    vml::initialize();
+    //ASL::initialize() ;
 
 #ifdef PROF
     if (const char* tmp = getenv("VE_PROF")) {
@@ -56,7 +57,8 @@ public :
 
   ~InitVETFKernel() {
     LOG(LOG_TRACE) << "~InitVETFKernel";
-    ASL::finalize() ;
+    vml::finalize();
+    //ASL::finalize() ;
   }
 
 private :

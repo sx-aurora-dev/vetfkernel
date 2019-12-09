@@ -11,9 +11,11 @@ set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 
 add_executable(test01 test01.cc relu.cc)
 target_include_directories(test01 PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(test01 PRIVATE ${CMAKE_SOURCE_DIR}/vml/include)
 target_link_libraries(test01 PRIVATE 
   -static
   vetfkernel
+  vml
   vednn_openmp
   ${BLAS}
   ${ASL}
@@ -26,10 +28,11 @@ target_link_libraries(test01 PRIVATE
 
 add_executable(bench bench.cc)
 target_include_directories(bench PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(bench PRIVATE ${CMAKE_SOURCE_DIR}/vml/include)
 target_link_libraries(bench PRIVATE
   -static
   vetfkernel
-  vetfkernel
+  vml
   vednn_openmp
   ${BLAS}
   ${ASL}
