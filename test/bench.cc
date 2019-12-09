@@ -15,8 +15,8 @@ enum {
   FORMAT_NCHW = 1,
 };
 
+
 extern "C" {
-  int op_ApplyAdam(const void* args, size_t len);
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
   int op_Mean(const void* args, size_t len);
@@ -1004,47 +1004,48 @@ class ApplyAdamOpBench : public Bench
       v1_ = new T[n];
 
       // input
-      beta1_power = new T[1];
-      beta2_power = new T[1];
-      lr = new T[1];
-      beta1 = new T[1];
-      beta2 = new T[1];
-      epsilon = new T[1];
-      grad = new T[n];
+      beta1_power_ = new T[1];
+      beta2_power_ = new T[1];
+      lr_ = new T[1];
+      beta1_ = new T[1];
+      beta2_ = new T[1];
+      epsilon_ = new T[1];
+      grad_ = new T[n];
 
       randomInit(m0_, n);
       randomInit(v0_, n);
       randomInit(m1_, n);
       randomInit(v1_, n);
-      randomInit(grad, n);
+      randomInit(grad_, n);
 
-      beta1_power[0] = T(drand48());
-      beta2_power[0] = T(drand48());
-      lr[0] = T(drand48());
-      beta1[0] = T(drand48());
-      beta1[0] = T(drand48());
-      epsilon[0] = T(drand48());
-      grad[0] = T(drand48());
-
-#define C(p) reinterpret_cast<uint64_t>(p);
-      args_.dtype = 1; // DT_FLOAT
-      args_.use_nesterov_ = false;
-      args_.num_elements = n;
-      args_.var_ptr = C(var0_);
-      args_.m_ptr = C(m0_);
-      args_.v_ptr = C(v0_);
-      args_.beta1_power_ptr = C(beta1_power);
-      args_.beta2_power_ptr = C(beta2_power);
-      args_.lr = C(lr);
-      args_.beta1_ptr = C(beta1);
-      args_.beta2_ptr = C(beta2);
-      args_.epsilon_ptr = C(epsilon);
-      args_.grad_ptr = C(grad);
-#undef C
+      beta1_power_[0] = T(drand48());
+      beta2_power_[0] = T(drand48());
+      lr_[0] = T(drand48());
+      beta1_[0] = T(drand48());
+      beta1_[0] = T(drand48());
+      epsilon_[0] = T(drand48());
+      grad_[0] = T(drand48());
     }
 
     int run() override {
-      return op_ApplyAdam(reinterpret_cast<void const*>(&args_), sizeof(Args));
+      vml::Tensor var  = makeTensor1D<T>(var0_, n_) ;
+      vml::Tensor m    = makeTensor1D<T>(m0_, n_) ;
+      vml::Tensor v    = makeTensor1D<T>(v0_, n_) ;
+      vml::Tensor grad = makeTensor1D<T>(grad_, n_) ;
+
+      vml::Tensor beta1_power = makeTensor1D<T>(beta1_power_, 1) ;
+      vml::Tensor beta2_power = makeTensor1D<T>(beta2_power_, 1) ;
+      vml::Tensor lr          = makeTensor1D<T>(lr_, 1) ;
+      vml::Tensor beta1       = makeTensor1D<T>(beta1_, 1) ;
+      vml::Tensor beta2       = makeTensor1D<T>(beta2_, 1) ;
+      vml::Tensor epsilon     = makeTensor1D<T>(epsilon_, 1) ;
+
+      return vml::applyAdam(
+  	var, m, v,
+  	beta1_power, beta2_power,
+  	lr, beta1, beta2, epsilon,
+	grad,
+  	use_nesterov_ ) ;
     }
 
     int validate(BenchOpts const& opts) override {
@@ -1055,14 +1056,17 @@ class ApplyAdamOpBench : public Bench
       memset(m1_, 0, sizeof(T) * n_);
       memset(v1_, 0, sizeof(T) * n_);
       run();
-      ref::apply_adam<float>(false, n_,
+      ref::apply_adam<float>(use_nesterov_, n_,
                              reinterpret_cast<uint64_t>(var1_),
                              reinterpret_cast<uint64_t>(m1_),
                              reinterpret_cast<uint64_t>(v1_),
-                             args_.beta1_power_ptr, args_.beta2_power_ptr,
-                             args_.lr,
-                             args_.beta1_ptr, args_.beta2_ptr, args_.epsilon_ptr,
-                             args_.grad_ptr);
+			     reinterpret_cast<uint64_t>(beta1_power_),
+			     reinterpret_cast<uint64_t>(beta2_power_),
+			     reinterpret_cast<uint64_t>(lr_),
+			     reinterpret_cast<uint64_t>(beta1_),
+			     reinterpret_cast<uint64_t>(beta2_),
+			     reinterpret_cast<uint64_t>(epsilon_),
+			     reinterpret_cast<uint64_t>(grad_)) ;
 
       int flag = 1;
       flag &= check(var0_, var1_, n_, opts);
@@ -1072,17 +1076,6 @@ class ApplyAdamOpBench : public Bench
     }
 
   private:
-    struct Args {
-      int dtype;
-      bool use_nesterov_ ;
-      int64_t num_elements ;
-      uint64_t var_ptr, m_ptr, v_ptr ;
-      uint64_t beta1_power_ptr, beta2_power_ptr ;
-      uint64_t lr ;
-      uint64_t beta1_ptr, beta2_ptr, epsilon_ptr ;
-      uint64_t grad_ptr;
-    } args_;
-
     size_t n_;
     T* var0_;
     T* var1_;
@@ -1090,13 +1083,14 @@ class ApplyAdamOpBench : public Bench
     T* m1_;
     T* v0_;
     T* v1_;
-    T* beta1_power;
-    T* beta2_power;
-    T* lr;
-    T* beta1;
-    T* beta2;
-    T* epsilon;
-    T* grad;
+    T* beta1_power_;
+    T* beta2_power_;
+    T* lr_;
+    T* beta1_;
+    T* beta2_;
+    T* epsilon_;
+    T* grad_;
+    const bool use_nesterov_ = false ;
 };
 
 template <typename T>

@@ -94,4 +94,41 @@ int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 int randomUniform(vml::Tensor const& t);
 int tile(vml::Tensor const& out, vml::Tensor const& in);
+
+// train op
+int ApplyGradientDescent(
+    vml::Tensor const& var,
+    vml::Tensor const& alpha,	// scalar
+    vml::Tensor const& delta
+) ;
+int ApplyAdadelta(
+    vml::Tensor const& var,
+    vml::Tensor const& accum,
+    vml::Tensor const& accum_update,
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& rho,		// scalar
+    vml::Tensor const& epsilon,		// scalar
+    vml::Tensor const& grad
+) ;
+int applyMomentum(
+    vml::Tensor const& var,
+    vml::Tensor const& accum,
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& grad,
+    vml::Tensor const& momentum,	// scalar
+    const bool use_nesterov
+) ;
+int applyAdam(
+    vml::Tensor const& var,
+    vml::Tensor const& m,
+    vml::Tensor const& v,
+    vml::Tensor const& beta1_power,	// scalar
+    vml::Tensor const& beta2_power,	// scalar
+    vml::Tensor const& lr,		// scalar
+    vml::Tensor const& beta1,		// scalar
+    vml::Tensor const& beta2,		// scalar
+    vml::Tensor const& epsilon,		// scalar
+    vml::Tensor const& grad,
+    const bool use_nesterov
+) ;
 };
