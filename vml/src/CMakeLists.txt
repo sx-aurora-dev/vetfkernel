@@ -19,6 +19,7 @@ add_library(vml STATIC
   avgpooling.cc
   binary_ops.cc
   randomUniform.cc
+  relu.cc
   tile.cc
   unary_ops.cc
   vml.cc
