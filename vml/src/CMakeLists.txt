@@ -21,6 +21,7 @@ add_library(vml STATIC
   randomUniform.cc
   relu.cc
   tile.cc
+  training_ops.cc
   unary_ops.cc
   vml.cc
   $<TARGET_OBJECTS:vml_intrinsic>)
