@@ -7,6 +7,9 @@
 namespace vml
 {
 
+int initialize();
+int finalize();
+
 struct Tensor {
   int32_t dtype;
   uint64_t addr;

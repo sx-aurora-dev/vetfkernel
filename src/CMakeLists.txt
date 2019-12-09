@@ -11,9 +11,9 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
 set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
+set(VML_PATH ${CMAKE_SOURCE_DIR}/vml CACHE PATH "path to vml")
 
 set(SOURCES
-  asl.cc
   avgpooling.cc
   libvetfkernel.cc
   conv2d.cc
@@ -37,8 +37,7 @@ set(SOURCES
   fused_batch_norm.cc
   relu.cc
   reverse.cc
-  revision.h
-  vml.cc)
+  revision.h)
 
 add_library(vetfkernel STATIC
   ${SOURCES}
@@ -50,6 +49,7 @@ if (USE_INTRINSIC)
 endif()
 
 target_include_directories(vetfkernel PRIVATE ${VEDNN_PATH}/src)
+target_include_directories(vetfkernel PRIVATE ${VML_PATH}/include)
 target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(vetfkernel PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 

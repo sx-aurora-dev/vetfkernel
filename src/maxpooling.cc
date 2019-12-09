@@ -8,7 +8,7 @@
 #include <vednn.h>
 
 #include "kernel.h"
-#include "log.h"
+#include "vml/log.h"
 
 REGISTER_KERNEL("MaxPooling", "maxpooling");
 

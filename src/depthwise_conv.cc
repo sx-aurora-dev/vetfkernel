@@ -8,7 +8,7 @@
 #include <vednn.h>
 
 #include "kernel.h"
-#include "log.h"
+#include "vml/log.h"
 
 REGISTER_KERNEL("DepthwiseConv2D",           "depthwise_conv2d");
 REGISTER_KERNEL("DepthwiseConv2DGradData",   "depthwise_conv2d_grad_data");

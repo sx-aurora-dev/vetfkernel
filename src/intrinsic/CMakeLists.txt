@@ -6,16 +6,17 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target ve -O3 -fno-vectorize -fno-slp-vecto
 add_library(vetfkernel_intrinsic OBJECT
 	BiasAdd.c
 	BiasAddGrad.c
-	Add.c
-	Sub.c
-	Mul.c
-	Div.c
-	Sqrt.c
-	Rsqrt.c
-	Square.c
-	Neg.c
+        #	Add.c
+        #	Sub.c
+        #	Mul.c
+        #	Div.c
+        #	Sqrt.c
+        #	Rsqrt.c
+        #	Square.c
+        #	Neg.c
 	Transpose.c
-	ApplyAdam.c
+        #	ApplyAdam.c
 	Sum.c
 	Mean.c
-	Tile.c)
+        #	Tile.c
+        )

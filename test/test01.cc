@@ -6,7 +6,7 @@
 #include <cstdlib>
 
 #include <vml.h>
-#include <types.h>
+#include <vml/types.h>
 
 #include "test.h"
 using namespace test;

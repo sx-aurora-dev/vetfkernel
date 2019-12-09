@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <complex.h>
 #include "kernel.h"
-#include "types.h"
-#include "log.h"
+#include "vml/types.h"
+#include "vml/log.h"
 
 #include <omp.h>
 

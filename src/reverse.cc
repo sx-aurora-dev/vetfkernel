@@ -1,8 +1,8 @@
 #include <cstdint>
 #include <sstream>
-#include "types.h"
+#include "vml/types.h"
 #include "ve_ops_common.h"
-#include "log.h"
+#include "vml/log.h"
 #include "vml.h"
 
 

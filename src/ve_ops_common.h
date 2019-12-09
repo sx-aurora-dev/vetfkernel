@@ -2,7 +2,7 @@
 #define VE_OPS_COMMON_H_
 
 #include <cstdint>
-#include "log.h"
+#include "vml/log.h"
 #include "kernel.h"
 
 #define DEFINE_KERNEL(NAME, FUNC) \
