@@ -4,7 +4,6 @@
 #include <sstream>
 #include <omp.h>
 #include "log.h"
-#include "kernel.h"
 #include "types.h"
 #include "vml.h"
 

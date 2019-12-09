@@ -1,5 +1,5 @@
 #include "ve_ops_common.h"
-#include "types.h"
+#include "vml/types.h"
 #include "vml.h"
 
 namespace {

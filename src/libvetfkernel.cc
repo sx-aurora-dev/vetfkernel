@@ -13,7 +13,7 @@
 
 #include <vml.h>
 #include "kernel.h"
-#include "log.h"
+#include "vml/log.h"
 #include "revision.h"
 
 #define MAX_KERNEL 1024

@@ -1,5 +1,5 @@
-#include "types.h"
-#include "log.h"
+#include "vml/types.h"
+#include "vml/log.h"
 #include "ve_ops_common.h"
 #include "vml.h"
 

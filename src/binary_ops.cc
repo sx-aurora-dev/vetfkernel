@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cassert>
 #include "kernel.h"
-#include "log.h"
+#include "vml/log.h"
 #include <sstream>
 #include <vector>
 

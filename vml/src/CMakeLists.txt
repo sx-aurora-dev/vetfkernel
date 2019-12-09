@@ -33,6 +33,7 @@ endif()
 target_include_directories(vml PRIVATE ${VEDNN_PATH}/src)
 target_include_directories(vml PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(vml PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_include_directories(vml PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include/vml)
 target_include_directories(vml PRIVATE /opt/nec/ve/nlc/1.0.0/include)
 #target_include_directories(vml PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 

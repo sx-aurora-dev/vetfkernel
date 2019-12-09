@@ -3,7 +3,7 @@
 #include <cmath>
 #include <sstream>
 #include <omp.h>
-#include "log.h"
+#include "vml/log.h"
 #include "kernel.h"
 #include "vml.h"
 
