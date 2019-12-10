@@ -15,6 +15,8 @@ message("nc++: ${NCXX}")
 message("blas: ${BLAS}")
 message("asl:  ${ASL}")
 
+option(USE_PROFILE "Enable profiler" OFF)
+
 add_subdirectory(libs/vednn EXCLUDE_FROM_ALL)
 add_subdirectory(vml)
 add_subdirectory(src/intrinsic)

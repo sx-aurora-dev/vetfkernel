@@ -48,6 +48,10 @@ if (USE_INTRINSIC)
         target_compile_definitions(vetfkernel PRIVATE LIBVETF_INTRINSIC)
 endif()
 
+if (USE_PROFILE)
+  target_compile_definitions(vetfkernel PRIVATE USE_PROFILE)
+endif()
+
 target_include_directories(vetfkernel PRIVATE ${VEDNN_PATH}/src)
 target_include_directories(vetfkernel PRIVATE ${VML_PATH}/include)
 target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src)

@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstring>
 #include <cassert>
+#include <set>
 
 #include <stdlib.h>
 
@@ -9,6 +10,8 @@
 
 #include "kernel.h"
 #include "vml/log.h"
+#include "vml/profile.h"
+
 
 REGISTER_KERNEL("Conv2DBackpropInput", "conv2d_backprop_input");
 
@@ -46,6 +49,9 @@ int conv2d_backprop_input(const void* arg, size_t len)
 #ifdef _DEBUG
     fprintf(stderr, "[start] conv2d_backprop_input\n");
 #endif
+
+    PROF_BEGIN(conv2d_backprop_input);
+
     assert(len == sizeof(ConvParam));
     const ConvParam& p = *(ConvParam*)arg;
 
@@ -149,6 +155,14 @@ int conv2d_backprop_input(const void* arg, size_t len)
     if( transformed_filter != NULL ) {
       free(transformed_filter) ;
     }
+
+    PROF_END(conv2d_backprop_input)
+      << " out=[ " << p.out_bp_param.n << " " << p.out_bp_param.c << " " <<  p.out_bp_param.h << " " <<  p.out_bp_param.w << " ]"
+      << " filter=[ " << p.filter_param.n << " " << p.filter_param.c << " " <<  p.filter_param.h << " " <<  p.filter_param.w << " ]"
+      << " in=[ " << p.in_bp_param.n << " " << p.in_bp_param.c << " " <<  p.in_bp_param.h << " " <<  p.in_bp_param.w << " ]"
+      << " stride=[" << p.col_stride << " " << p.row_stride << "]"
+      << " padding=[" << p.col_padding << " " << p.row_padding << "]";
+
 #ifdef _DEBUG
     fprintf(stderr, "[end] conv2d_backprop_input\n");
 #endif
