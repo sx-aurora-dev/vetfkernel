@@ -9,11 +9,15 @@
 #include <sys/time.h>
 
 #include <vml.h>
+#include <vml/types.h>
+#include "test.h"
 
+#if 0
 enum {
   FORMAT_NHWC = 0,
   FORMAT_NCHW = 1,
 };
+#endif
 
 
 extern "C" {
@@ -22,6 +26,8 @@ extern "C" {
   int op_Mean(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
+  int conv2d(const void* arg, size_t len);
+  int conv2d_backprop_input(const void* arg, size_t len);
 }
 
 static double second()
@@ -148,8 +154,13 @@ struct Bench
   size_t flop_count_;
 };
 
-void run_bench(Bench& bench, int ntimes = 1)
+void run_bench(Bench& bench, int ntimes = 1, bool detail = false)
 {
+  // warmup
+  int ret = bench.run();
+  if (ret != 0)
+      fprintf(stderr, "ret=%d\n", ret);
+
   double t0 = second();
   for (int i = 0; i < ntimes; ++i) {
     int ret = bench.run();
@@ -161,8 +172,12 @@ void run_bench(Bench& bench, int ntimes = 1)
   double flops = bench.flop_count_ / sec;
   double bw = bench.data_size_ / sec;
 
-  fprintf(stderr, "%-20s %8.3lf ms %8.3lf GFlops %8.3lf GB/s\n",
-          bench.name_.c_str(), sec*1e3, flops/1e9, bw/1e9);
+  if (detail) {
+    fprintf(stderr, "%-80s %8.3lf ms %8.3lf GFlops %8.3lf GB/s\n",
+            bench.name_.c_str(), sec*1e3, flops/1e9, bw/1e9);
+  } else {
+    fprintf(stderr, "%-80s %8.3lf ms\n", bench.name_.c_str(), sec*1e3);
+  }
 }
 
 namespace ref
@@ -1093,6 +1108,143 @@ class ApplyAdamOpBench : public Bench
     const bool use_nesterov_ = false ;
 };
 
+template<typename F>
+class Conv2DBench : public Bench
+{
+  public:
+    Conv2DBench(F func,
+                std::string name,
+                vml::Tensor const& out_bp,
+                vml::Tensor const& filter,
+                vml::Tensor& in_bp,
+                std::vector<int> param, // stride[2], dilation[2], padding[2]
+                int data_format,
+                int data_type) : Bench(name), func_(func) {
+      assert(data_format == FORMAT_NCHW);
+      args_.out_bp = out_bp.addr;
+      args_.filter = filter.addr;
+      args_.in_bp = in_bp.addr;
+      args_.out_bp_param = nchw(out_bp);
+      args_.filter_param = nchw(filter);
+      args_.in_bp_param = nchw(in_bp);
+      args_.row_stride = param[0];
+      args_.col_stride = param[1];
+      args_.row_dilation = param[2];
+      args_.col_dilation = param[3];
+      args_.row_padding = param[4];
+      args_.col_padding = param[5];
+      args_.data_format = data_format;
+      args_.data_type = data_type;
+    }
+
+    int validate(BenchOpts const&) override { return 1; }
+
+    int run() override {
+      func_(&args_, sizeof(args_));
+      return 0;
+    }
+
+  private:
+    struct TensorParam {
+      int w,h,c,n ;
+    } ;
+
+    struct ConvParam {
+      uint64_t out_bp;
+      uint64_t filter;
+      uint64_t in_bp;
+      TensorParam out_bp_param;
+      TensorParam filter_param;
+      TensorParam in_bp_param;
+
+      int row_stride;
+      int col_stride;
+      int row_dilation;
+      int col_dilation;
+      int row_padding;
+      int col_padding;
+
+      int data_format;
+      int data_type;
+    };
+
+    TensorParam nchw(vml::Tensor const& t) {
+      int64_t const* d = t.dim_size;
+      TensorParam p = {(int)d[2], (int)d[3], (int)d[1], (int)d[0]};
+      return p;
+    }
+
+    ConvParam args_;
+    F func_;
+};
+
+template <typename T>
+vml::Tensor* createTensor(size_t dims, std::vector<size_t> const& dim_size)
+{
+  assert(dims < 8);
+  vml::Tensor* t = new vml::Tensor();
+
+  t->dtype = to_dtype<T>::val;
+  t->dims = dims;
+  t->nelems = 1;
+  for (int i = 0; i < dims; ++i) {
+    t->dim_size[i] = dim_size[i];
+    t->nelems *= dim_size[i];
+  }
+
+  t->addr = reinterpret_cast<uint64_t>(new T[t->nelems]);
+  return t;
+}
+
+template<typename T>
+vml::Tensor* createRandomTensor(std::vector<size_t> const& shape)
+{
+  vml::Tensor* t = createTensor<T>(shape.size(), shape);
+  randomInit(t->ptr<T*>(), t->nelems);
+  return t;
+}
+
+template <typename F>
+Bench* make_conv2d_bench(F func,
+                         std::string name,
+                         std::vector<size_t> const& in_shape,
+                         std::vector<size_t> const& filter_shape,
+                         std::vector<size_t> const& out_shape,
+                         std::vector<int> param,
+                         int data_format = FORMAT_NCHW,
+                         int data_type = DT_FLOAT)
+{
+  vml::Tensor* in = createRandomTensor<float>(in_shape);
+  vml::Tensor* filter = createRandomTensor<float>(filter_shape);
+  vml::Tensor* out = createRandomTensor<float>(out_shape);
+
+  std::stringstream buf;
+
+#define S(t) (t).dim_size[0] << "x" << (t).dim_size[1] << "x" << (t).dim_size[2] << "x" << (t).dim_size[3]
+  buf << name << "-" << S(*in) << "-" << S(*filter) << "-" << S(*out)
+    << "-" << param[0] << "x" << param[1]
+    << "-" << param[2] << "x" << param[3]
+    << "-" << param[4] << "x" << param[5]
+    << "-" << data_format << "-" << data_type;
+
+  return new Conv2DBench<F>(func, buf.str(), *in, *filter, *out, param, data_format, data_type);
+}
+
+void add_conv2d_bench(std::vector<Bench*>& v)
+{
+  // in, filter, out, {stride[2], dilation[2], stride[2]}
+  
+  // conv2d
+#define F(...) v.push_back(make_conv2d_bench(conv2d, "Conv2D", __VA_ARGS__))
+  F({32, 256, 34, 34}, {512, 256, 4, 4}, {32, 512, 31, 31}, {1, 1, 1, 1, 0, 0});
+#undef F
+
+  // conv2d_backprop_input
+#define F(...) v.push_back(make_conv2d_bench(conv2d_backprop_input, "Conv2DBackpropInput", __VA_ARGS__))
+  F({32, 1024, 16, 16}, {1024, 256, 4, 4}, {32, 256, 32, 32}, {2, 2, 1, 1, 1, 1});
+#undef F
+}
+
 template <typename T>
 void add_bench(std::vector<Bench*>& v, size_t n)
 {
@@ -1133,6 +1285,7 @@ int main(int argc, char* argv[])
   bool opt_force_bench = false;
   char const* filter = nullptr;
   bool opt_validation_only = false;
+  bool opt_detail = false;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0) {
@@ -1147,6 +1300,8 @@ int main(int argc, char* argv[])
       fprintf(stderr, "nchw=%lu,%lu,%lu,%lu\n", nchw[0], nchw[1], nchw[2], nchw[3]);
     } else if (strcmp(argv[i], "--filter") == 0) {
       filter = argv[++i];
+    } else if (strcmp(argv[i], "-d") == 0) {
+      opt_detail = true;
     } else if (strcmp(argv[i], "-f") == 0) {
       opt_force_bench = true;
     } else if (strcmp(argv[i], "-r") == 0) {
@@ -1201,6 +1356,9 @@ int main(int argc, char* argv[])
                                           {0, 3, 1, 2}));
   v.push_back(new ApplyAdamOpBench<float>("ApplyAdam", n));
 
+  if (!opt_validation_only)
+    add_conv2d_bench(v);
+
   if (opts.verbose > 0)
     fprintf(stderr, "Initialization done\n");
 
@@ -1222,7 +1380,7 @@ int main(int argc, char* argv[])
 
   for (Bench* b : v) {
     if (!filter || b->name() == filter)
-      run_bench(*b, repeat);
+      run_bench(*b, repeat, opt_detail);
   }
 
   return 0;

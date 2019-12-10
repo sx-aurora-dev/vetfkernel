@@ -9,6 +9,8 @@
 
 #include "kernel.h"
 #include "vml/log.h"
+#include "vml/profile.h"
+
 
 REGISTER_KERNEL("Conv2D", "conv2d");
 
@@ -42,6 +44,8 @@ struct ConvParam {
 int conv2d(const void* arg, size_t len)
 {
     LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+
+    PROF_BEGIN(conv2d);
 
 #ifdef _DEBUG
     fprintf(stderr, "[start]conv2d\n");
@@ -146,6 +150,13 @@ int conv2d(const void* arg, size_t len)
     
 
     if( transformed_filter != NULL ) free(transformed_filter) ;
+
+    PROF_END(conv2d)
+      << " in=[ " << p.in_param.n << " " << p.in_param.c << " " <<  p.in_param.h << " " <<  p.in_param.w << " ]"
+      << " filter=[ " << p.filter_param.n << " " << p.filter_param.c << " " <<  p.filter_param.h << " " <<  p.filter_param.w << " ]"
+      << " out=[ " << p.out_param.n << " " << p.out_param.c << " " <<  p.out_param.h << " " <<  p.out_param.w << " ]"
+      << " stride=[" << p.col_stride << " " << p.row_stride << "]"
+      << " padding=[" << p.col_padding << " " << p.row_padding << "]";
 
 #ifdef _DEBUG
     fprintf(stderr, "[end]conv2d\n");
