@@ -20,3 +20,10 @@ See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/d
 or
 
     % ./test.sh [BUILD_DIR]
+
+
+## profiler
+
+1. cmake with -DUSE_PROFILE=ON
+2. run with VML_PROFILE=conv2d,conv2d_backprop_input
+   
