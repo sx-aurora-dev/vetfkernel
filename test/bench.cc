@@ -173,10 +173,10 @@ void run_bench(Bench& bench, int ntimes = 1, bool detail = false)
   double bw = bench.data_size_ / sec;
 
   if (detail) {
-    fprintf(stderr, "%-80s %8.3lf ms %8.3lf GFlops %8.3lf GB/s\n",
+    fprintf(stdout, "%-80s %8.3lf ms %8.3lf GFlops %8.3lf GB/s\n",
             bench.name_.c_str(), sec*1e3, flops/1e9, bw/1e9);
   } else {
-    fprintf(stderr, "%-80s %8.3lf ms\n", bench.name_.c_str(), sec*1e3);
+    fprintf(stdout, "%-80s %8.3lf ms\n", bench.name_.c_str(), sec*1e3);
   }
 }
 
