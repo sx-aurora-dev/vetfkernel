@@ -37,7 +37,7 @@ If ok, store a result in a database. filename in a database is automatically
 created from timestamp of a result.
 
 ```
-% python bench.py store hoge
+% python perf.py store hoge
 ```
 
 Then add new result into git repository.
