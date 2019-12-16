@@ -103,8 +103,8 @@ DEFINE_TEST_UNARY_OP_01(Atanh, vml::atanh, std::atanh);
 
 bool test_AvgPool_01(TestParam const& param)
 {
-  vml::Tensor out = makeTensor<float>(4, {1, 1, 2, 2});
-  vml::Tensor in = makeTensor<float>(4, {1, 1, 2, 2});
+  vml::Tensor* out = makeTensor<float>(4, {1, 1, 2, 2});
+  vml::Tensor* in = makeTensor<float>(4, {1, 1, 2, 2});
 #if 0
   vml::PoolingParam p = {
     .ksize = {1, 1, 1, 2},
@@ -132,14 +132,14 @@ bool test_AvgPool_01(TestParam const& param)
 
   float expected[4] = {1.5, 2.0, 3.5, 4.0};
 
-  float* pin = reinterpret_cast<float*>(in.addr);
+  float* pin = reinterpret_cast<float*>(in->addr);
   for (int i = 0; i < 4; ++i)
     pin[i] = i + 1.0;
 
 
-  if (vml::avgpool(out, in, p) != 0)
+  if (vml::avgpool(*out, *in, p) != 0)
     return false;
-  float* pout = reinterpret_cast<float*>(out.addr);
+  float* pout = reinterpret_cast<float*>(out->addr);
 
   bool flag = true;
   for (int i = 0; i < 4; ++i) {
@@ -179,8 +179,8 @@ bool test_AvgPool(TestParam const& param,
 
 bool test_AvgPool_02(TestParam const& param)
 {
-  vml::Tensor out = makeTensor<float>(4, {1, 1, 3, 3});
-  vml::Tensor in = makeTensor<float>(4, {1, 1, 3, 3});
+  vml::Tensor* out = makeTensor<float>(4, {1, 1, 3, 3});
+  vml::Tensor* in = makeTensor<float>(4, {1, 1, 3, 3});
 #if 0
   vml::PoolingParam p = {
     .ksize = {1, 1, 3, 3},
@@ -208,11 +208,11 @@ bool test_AvgPool_02(TestParam const& param)
 
   float expected[9] = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
 
-  float* pin = reinterpret_cast<float*>(in.addr);
+  float* pin = reinterpret_cast<float*>(in->addr);
   for (int i = 0; i < 9; ++i)
     pin[i] = i + 1.0;
 
-  return test_AvgPool(param, out, in, p, expected, 9);
+  return test_AvgPool(param, *out, *in, p, expected, 9);
 }
 
 REGISTER_TEST("AvgPool_01", test_AvgPool_01);
