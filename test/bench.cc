@@ -12,14 +12,6 @@
 #include <vml/types.h>
 #include "test.h"
 
-#if 0
-enum {
-  FORMAT_NHWC = 0,
-  FORMAT_NCHW = 1,
-};
-#endif
-
-
 extern "C" {
   int op_BiasAdd(const void* args, size_t len);
   int op_BiasAddGrad(const void* args, size_t len);
@@ -150,31 +142,39 @@ struct Bench
   
   std::string name_;
 
+  int ntimes_ = -1;
+
   size_t data_size_; // bytes
   size_t flop_count_;
 };
 
 void run_bench(Bench& bench, int ntimes = 1, bool detail = false)
 {
+  int ntimes0 = bench.ntimes_;
+  if (ntimes0 < 0)
+    ntimes0 = ntimes;
+
+  //fprintf(stderr, "ntimes=%d (%d)\n", ntimes0, bench.ntimes_);
+
   // warmup
   int ret = bench.run();
   if (ret != 0)
       fprintf(stderr, "ret=%d\n", ret);
 
   double t0 = second();
-  for (int i = 0; i < ntimes; ++i) {
+  for (int i = 0; i < ntimes0; ++i) {
     int ret = bench.run();
     if (ret != 0)
       fprintf(stderr, "ret=%d\n", ret);
   }
   double t1 = second();
-  double sec = (t1 - t0) / ntimes;
+  double sec = (t1 - t0) / ntimes0;
   double flops = bench.flop_count_ / sec;
   double bw = bench.data_size_ / sec;
 
   if (detail) {
-    fprintf(stdout, "%-80s %8.3lf ms %8.3lf GFlops %8.3lf GB/s\n",
-            bench.name_.c_str(), sec*1e3, flops/1e9, bw/1e9);
+    fprintf(stdout, "%-80s %8.3lf ms %8.3lf GFlops %8.3lf GB/s %8.3lf sec\n",
+            bench.name_.c_str(), sec*1e3, flops/1e9, bw/1e9, (t1 - t0));
   } else {
     fprintf(stdout, "%-80s %8.3lf ms\n", bench.name_.c_str(), sec*1e3);
   }
@@ -626,7 +626,7 @@ class BinaryOpBench : public Bench
                             vml::Tensor const& in0,
                             vml::Tensor const& in1),
                   int (*ref_op)(T*, T const*, T const*, size_t),
-                  T const* y, T const* z, size_t n) 
+                  T const* y, T const* z, size_t n, int ntimes = -1) 
       : Bench(name), op_(op), ref_op_(ref_op), y_(y), z_(z), n_(n) { 
         x0_ = new T[n];
         x1_ = new T[n];
@@ -637,6 +637,7 @@ class BinaryOpBench : public Bench
 
         data_size_ = n * 3 * sizeof(T);
         flop_count_ = n;
+        ntimes_ = ntimes;
       }
 
     int validate(BenchOpts const& opts) override {
@@ -1237,6 +1238,7 @@ void add_conv2d_bench(std::vector<Bench*>& v)
   // conv2d
 #define F(...) v.push_back(make_conv2d_bench(conv2d, "Conv2D", __VA_ARGS__))
   F({32, 256, 34, 34}, {512, 256, 4, 4}, {32, 512, 31, 31}, {1, 1, 1, 1, 0, 0});
+  F({32, 1024, 14, 14}, {2048, 1024, 1, 1}, {32, 2048, 7, 7}, {2, 2, 1, 1, 0, 0}); // ResNet50
 #undef F
 
   // conv2d_backprop_input
@@ -1254,10 +1256,10 @@ void add_bench(std::vector<Bench*>& v, size_t n)
   randomInit(y, n);
   randomInit(z, n);
 
-  v.push_back(new BinaryOpBench<float>("Add", vml::add, ref::add<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Sub", vml::sub, ref::sub<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Mul", vml::mul, ref::mul<float>, y, z, n));
-  v.push_back(new BinaryOpBench<float>("Div", vml::div, ref::div<float>, y, z, n));
+  v.push_back(new BinaryOpBench<float>("Add", vml::add, ref::add<float>, y, z, n, 100));
+  v.push_back(new BinaryOpBench<float>("Sub", vml::sub, ref::sub<float>, y, z, n, 100));
+  v.push_back(new BinaryOpBench<float>("Mul", vml::mul, ref::mul<float>, y, z, n, 100));
+  v.push_back(new BinaryOpBench<float>("Div", vml::div, ref::div<float>, y, z, n, 100));
 
   v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n));
   v.push_back(new ReductionOpBench<float>("Sum", op_Sum, ref::sum_d2a0<float>, y, n));
@@ -1362,8 +1364,18 @@ int main(int argc, char* argv[])
   if (opts.verbose > 0)
     fprintf(stderr, "Initialization done\n");
 
+  std::vector<Bench*> v2;
+
+  if (filter) {
+    for (Bench* b : v) {
+      if (b->name() == filter)
+        v2.push_back(b);
+    }
+  } else
+    v2 = v;
+
   int flag = 1;
-  for (Bench* b : v) {
+  for (Bench* b : v2) {
     int tmp = b->validate(opts);
     flag &= tmp;
     if (opts.verbose > 0 || !tmp)
@@ -1378,10 +1390,8 @@ int main(int argc, char* argv[])
   if (!flag && !opt_force_bench)
     return 1;
 
-  for (Bench* b : v) {
-    if (!filter || b->name() == filter)
-      run_bench(*b, repeat, opt_detail);
-  }
+  for (Bench* b : v2)
+    run_bench(*b, repeat, opt_detail);
 
   return 0;
 }
