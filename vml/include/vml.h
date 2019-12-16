@@ -15,7 +15,7 @@ struct Tensor {
   uint64_t addr;
   int32_t dims;
   int64_t nelems;
-  int64_t dim_size[8]; // FIXME
+  int64_t dim_size[0]; // variable size
 
 #if 0
   size_t size() const {

@@ -33,15 +33,9 @@ template <typename T> struct to_dtype {};
 template<> struct to_dtype<float> { static const int val = 1; };
 
 template <typename T>
-vml::Tensor makeTensor1D(T const* x, size_t n)
+vml::Tensor* makeTensor1D(T const* x, size_t n)
 {
-  vml::Tensor t;
-  t.dtype = to_dtype<T>::val;
-  t.addr = reinterpret_cast<uint64_t>(x);
-  t.dims = 1;
-  t.nelems = n;
-  t.dim_size[0] = n;
-  return t;
+  return test::allocTensorDesc<T>(1, {n}, x);
 }
 
 #define USE_VML_RANDOM
@@ -50,12 +44,20 @@ template <typename T>
 void randomInit(T* p, size_t n)
 {
 #ifdef USE_VML_RANDOM
-  vml::Tensor t = makeTensor1D(p, n);
-  vml::randomUniform(t);
+  vml::Tensor* t = makeTensor1D(p, n);
+  vml::randomUniform(*t);
 #else
   for (size_t i = 0; i < n; ++i)
     p[i] = T(drand48());
 #endif
+}
+
+template<typename T>
+vml::Tensor* createRandomTensor(std::vector<size_t> const& shape)
+{
+  vml::Tensor* t = test::makeTensor<T>(shape.size(), shape);
+  randomInit(t->ptr<T*>(), t->nelems);
+  return t;
 }
 
 struct BenchOpts
@@ -805,66 +807,31 @@ class TileOpBench : public Bench
   public:
     TileOpBench() : Bench("Tile") 
     {
-      size_t ndims = 5;
-      size_t dimsIn[5] = {8, 16, 16, 1, 1};
-      size_t dimsOut[5] = {8, 16, 16, 32, 32};
-      size_t szIn = 1;
-      size_t szOut = 1;
-      for (size_t i = 0; i < ndims; ++i) {
-        szIn *= dimsIn[i];
-        szOut *= dimsOut[i];
-      }
+      std::vector<size_t> dimsIn({8, 16, 16, 1, 1});
+      std::vector<size_t> dimsOut({8, 16, 16, 32, 32});
 
-      x0_ = new T[szOut];
-      x1_ = new T[szOut];
-      y_ = new T[szIn];
-
-      szOut_ = szOut;
-
-      in_.dtype = to_dtype<T>::val;
-      in_.addr = reinterpret_cast<uint64_t>(y_);
-      in_.dims = ndims;
-      in_.nelems = szIn;
-      for (size_t i = 0; i < ndims; ++i)
-        in_.dim_size[i] = dimsIn[i];
-
-      out0_.dtype = to_dtype<T>::val;
-      out0_.addr = reinterpret_cast<uint64_t>(x0_);
-      out0_.dims = ndims;
-      out0_.nelems = szOut;
-      for (size_t i = 0; i < ndims; ++i)
-        out0_.dim_size[i] = dimsOut[i];
-
-      out1_.dtype = to_dtype<T>::val;
-      out1_.addr = reinterpret_cast<uint64_t>(x1_);
-      out1_.dims = ndims;
-      out1_.nelems = szOut;
-      for (size_t i = 0; i < ndims; ++i)
-        out1_.dim_size[i] = dimsOut[i];
+      in_ = createRandomTensor<float>(dimsIn);
+      out0_ = test::makeTensor<float>(5, dimsIn);
+      out1_ = test::makeTensor<float>(5, dimsIn);
     }
 
     int validate(BenchOpts const& opts) override {
-      memset(x0_, 0, sizeof(T) * szOut_);
-      memset(x1_, 0, sizeof(T) * szOut_);
+      memset(out0_->ptr<float*>(), 0, sizeof(T) * out0_->nelems);
+      memset(out1_->ptr<float*>(), 0, sizeof(T) * out1_->nelems);
       run();
-      ref::tile_dim5_11<float>(out1_, in_);
-      return check_exact(x0_, x1_, szOut_, opts);
+      ref::tile_dim5_11<float>(*out1_, *in_);
+      return check_exact(out0_->ptr<float*>(), out1_->ptr<float*>(),
+                         out1_->nelems, opts);
     }
 
     int run() override {
-      vml::tile(out0_, in_);
+      vml::tile(*out0_, *in_);
     }
 
   private:
-    T* x0_;
-    T* x1_;
-    T* y_;
-
-    size_t szOut_;
-
-    vml::Tensor in_;
-    vml::Tensor out0_;
-    vml::Tensor out1_;
+    vml::Tensor* in_;
+    vml::Tensor* out0_;
+    vml::Tensor* out1_;
 };
 
 template <typename T>
@@ -964,23 +931,23 @@ class ApplyAdamOpBench : public Bench
     }
 
     int run() override {
-      vml::Tensor var  = makeTensor1D<T>(var0_, n_) ;
-      vml::Tensor m    = makeTensor1D<T>(m0_, n_) ;
-      vml::Tensor v    = makeTensor1D<T>(v0_, n_) ;
-      vml::Tensor grad = makeTensor1D<T>(grad_, n_) ;
+      vml::Tensor* var  = makeTensor1D<T>(var0_, n_) ;
+      vml::Tensor* m    = makeTensor1D<T>(m0_, n_) ;
+      vml::Tensor* v    = makeTensor1D<T>(v0_, n_) ;
+      vml::Tensor* grad = makeTensor1D<T>(grad_, n_) ;
 
-      vml::Tensor beta1_power = makeTensor1D<T>(beta1_power_, 1) ;
-      vml::Tensor beta2_power = makeTensor1D<T>(beta2_power_, 1) ;
-      vml::Tensor lr          = makeTensor1D<T>(lr_, 1) ;
-      vml::Tensor beta1       = makeTensor1D<T>(beta1_, 1) ;
-      vml::Tensor beta2       = makeTensor1D<T>(beta2_, 1) ;
-      vml::Tensor epsilon     = makeTensor1D<T>(epsilon_, 1) ;
+      vml::Tensor* beta1_power = makeTensor1D<T>(beta1_power_, 1) ;
+      vml::Tensor* beta2_power = makeTensor1D<T>(beta2_power_, 1) ;
+      vml::Tensor* lr          = makeTensor1D<T>(lr_, 1) ;
+      vml::Tensor* beta1       = makeTensor1D<T>(beta1_, 1) ;
+      vml::Tensor* beta2       = makeTensor1D<T>(beta2_, 1) ;
+      vml::Tensor* epsilon     = makeTensor1D<T>(epsilon_, 1) ;
 
       return vml::applyAdam(
-  	var, m, v,
-  	beta1_power, beta2_power,
-  	lr, beta1, beta2, epsilon,
-	grad,
+  	*var, *m, *v,
+  	*beta1_power, *beta2_power,
+  	*lr, *beta1, *beta2, *epsilon,
+	*grad,
   	use_nesterov_ ) ;
     }
 
@@ -1098,32 +1065,6 @@ class Conv2DBench : public Bench
     ConvParam args_;
     F func_;
 };
-
-template <typename T>
-vml::Tensor* createTensor(size_t dims, std::vector<size_t> const& dim_size)
-{
-  assert(dims < 8);
-  vml::Tensor* t = new vml::Tensor();
-
-  t->dtype = to_dtype<T>::val;
-  t->dims = dims;
-  t->nelems = 1;
-  for (int i = 0; i < dims; ++i) {
-    t->dim_size[i] = dim_size[i];
-    t->nelems *= dim_size[i];
-  }
-
-  t->addr = reinterpret_cast<uint64_t>(new T[t->nelems]);
-  return t;
-}
-
-template<typename T>
-vml::Tensor* createRandomTensor(std::vector<size_t> const& shape)
-{
-  vml::Tensor* t = createTensor<T>(shape.size(), shape);
-  randomInit(t->ptr<T*>(), t->nelems);
-  return t;
-}
 
 template <typename F>
 Bench* make_conv2d_bench(F func,

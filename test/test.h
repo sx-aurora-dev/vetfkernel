@@ -40,26 +40,38 @@ class RegisterTest
 #define REGISTER_TEST(name, func) \
   REGISTER_TEST_HELPER(__COUNTER__, name, func)
 
-template<typename T> struct dypte_s {};
-template<> struct dypte_s<float> { static const int type = 1; };
-template<> struct dypte_s<bool>  { static const int type = 10; };
+template<typename T> struct dtype_s {};
+template<typename T> struct dtype_s<const T> {
+  static const int type = dtype_s<T>::type;
+};
+template<> struct dtype_s<float> { static const int type = 1; };
+template<> struct dtype_s<bool>  { static const int type = 10; };
 
 template <typename T>
-vml::Tensor makeTensor(size_t dims, std::vector<size_t> const& dim_size)
+vml::Tensor* allocTensorDesc(size_t dims, std::vector<size_t> const& dim_size,
+                             T const* ptr = nullptr)
 {
-    vml::Tensor t;
+    size_t sz = sizeof(vml::Tensor) + dims * sizeof(int64_t);
+    vml::Tensor* t = reinterpret_cast<vml::Tensor*>(new char[sz]);
 
-    t.dtype = dypte_s<T>::type;
-    t.dims = dims;
-    t.nelems = 1;
+    t->dtype = dtype_s<T>::type;
+    t->dims = dims;
+    t->nelems = 1;
     for (int i = 0; i < dims; ++i) {
-        t.dim_size[i] = dim_size[i];
-        t.nelems *= dim_size[i];
+        t->dim_size[i] = dim_size[i];
+        t->nelems *= dim_size[i];
     }
-
-    t.addr = reinterpret_cast<uint64_t>(new T[t.nelems]);
+    t->addr = reinterpret_cast<uint64_t>(ptr);
 
     return t;
+}
+
+template <typename T>
+vml::Tensor* makeTensor(size_t dims, std::vector<size_t> const& dim_size)
+{
+    vml::Tensor* p = allocTensorDesc<T>(dims, dim_size);
+    p->addr = reinterpret_cast<uint64_t>(new T[p->nelems]);
+    return p;
 }
 
 template<typename T>
@@ -69,27 +81,29 @@ class Tensor {
           shape_ = shape;
           t = makeTensor<T>(shape.size(), shape);
           stride_.resize(shape.size());
-          size_t dim = t.dims;
+          size_t dim = t->dims;
           stride_[dim - 1] = 1;
           for (int i = dim - 2; i >= 0; --i) {
-            stride_[i] = stride_[i + 1] * t.dim_size[i + 1];
+            stride_[i] = stride_[i + 1] * t->dim_size[i + 1];
           }
         }
-        ~Tensor() { delete[] reinterpret_cast<T*>(t.addr); }
+        ~Tensor() {
+          delete[] reinterpret_cast<T*>(t->addr);
+          delete[] t;
+        }
         std::vector<size_t> const& shape() const { return shape_; }
-        T* data() { return reinterpret_cast<T*>(t.addr); }
-        T const* data() const { return reinterpret_cast<T const*>(t.addr); }
-        size_t nelems() const { return t.nelems; }
-        size_t dims() const { return t.dims; }
-        size_t dim_size(size_t i) const { return t.dim_size[i]; }
+        T* data() { return reinterpret_cast<T*>(t->addr); }
+        T const* data() const { return reinterpret_cast<T const*>(t->addr); }
+        size_t nelems() const { return t->nelems; }
+        size_t dims() const { return t->dims; }
+        size_t dim_size(size_t i) const { return t->dim_size[i]; }
         size_t stride(size_t i) const { return stride_[i]; }
 
-        vml::Tensor tensor() const { return t; }
-
-        operator vml::Tensor() const { return t; }
+        vml::Tensor& tensor() const { return *t; }
+        operator vml::Tensor&() const { return *t; }
 
     private:
-        vml::Tensor t;
+        vml::Tensor* t;
         std::vector<size_t> stride_;
         std::vector<size_t> shape_;
 };
