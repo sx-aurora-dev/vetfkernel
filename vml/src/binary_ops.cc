@@ -20,29 +20,11 @@
 
 namespace {
 
-struct BinaryOpArgs {
-  vml::Tensor in0;
-  vml::Tensor in1;
-  vml::Tensor out;
-} __attribute__((__packed__));
-
-bool CheckTypes(const BinaryOpArgs& args, int dt0, int dt1, int dt2)
-{
-  return args.in0.dtype == dt0
-    && args.in1.dtype == dt1
-    && args.out.dtype == dt2;
-}
-
 bool CheckTypesAll(vml::Tensor const& X,
                    vml::Tensor const& Y,
                    vml::Tensor const& Z,
                    int dtype) {
   return X.dtype == dtype && Y.dtype == dtype && Z.dtype == dtype;
-}
-
-
-bool CheckTypesAll(const BinaryOpArgs& args, int dtype) {
-  return CheckTypes(args, dtype, dtype, dtype);
 }
 
 bool CheckDimsAll(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tensor &in1, size_t dims)
@@ -58,22 +40,11 @@ bool CheckDimsAll(const vml::Tensor &out, const vml::Tensor &in0, const vml::Ten
   return ret;
 }
 
-bool CheckDimsAll(const BinaryOpArgs& args, size_t dims)
-{
-  return CheckDimsAll(args.out, args.in0, args.in1, dims);
-}
-
 bool IsSameDims(vml::Tensor const& X,
                 vml::Tensor const& Y,
                 vml::Tensor const& Z)
 {
   return X.dims == Y.dims && X.dims == Z.dims;
-}
-
-bool IsSameDims(const BinaryOpArgs& args)
-{
-    return args.in0.dims == args.in1.dims
-        && args.in0.dims == args.out.dims;
 }
 
 bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
@@ -85,8 +56,6 @@ bool check_dim(vml::Tensor const& s, std::vector<int64_t> const& dim)
       && s.dim_size[3] == dim[3]
       && s.dim_size[4] == dim[4];
 }
-
-
 
 bool IsSameSize(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tensor &in1)
 {
@@ -106,14 +75,6 @@ bool IsSameSize(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tenso
   // 一番小さい配列でサイズが同じでnelemsが等しい場合、残りの次元は常に1なので true を返す
   return true;
 }
-
-
-
-bool IsSameSize(const BinaryOpArgs& args)
-{
-  return IsSameSize(args.out, args.in0, args.in1);
-}
-
 
 
 // Add
