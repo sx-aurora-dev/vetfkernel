@@ -21,10 +21,18 @@
 
 namespace {
 
+struct _Tensor {
+  int32_t dtype;
+  uint64_t addr;
+  int32_t dims;
+  int64_t nelems;
+  int64_t dim_size[8];
+} __attribute__((__packed__));
+
 struct BinaryOpArgs {
-  vml::Tensor in0;
-  vml::Tensor in1;
-  vml::Tensor out;
+  _Tensor in0;
+  _Tensor in1;
+  _Tensor out;
 } __attribute__((__packed__));
 
 
@@ -39,16 +47,18 @@ int op_Binary(const void* args, size_t len,
   if (sizeof(BinaryOpArgs) == len) {
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
+    vml::Tensor const* X = reinterpret_cast<vml::Tensor const*>(&p->out);
+    vml::Tensor const* Y = reinterpret_cast<vml::Tensor const*>(&p->in0);
+    vml::Tensor const* Z = reinterpret_cast<vml::Tensor const*>(&p->in1);
+
     LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
-      << " in0=" << p->in0
-      << " in1=" << p->in1
-      << " out=" << p->out;
+      << " X=" << X << " Y=" << Y << " Z=" << Z;
 
     if (func) {
 #ifdef TIMER
       double t0 = second();
 #endif
-      ret = func(p->out, p->in0, p->in1);
+      ret = func(*X, *Y, *Z);
 #ifdef TIMER
       double ms = (second() - t0) * 1e3;
       LOG(LOG_TIMER) << __FUNCTION__ << "::" << name << ": " << ms << " msec";

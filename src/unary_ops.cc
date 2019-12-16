@@ -20,11 +20,19 @@
 
 namespace {
 
+struct _Tensor {
+  int32_t dtype;
+  uint64_t addr;
+  int32_t dims;
+  int64_t nelems;
+  int64_t dim_size[8];
+} __attribute__((__packed__));
+
 // valid: in.dtype, in.nelems, in.addr, out.addr
 struct UnaryOpArgs
 {
-  vml::Tensor in;
-  vml::Tensor out;
+  _Tensor in;
+  _Tensor out;
 } __attribute__((__packed__));
 
 int unary_op_helper(const void* args, size_t len,
@@ -41,7 +49,8 @@ int unary_op_helper(const void* args, size_t len,
         << " dtype=" << p->in.dtype << " nelems=" << p->in.nelems;
 
     if (func) {
-      ret = func(p->out, p->in);
+      ret = func(*reinterpret_cast<vml::Tensor const*>(&p->out),
+                 *reinterpret_cast<vml::Tensor const*>(&p->in));
     }
   } else {
     LOG(LOG_ERROR) << name << ": illegal args size " << len

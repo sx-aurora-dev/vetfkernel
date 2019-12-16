@@ -2,7 +2,7 @@
 #include "kernel.h"
 #include "vml/types.h"
 #include "vml/log.h"
-#include <sstream>
+//#include <sstream>
 #include "vml.h"
 
 REGISTER_KERNEL("SigmoidGrad", "op_SigmoidGrad");
@@ -18,10 +18,18 @@ int op_TanhGrad(const void* arg, size_t len);
 
 namespace {
 
+struct _Tensor {
+  int32_t dtype;
+  uint64_t addr;
+  int32_t dims;
+  int64_t nelems;
+  int64_t dim_size[8];
+} __attribute__((__packed__));
+
 struct BinaryOpArgs {
-  vml::Tensor in0;
-  vml::Tensor in1;
-  vml::Tensor out;
+  _Tensor in0;
+  _Tensor in1;
+  _Tensor out;
 };
 
 static inline
@@ -50,9 +58,9 @@ int op_CwiseGradients(const void* args, size_t len,
     const BinaryOpArgs* p = reinterpret_cast<const BinaryOpArgs*>(args);
 
     LOG(LOG_PARAM) << name << ":"
-      << " out="  << p->in0
-      << " gout=" << p->in1
-      << " gin="  << p->out;
+      << " out="  << *reinterpret_cast<vml::Tensor const*>(&p->in0)
+      << " gout=" << *reinterpret_cast<vml::Tensor const*>(&p->in1)
+      << " gin="  << *reinterpret_cast<vml::Tensor const*>(&p->out);
 
     if (func)
       ret = func(*p);
