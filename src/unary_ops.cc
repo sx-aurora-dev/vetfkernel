@@ -20,19 +20,11 @@
 
 namespace {
 
-struct _Tensor {
-  int32_t dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-} __attribute__((__packed__));
-
 // valid: in.dtype, in.nelems, in.addr, out.addr
 struct UnaryOpArgs
 {
-  _Tensor in;
-  _Tensor out;
+  vml::TensorDesc<8> in;
+  vml::TensorDesc<8> out;
 } __attribute__((__packed__));
 
 int unary_op_helper(const void* args, size_t len,

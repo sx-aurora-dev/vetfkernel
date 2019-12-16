@@ -21,18 +21,10 @@
 
 namespace {
 
-struct _Tensor {
-  int32_t dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[8];
-} __attribute__((__packed__));
-
 struct BinaryOpArgs {
-  _Tensor in0;
-  _Tensor in1;
-  _Tensor out;
+  vml::TensorDesc<8> in0;
+  vml::TensorDesc<8> in1;
+  vml::TensorDesc<8> out;
 } __attribute__((__packed__));
 
 
