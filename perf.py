@@ -69,13 +69,20 @@ class Diff:
   def __init__(self, a, b, k):
     self.key = k
     self.va = a.table[k]
-    if b:
+    if b and k in b.table:
       self.vb = b.table[k]
       self.diff = self.va - self.vb
       self.ratio = self.diff / self.vb * 100
+    else:
+      self.vb = None
+      self.diff = 0
+      self.ratio = 0
 
   def to_s(self):
-    return "{:<80} {:8.3f} {:8.3f} {:8.3f} {:8.3f} %".format(self.key, self.va, self.vb, self.diff, self.ratio)
+    if self.vb:
+      return "{:<80} {:8.3f} {:8.3f} {:8.3f} {:8.3f} %".format(self.key, self.va, self.vb, self.diff, self.ratio)
+    else:
+      return "{:<80} {:8.3f}".format(self.key, self.va)
 
 class CompareResult:
   def __init__(self, a, b, diffs, threshold):
