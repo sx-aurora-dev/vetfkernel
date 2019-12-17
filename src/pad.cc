@@ -11,28 +11,27 @@ namespace {
 template <typename T>
 void Operate2(vml::Tensor const& input,
 	      int32_t dims,
-	      int64_t asize,
 	      uint32_t mult,
 	      int32_t *paddings,
 	      T *pad_value_p,
 	      vml::Tensor const* output) {
-  int i0_sz = input.dim_size[0];
-  int i1_sz = input.dim_size[1];
-  int i0_ps = paddings[0];       // padding low-side size for 1-dim 
-  int i1_ps = paddings[2];       // padding low-side size for 2-dim 
-  int o0_sz = output->dim_size[0];
-  int o1_sz = output->dim_size[1];
+  int64_t i0_sz = input.dim_size[0];
+  int64_t i1_sz = input.dim_size[1];
+  int64_t i0_ps = paddings[0];       // padding low-side size for 1-dim
+  int64_t i1_ps = paddings[2];       // padding low-side size for 2-dim
+  int64_t o0_sz = output->dim_size[0];
+  int64_t o1_sz = output->dim_size[1];
 
 
 #pragma _NEC ivdep
-  for (int i = 0; i < asize; i++ ) { // initialize
+  for (int64_t i = 0; i < output->nelems; i++ ) { // initialize
     ((T *)output->addr)[i] = *pad_value_p;
   }
-  for (int i0 = 0; i0 < i0_sz; i0++) {
-    for (int i1 = 0; i1 < i1_sz; i1++) {
+  for (int64_t i0 = 0; i0 < i0_sz; i0++) {
+    for (int64_t i1 = 0; i1 < i1_sz; i1++) {
 
-      int inidx  = i0*i1_sz + i1;
-      int outidx = (i0+i0_ps)*o1_sz + (i1+i1_ps);
+      int64_t inidx  = i0*i1_sz + i1;
+      int64_t outidx = (i0+i0_ps)*o1_sz + (i1+i1_ps);
 
       ((T *)output->addr)[outidx] = ((T *)input.addr)[inidx];
 
@@ -49,32 +48,31 @@ void Operate2(vml::Tensor const& input,
 template <typename T>
 void Operate3(vml::Tensor const& input,
 	      int32_t dims,
-	      int64_t asize,
 	      uint32_t mult,
 	      int32_t *paddings,
 	      T *pad_value_p,
 	      vml::Tensor const* output) {
-  int i0_sz = input.dim_size[0];
-  int i1_sz = input.dim_size[1];
-  int i2_sz = input.dim_size[2];
-  int i0_ps = paddings[0];          // padding low-side size for 1-dim 
-  int i1_ps = paddings[2];          //                           2-dim 
-  int i2_ps = paddings[4];          //                           3-dim 
-  int o0_sz = output->dim_size[0];
-  int o1_sz = output->dim_size[1];
-  int o2_sz = output->dim_size[2];
+  int64_t i0_sz = input.dim_size[0];
+  int64_t i1_sz = input.dim_size[1];
+  int64_t i2_sz = input.dim_size[2];
+  int64_t i0_ps = paddings[0];          // padding low-side size for 1-dim
+  int64_t i1_ps = paddings[2];          //                           2-dim
+  int64_t i2_ps = paddings[4];          //                           3-dim
+  int64_t o0_sz = output->dim_size[0];
+  int64_t o1_sz = output->dim_size[1];
+  int64_t o2_sz = output->dim_size[2];
 
 
 #pragma _NEC ivdep
-  for (int i = 0; i < asize; i++ ) { // initialize
+  for (int64_t i = 0; i < output->nelems; i++ ) { // initialize
     ((T *)output->addr)[i] = *pad_value_p;
   }
-  for (int i0 = 0; i0 < i0_sz; i0++) {
-    for (int i1 = 0; i1 < i1_sz; i1++) {
-      for (int i2 = 0; i2 < i2_sz; i2++) {
+  for (int64_t i0 = 0; i0 < i0_sz; i0++) {
+    for (int64_t i1 = 0; i1 < i1_sz; i1++) {
+      for (int64_t i2 = 0; i2 < i2_sz; i2++) {
 
-	int inidx  = i0*i1_sz*i2_sz + i1*i2_sz + i2;
-	int outidx = (i0+i0_ps)*o1_sz*o2_sz + (i1+i1_ps)*o2_sz + i2+i2_ps;
+	int64_t inidx  = i0*i1_sz*i2_sz + i1*i2_sz + i2;
+	int64_t outidx = (i0+i0_ps)*o1_sz*o2_sz + (i1+i1_ps)*o2_sz + i2+i2_ps;
 
 	((T *)output->addr)[outidx] = ((T *)input.addr)[inidx];
 
@@ -112,23 +110,12 @@ void Operate(vml::Tensor const& input,
   }
 #endif
 
-  int64_t asize = 1;  // number of element
-  for (int i = 0; i < dims ; i++) {
-    asize *= output->dim_size[i];
-#if 1
-    LOG(LOG_PARAM) << "           asize[" << i << "] = "
-		   << output->dim_size[i];
-#endif
-  }
-#if 0
-  LOG(LOG_PARAM) << "           asize = " << asize;
-#endif
 
 
 #define CALLOPN(D)				\
   case D:								\
   {									\
-    Operate ## D<T>(input, dims, asize, mult, paddings, pad_value_p, output); \
+    Operate ## D<T>(input, dims, mult, paddings, pad_value_p, output);  \
     break;								\
   }
   switch(dims) {
