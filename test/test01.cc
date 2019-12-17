@@ -31,7 +31,7 @@ bool test_UnaryOp(TestParam const& param,
                   Tensor<T> const& exp,
                   int (*op)(vml::Tensor const&out, vml::Tensor const& in))
 {
-    int ret = op(out.tensor(), in.tensor());
+    int ret = op(out, in);
 
     bool flag = false;
     if (ret == 0)
@@ -117,7 +117,7 @@ bool test_AvgPool(TestParam const& param,
     bool tmp = pout[i] == expected[i];
     flag &= tmp;
     if (!tmp && param.verbose > 0) {
-      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
+      fprintf(stderr, "pout[%d]=%e (expected is %e)\n", i, pout[i], expected[i]);
     }
   }
 
@@ -159,7 +159,7 @@ bool test_AvgPool_01(TestParam const& param)
   for (int i = 0; i < 4; ++i)
     pin[i] = i + 1.0;
 
-  return test_AvgPool(param, *out, *in, p, expected, 9);
+  return test_AvgPool(param, *out, *in, p, expected, 4);
 }
 
 bool test_AvgPool_02(TestParam const& param)

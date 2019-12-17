@@ -99,8 +99,7 @@ class Tensor {
         size_t dim_size(size_t i) const { return t->dim_size[i]; }
         size_t stride(size_t i) const { return stride_[i]; }
 
-        vml::Tensor& tensor() const { return *t; }
-        operator vml::Tensor&() const { return *t; }
+        operator vml::Tensor const&() const { return *t; }
 
     private:
         vml::Tensor* t;

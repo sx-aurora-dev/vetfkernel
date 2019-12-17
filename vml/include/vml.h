@@ -28,6 +28,8 @@ struct TensorDesc {
   operator Tensor const&() const { *reinterpret_cast<Tensor const*>(this); }
 } __attribute__((__packed__));
 
+// variable size
+// typical usage: Tensor* t = reinterpret_cast<Tensor*>(ptr)
 struct Tensor : public TensorDesc<0>
 {
   private:
