@@ -105,34 +105,6 @@ int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
   return check(a, b, n, opts, opts.threshold);
 }
 
-#if 0
-template <typename T>
-int check_exact(T const* a, T const* b, size_t n, BenchOpts const& opts)
-{
-  int flag = 1;
-  for (int i = 0; i < n; ++i) {
-    double diff = a[i] - b[i];
-    if (diff != 0.0) {
-      double err;
-      if (a[i] == 0.0 && b[i] == 0.0) {
-        err = diff;
-      } else {
-        err = std::sqrt(diff * diff / (a[i] * a[i] + b[i] * b[i]));
-      }
-
-      if (err > opts.threshold) {
-        flag = 0;
-        if (opts.verbose > 1) {
-          fprintf(stderr, "a[%d] %18.12e b[%d] %18.12e diff %18.12e err %18.12e\n", 
-                  i, a[i], i, b[i], diff, err);
-        }
-      }
-    }
-  }
-  return flag;
-}
-#endif
-
 struct Bench
 {
   Bench(std::string name) 
@@ -500,30 +472,35 @@ int apply_adam(bool use_nesterov, int64_t num_elements,
 
 } // namespace ref
 
+
+template <typename T, int N>
+vml::TensorDesc<N> createStaticTensor(T const* p, std::vector<int64_t> const& dims)
+{
+  vml::TensorDesc<N> t;
+  t.dtype = test::dtype_s<T>::type;
+  t.addr = reinterpret_cast<uint64_t>(p);
+  t.dims = dims.size();
+  t.nelems = 1;
+  for (size_t i = 0; i < dims.size(); ++i) {
+    t.dim_size[i] = dims[i];
+    t.nelems *= dims[i];
+  }
+  return t;
+}
+
 template <typename T>
 class UnaryOpBench : public Bench
 {
   public:
     UnaryOpBench(std::string name, 
                  int (*op)(vml::Tensor const& out, vml::Tensor const& in),
-                 T const* y, size_t n) 
-      : Bench(name), op_(op), y_(y), n_(n) {
+                 T const* y, int64_t n) 
+      : Bench(name), op_(op) {
         this->data_size_ = sizeof(T) * n * 2;
 
-        x0_ = new T[n];
-        x1_ = new T[n];
-
-        in_.dtype = to_dtype<T>::val;
-        in_.addr = reinterpret_cast<uint64_t>(x0_);
-        in_.dims = 1;
-        in_.nelems = n;
-        in_.dim_size[0] = n;
-
-        out_.dtype = to_dtype<T>::val;
-        out_.addr = reinterpret_cast<uint64_t>(y);
-        out_.dims = 1;
-        out_.nelems = n;
-        out_.dim_size[0] = n;
+        T* x = new T[n];
+        in_ = createStaticTensor<T, 1>(y, {n});
+        out_ = createStaticTensor<T, 1>(x, {n});
       }
 
     int validate(BenchOpts const& opts) override {
@@ -535,16 +512,10 @@ class UnaryOpBench : public Bench
     }
 
   private:
-    vml::Tensor in_;
-    vml::Tensor out_;
-
-    T* x0_;
-    T* x1_;
-    T const* y_;
-    size_t n_;
+    vml::TensorDesc<1> in_;
+    vml::TensorDesc<1> out_;
 
     int (*op_)(vml::Tensor const& out, vml::Tensor const& in);
-    //int (*op_)(const void* args, size_t len);
 };
 
 template <typename T>
@@ -555,14 +526,12 @@ class BinaryOpBench : public Bench
                   int (*op)(vml::Tensor const& out,
                             vml::Tensor const& in0,
                             vml::Tensor const& in1),
-                  T const* y, T const* z, size_t n, int ntimes = -1) 
-      : Bench(name), op_(op), y_(y), z_(z), n_(n) {
-        x0_ = new T[n];
-        x1_ = new T[n];
-
-        args_.in0 = mktensor(y, n);
-        args_.in1 = mktensor(z, n);
-        args_.out = mktensor(x0_, n);
+                  T const* y, T const* z, int64_t n, int ntimes = -1) 
+      : Bench(name), op_(op) {
+        T* x = new T[n];
+        X_ = createStaticTensor<T, 1>(x, {n});
+        Y_ = createStaticTensor<T, 1>(y, {n});
+        Z_ = createStaticTensor<T, 1>(z, {n});
 
         data_size_ = n * 3 * sizeof(T);
         flop_count_ = n;
@@ -574,35 +543,14 @@ class BinaryOpBench : public Bench
     }
 
     int run() override {
-      return op_(args_.out, args_.in0, args_.in1);
+      return op_(X_, Y_, Z_);
     }
 
   private:
-    T* x0_;
-    T* x1_;
-    T const* y_;
-    T const* z_;
-    size_t n_;
     int (*op_)(vml::Tensor const&, vml::Tensor const&, vml::Tensor const&);
-
-    struct BinaryOpArgs {
-      vml::Tensor in0;
-      vml::Tensor in1;
-      vml::Tensor out;
-    };
-
-    vml::Tensor mktensor(float const* x, int n)
-    {
-      vml::Tensor t;
-      t.dtype = to_dtype<T>::val;
-      t.addr = reinterpret_cast<uint64_t>(x);
-      t.dims = 1;
-      t.nelems = n;
-      t.dim_size[0] = n;
-      return t;
-    }
-
-    BinaryOpArgs args_;
+    vml::TensorDesc<1> X_;
+    vml::TensorDesc<1> Y_;
+    vml::TensorDesc<1> Z_;
 };
 
 template <typename T>

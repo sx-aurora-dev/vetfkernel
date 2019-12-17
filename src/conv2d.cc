@@ -8,9 +8,18 @@
 #include <vednn.h>
 
 #include "kernel.h"
+#include <vml.h>
+#include <vector>
 #include "vml/log.h"
-#include "vml/profile.h"
+#include "vml/types.h"
 
+#define USE_VML
+
+#ifndef USE_VML
+#include "vml/profile.h"
+#endif
+
+//#define _DEBUG
 
 REGISTER_KERNEL("Conv2D", "conv2d");
 
@@ -18,9 +27,20 @@ extern "C" {
     int conv2d(const void* arg, size_t len);
 }
 
+#if 0
+// data layout must be compatible with vml::Tensor
+struct Tensor {
+  int32_t dtype;
+  uint64_t addr;
+  int32_t dims;
+  int64_t nelems;
+  int64_t dim_size[4];
+} __attribute__((__packed__));
+#endif
+
 struct TensorParam {
     int w,h,c,n ;
-} ;
+};
 
 struct ConvParam {
     uint64_t in;
@@ -45,6 +65,61 @@ int conv2d(const void* arg, size_t len)
 {
     LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
 
+#ifdef USE_VML
+    // FIXME: use VEOpArgs
+#ifdef _DEBUG
+    fprintf(stderr, "[start]conv2d\n");
+#endif
+    assert(len == sizeof(ConvParam));
+    const ConvParam& p = *(ConvParam*)arg;
+
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
+
+#ifdef _DEBUG
+    fprintf(stderr, "conv2d: data_format=%d data_type=%d\n", p.data_format, p.data_type);
+    // assert(p.data_type   == 1 ) ; // float
+    // assert(p.data_format == 1 ) ; // NHWC
+
+    fprintf(stderr, "conv2d: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
+            p.in_param.n, p.in_param.c, p.in_param.h, p.in_param.w ) ;
+    fprintf(stderr, "conv2d: outnput (N,C,H,W) = (%d,%d,%d,%d)\n",
+            p.out_param.n, p.out_param.c, p.out_param.h, p.out_param.w ) ;
+    fprintf(stderr, "conv2d: filter  (N,C,H,W) = (%d,%d,%d,%d)\n",
+            p.filter_param.n, p.filter_param.c, p.filter_param.h, p.filter_param.w ) ;
+
+    fprintf(stderr, "conv2d: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
+            p.col_stride,   p.row_stride,
+            p.col_dilation, p.row_dilation,
+            p.col_padding,   p.row_padding);
+#endif
+
+    vml::TensorDesc<4> in;
+    vml::TensorDesc<4> filter;
+    vml::TensorDesc<4> out;
+    std::vector<int> params(7);
+
+#define COPY(t, ptr, param) \
+    t.dtype = p.data_type; \
+    t.addr = ptr; \
+    t.dims = 4; \
+    t.dim_size[0] = param.n; \
+    t.dim_size[1] = param.c; \
+    t.dim_size[2] = param.h; \
+    t.dim_size[3] = param.w;
+
+    COPY(in, p.in, p.in_param);
+    COPY(filter, p.filter, p.filter_param);
+    COPY(out, p.out, p.out_param);
+    params[0] = p.col_stride;
+    params[1] = p.row_stride;
+    params[2] = p.col_dilation;
+    params[3] = p.row_dilation;
+    params[4] = p.col_padding;
+    params[5] = p.row_padding;
+    params[6] = p.data_format;
+
+    return vml::conv2d(in, filter, out, params);
+#else // USE_VML
     PROF_BEGIN(conv2d);
 
 #ifdef _DEBUG
@@ -163,4 +238,5 @@ int conv2d(const void* arg, size_t len)
 #endif
     LOG(LOG_TRACE) << __FUNCTION__ << ": end. ret=0";
     return 0;
+#endif // USE_VML
 }

@@ -20,7 +20,7 @@ bool test_LeakyRelu(TestParam const& param)
   memcpy(features.data(), f, sizeof(float) * 2 * 5);
   memcpy(expected.data(), a, sizeof(float) * 2 * 5);
 
-  vml::leaky_relu(activations.tensor(), features.tensor(), alpha);
+  vml::leaky_relu(activations, features, alpha);
 
   bool flag = checkTensor(activations, expected);
 

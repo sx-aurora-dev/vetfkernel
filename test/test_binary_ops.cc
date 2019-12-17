@@ -14,7 +14,7 @@ bool test_BinaryOp(TestParam const& param,
                    Tensor<TOUT> const& exp,
                    int (*op)(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1))
 {
-    int ret = op(out.tensor(), in0.tensor(), in1.tensor());
+    int ret = op(out, in0, in1);
 
     bool flag = false;
     if (ret == 0)
@@ -33,7 +33,6 @@ bool test_BinaryOp(TestParam const& param,
 
     return flag;
 }
-
 
 
 template <typename TOUT, typename T, typename F>

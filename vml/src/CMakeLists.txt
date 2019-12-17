@@ -18,6 +18,7 @@ add_library(vml STATIC
   asl.cc
   avgpooling.cc
   binary_ops.cc
+  conv2d.cc
   randomUniform.cc
   relu.cc
   tile.cc

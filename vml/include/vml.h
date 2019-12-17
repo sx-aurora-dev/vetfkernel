@@ -2,6 +2,7 @@
 
 // VML: VE Machile Learning Kernels
 
+#include <vector>
 #include <ostream>
 
 namespace vml
@@ -10,23 +11,30 @@ namespace vml
 int initialize();
 int finalize();
 
-struct Tensor {
+struct Tensor;
+
+template <int N>
+struct TensorDesc {
   int32_t dtype;
   uint64_t addr;
   int32_t dims;
   int64_t nelems;
-  int64_t dim_size[0]; // variable size
-
-#if 0
-  size_t size() const {
-    return sizeof(Tensor) + sizeof(int64_t) * (dims - 1);
-  }
-#endif
+  int64_t dim_size[N];
 
   template <typename T> T ptr() const {
     return reinterpret_cast<T>(addr);
   }
+
+  operator Tensor const&() const { *reinterpret_cast<Tensor const*>(this); }
 } __attribute__((__packed__));
+
+// variable size
+// typical usage: Tensor* t = reinterpret_cast<Tensor*>(ptr)
+struct Tensor : public TensorDesc<0>
+{
+  private:
+    Tensor() {}
+};
 
 std::ostream& operator<<(std::ostream& s, Tensor const& t);
 
@@ -134,4 +142,10 @@ int applyAdam(
     vml::Tensor const& grad,
     const bool use_nesterov
 ) ;
-};
+
+int conv2d(vml::Tensor const& in,
+           vml::Tensor const& filter,
+           vml::Tensor const& out,
+           std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
+
+}; // namespace vml
