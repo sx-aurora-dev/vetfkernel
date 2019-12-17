@@ -100,6 +100,29 @@ DEFINE_TEST_UNARY_OP_01(Asinh, vml::asinh, std::asinh);
 DEFINE_TEST_UNARY_OP_01(Acosh, vml::acosh, std::acosh);
 DEFINE_TEST_UNARY_OP_01(Atanh, vml::atanh, std::atanh);
 
+template <typename T>
+bool test_AvgPool(TestParam const& param,
+                  vml::Tensor& out,
+                  vml::Tensor const& in,
+                  vml::PoolingParam const& p,
+                  T const* expected,
+                  size_t nelems)
+{
+  if (vml::avgpool(out, in, p) != 0)
+    return false;
+  float* pout = reinterpret_cast<float*>(out.addr);
+
+  bool flag = true;
+  for (int i = 0; i < nelems; ++i) {
+    bool tmp = pout[i] == expected[i];
+    flag &= tmp;
+    if (!tmp && param.verbose > 0) {
+      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
+    }
+  }
+
+  return flag;
+}
 
 bool test_AvgPool_01(TestParam const& param)
 {
@@ -136,45 +159,7 @@ bool test_AvgPool_01(TestParam const& param)
   for (int i = 0; i < 4; ++i)
     pin[i] = i + 1.0;
 
-
-  if (vml::avgpool(*out, *in, p) != 0)
-    return false;
-  float* pout = reinterpret_cast<float*>(out->addr);
-
-  bool flag = true;
-  for (int i = 0; i < 4; ++i) {
-    bool tmp = pout[i] == expected[i];
-    flag &= tmp;
-    if (!tmp && param.verbose > 0) {
-      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
-    }
-  }
-
-  return flag;
-}
-
-template <typename T>
-bool test_AvgPool(TestParam const& param,
-                  vml::Tensor& out,
-                  vml::Tensor const& in,
-                  vml::PoolingParam const& p,
-                  T const* expected,
-                  size_t nelems)
-{
-  if (vml::avgpool(out, in, p) != 0)
-    return false;
-  float* pout = reinterpret_cast<float*>(out.addr);
-
-  bool flag = true;
-  for (int i = 0; i < nelems; ++i) {
-    bool tmp = pout[i] == expected[i];
-    flag &= tmp;
-    if (!tmp && param.verbose > 0) {
-      fprintf(stderr, "pout[%d]=%f (expected is %f)\n", i, pout[i], expected[i]);
-    }
-  }
-
-  return flag;
+  return test_AvgPool(param, *out, *in, p, expected, 9);
 }
 
 bool test_AvgPool_02(TestParam const& param)
