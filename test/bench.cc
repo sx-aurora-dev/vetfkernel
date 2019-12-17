@@ -107,8 +107,8 @@ int check(T const* a, T const* b, size_t n, BenchOpts const& opts)
 
 struct Bench
 {
-  Bench(std::string name) 
-    : name_(name), data_size_(0), flop_count_(0) {}
+  Bench(std::string name, int ntimes = -1) 
+    : name_(name), data_size_(0), flop_count_(0), ntimes_(ntimes) {}
 
   std::string name() const { return name_; }
   virtual int validate(BenchOpts const&) = 0;
@@ -116,7 +116,7 @@ struct Bench
   
   std::string name_;
 
-  int ntimes_ = -1;
+  int ntimes_;
 
   size_t data_size_; // bytes
   size_t flop_count_;
@@ -494,8 +494,8 @@ class UnaryOpBench : public Bench
   public:
     UnaryOpBench(std::string name, 
                  int (*op)(vml::Tensor const& out, vml::Tensor const& in),
-                 T const* y, int64_t n) 
-      : Bench(name), op_(op) {
+                 T const* y, int64_t n, int ntimes = -1) 
+      : Bench(name, ntimes), op_(op) {
         this->data_size_ = sizeof(T) * n * 2;
 
         T* x = new T[n];
@@ -527,7 +527,7 @@ class BinaryOpBench : public Bench
                             vml::Tensor const& in0,
                             vml::Tensor const& in1),
                   T const* y, T const* z, int64_t n, int ntimes = -1) 
-      : Bench(name), op_(op) {
+      : Bench(name, ntimes), op_(op) {
         T* x = new T[n];
         X_ = createStaticTensor<T, 1>(x, {n});
         Y_ = createStaticTensor<T, 1>(y, {n});
@@ -535,7 +535,6 @@ class BinaryOpBench : public Bench
 
         data_size_ = n * 3 * sizeof(T);
         flop_count_ = n;
-        ntimes_ = ntimes;
       }
 
     int validate(BenchOpts const& opts) override {
@@ -560,8 +559,8 @@ class ReductionOpBench : public Bench
     ReductionOpBench(std::string name, 
                      int (*op)(const void* args, size_t len),
                      int (*ref_op)(uint64_t, uint64_t, size_t, size_t),
-                     T const* y, size_t n) 
-      : Bench(name), op_(op), ref_op_(ref_op), y_(y), n_(n) { 
+                     T const* y, size_t n, int ntimes) 
+      : Bench(name, ntimes), op_(op), ref_op_(ref_op), y_(y), n_(n) { 
         data_size_ = n * 2 * sizeof(T);
         flop_count_ = n;
 
@@ -616,8 +615,8 @@ class BiasAddOpBench : public Bench
     BiasAddOpBench(std::string name, int data_format, 
                    int (*ref_op)(uint64_t out, uint64_t in, 
                                  uint64_t bias, int batch, int width, int height, int channel),
-                   T const* in, size_t nchw[4])
-      : Bench(name), ref_op_(ref_op), in_(in) {
+                   T const* in, size_t nchw[4], int ntimes)
+      : Bench(name, ntimes), ref_op_(ref_op), in_(in) {
       memcpy(nchw_, nchw, sizeof(size_t) * 4);
       size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
       size_t szb = nchw[1];
@@ -690,8 +689,8 @@ class BiasAddGradOpBench : public Bench
     BiasAddGradOpBench(std::string name, int data_format,
                        int (*ref_op)(uint64_t output, uint64_t output_backprop,
                                      int batch, int width, int height, int channel),
-                       T const* in, size_t nchw[4]) 
-      : Bench(name), ref_op_(ref_op), in_(in) {
+                       T const* in, size_t nchw[4], int ntimes = -1) 
+      : Bench(name, ntimes), ref_op_(ref_op), in_(in) {
       memcpy(nchw_, nchw, sizeof(size_t) * 4);
       size_t szb = nchw[1];
 
@@ -753,14 +752,14 @@ template <typename T>
 class TileOpBench : public Bench
 {
   public:
-    TileOpBench() : Bench("Tile") 
+    TileOpBench(int ntimes) : Bench("Tile", ntimes) 
     {
       std::vector<size_t> dimsIn({8, 16, 16, 1, 1});
       std::vector<size_t> dimsOut({8, 16, 16, 32, 32});
 
       in_ = createRandomTensor<float>(dimsIn);
-      out0_ = test::makeTensor<float>(5, dimsIn);
-      out1_ = test::makeTensor<float>(5, dimsIn);
+      out0_ = test::makeTensor<float>(5, dimsOut);
+      out1_ = test::makeTensor<float>(5, dimsOut);
     }
 
     int validate(BenchOpts const& opts) override {
@@ -789,8 +788,8 @@ class TransposeOpBench : public Bench
     TransposeOpBench(std::string name, 
                      int (*ref_op)(uint64_t, uint64_t, const int32_t*),
                      T const* y,
-                     size_t dims[4], std::vector<int> perm) 
-      : Bench(name), ref_op_(ref_op), y_(y) {
+                     size_t dims[4], std::vector<int> perm, int ntimes = -1) 
+      : Bench(name, ntimes), ref_op_(ref_op), y_(y) {
         int ndims = 4;
         nelems_ = 1;
         for (size_t i = 0; i < ndims; ++i) {
@@ -843,7 +842,7 @@ template <typename T>
 class ApplyAdamOpBench : public Bench
 {
   public:
-    ApplyAdamOpBench(std::string name, size_t n) : Bench(name), n_(n) {
+    ApplyAdamOpBench(std::string name, size_t n, int ntimes) : Bench(name, ntimes), n_(n) {
       // output
       var0_ = new T[n];
       var1_ = new T[n];
@@ -1070,13 +1069,13 @@ void add_bench(std::vector<Bench*>& v, size_t n)
   v.push_back(new BinaryOpBench<float>("Mul", vml::mul, y, z, n, 100));
   v.push_back(new BinaryOpBench<float>("Div", vml::div, y, z, n, 100));
 
-  v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n));
-  v.push_back(new ReductionOpBench<float>("Sum", op_Sum, ref::sum_d2a0<float>, y, n));
+  v.push_back(new ReductionOpBench<float>("Mean", op_Mean, ref::mean_d2a0<float>, y, n, 100));
+  v.push_back(new ReductionOpBench<float>("Sum", op_Sum, ref::sum_d2a0<float>, y, n, 100));
 
-  v.push_back(new UnaryOpBench<float>("Neg", vml::neg, y, n));
-  v.push_back(new UnaryOpBench<float>("Rsqrt", vml::rsqrt, y, n));
-  v.push_back(new UnaryOpBench<float>("Sqrt", vml::sqrt, y, n));
-  v.push_back(new UnaryOpBench<float>("Square", vml::square, y, n));
+  v.push_back(new UnaryOpBench<float>("Neg", vml::neg, y, n, 500));
+  v.push_back(new UnaryOpBench<float>("Rsqrt", vml::rsqrt, y, n, 500));
+  v.push_back(new UnaryOpBench<float>("Sqrt", vml::sqrt, y, n, 200));
+  v.push_back(new UnaryOpBench<float>("Square", vml::square, y, n, 500));
 
 #if 0
   delete[] y;
@@ -1148,24 +1147,25 @@ int main(int argc, char* argv[])
 
   add_bench<float>(v, n);
 
-  v.push_back(new BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, 
-                                        ref::BiasAdd_NHWC<float>, y, nchw));
-  v.push_back(new BiasAddOpBench<float>("BiasAdd(NCHW)", FORMAT_NCHW, 
-                                        ref::BiasAdd_NCHW<float>, y, nchw));
-  v.push_back(new BiasAddGradOpBench<float>("BiasAddGrad(NHWC)", FORMAT_NHWC, 
-                                            ref::BiasAddGrad_NHWC<float>, y, nchw));
-  v.push_back(new BiasAddGradOpBench<float>("BiasAddGrad(NCHW)", FORMAT_NCHW, 
-                                            ref::BiasAddGrad_NCHW<float>, y, nchw));
+#define PUSH(B) v.push_back(new B);
+  PUSH(BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, 
+                             ref::BiasAdd_NHWC<float>, y, nchw, 200));
+  PUSH(BiasAddOpBench<float>("BiasAdd(NCHW)", FORMAT_NCHW, 
+                             ref::BiasAdd_NCHW<float>, y, nchw, 500));
+  PUSH(BiasAddGradOpBench<float>("BiasAddGrad(NHWC)", FORMAT_NHWC, 
+                                 ref::BiasAddGrad_NHWC<float>, y, nchw, 30));
+  PUSH(BiasAddGradOpBench<float>("BiasAddGrad(NCHW)", FORMAT_NCHW, 
+                                 ref::BiasAddGrad_NCHW<float>, y, nchw, 300));
 
-  v.push_back(new TileOpBench<float>());
+  PUSH(TileOpBench<float>(200));
 
-  v.push_back(new TransposeOpBench<float>("Transpose(0231)",
-                                          ref::transpose4_0231<float>, y, nchw,
-                                          {0, 2, 3, 1}));
-  v.push_back(new TransposeOpBench<float>("Transpose(0312)",
-                                          ref::transpose4_0312<float>, y, nchw,
-                                          {0, 3, 1, 2}));
-  v.push_back(new ApplyAdamOpBench<float>("ApplyAdam", n));
+  PUSH(TransposeOpBench<float>("Transpose(0231)",
+                               ref::transpose4_0231<float>, y, nchw,
+                               {0, 2, 3, 1}, 500));
+  PUSH(TransposeOpBench<float>("Transpose(0312)",
+                               ref::transpose4_0312<float>, y, nchw,
+                               {0, 3, 1, 2}, 200));
+  PUSH(ApplyAdamOpBench<float>("ApplyAdam", n, 200));
 
   if (!opt_validation_only)
     add_conv2d_bench(v);
