@@ -10,9 +10,6 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
-set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
-set(VML_PATH ${CMAKE_SOURCE_DIR}/vml CACHE PATH "path to vml")
-
 set(SOURCES
   avgpooling.cc
   libvetfkernel.cc
@@ -53,9 +50,10 @@ if (USE_PROFILE)
   target_compile_definitions(vetfkernel PRIVATE USE_PROFILE)
 endif()
 
-target_include_directories(vetfkernel PRIVATE ${VEDNN_PATH}/src)
-target_include_directories(vetfkernel PRIVATE ${VML_PATH}/include)
-target_include_directories(vetfkernel PRIVATE /opt/nec/ve/nlc/1.0.0/include ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(vetfkernel PRIVATE vednn_openmp)
+target_link_libraries(vetfkernel PRIVATE vml)
+target_link_libraries(vetfkernel PRIVATE blas_sequential)
+target_include_directories(vetfkernel PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(vetfkernel PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_target(check_revision

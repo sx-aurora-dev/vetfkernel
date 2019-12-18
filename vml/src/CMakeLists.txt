@@ -32,17 +32,9 @@ if (USE_INTRINSIC)
         target_compile_definitions(vml PRIVATE LIBVETF_INTRINSIC)
 endif()
 
-target_include_directories(vml PRIVATE ${VEDNN_PATH}/src)
+target_link_libraries(vml PUBLIC vednn_openmp)
+target_link_libraries(vml PUBLIC asl_sequential)
 target_include_directories(vml PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_include_directories(vml PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_include_directories(vml PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_include_directories(vml PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include/vml)
 target_include_directories(vml PRIVATE /opt/nec/ve/nlc/1.0.0/include)
-#target_include_directories(vml PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-
-#add_custom_target(check_revision
-#        ALL
-#        DEPENDS revision.h.in
-#        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/revision.h
-#        COMMAND ${CMAKE_COMMAND} -DTOPDIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/revision.cmake)
-#
-#add_dependencies(vml check_revision)

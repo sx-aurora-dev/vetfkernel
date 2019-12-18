@@ -7,9 +7,16 @@ See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/d
 
 # build
 
-    % mkdir build
-    % (cd build && cmake3 -DNCC=/opt/nec/ve/bin/ncc-2.3.1 -DNCXX=/opt/nec/ve/bin/nc++-2.3.1 ..)
+## build with prebuilt vednn in extra/vednn directory
 
+    % mkdir build
+    % (cd build && cmake3 -DUSE_PREBUILT_VEDNN=ON ..)
+
+## build vednn and vetfkernel
+
+    % git clone <vednn> libs/vednn
+    % mkdir build
+    % (cd build && cmake3 ..)
 
 ## test
 
