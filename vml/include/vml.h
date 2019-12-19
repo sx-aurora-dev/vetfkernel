@@ -148,4 +148,18 @@ int conv2d(vml::Tensor const& in,
            vml::Tensor const& out,
            std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
 
+// pad op
+int pad(
+    vml::Tensor const& out,
+    vml::Tensor const& in,
+    float pad_value,          // 
+    int32_t *padding          // padding range
+);
+int pad(
+    vml::Tensor const& out,
+    vml::Tensor const& in,
+    double pad_value,         // 
+    int32_t *padding          // padding range
+);
+
 }; // namespace vml
