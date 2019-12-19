@@ -79,11 +79,25 @@ int vml::conv2d(vml::Tensor const& in,
         }
       }
 #else
+      if( H*W < C ) {
 #pragma omp parallel for
-      for(int n=0; n<N ; n++) {
-        for(int c=0; c<C ; c++) {
+        for(int n=0; n<N ; n++) {
+#pragma _NEC novector
           for(int hw=0; hw<H*W ; hw++) {
-            transformed_filter[((n*C+c)*H)*W+hw] = pfilter[((hw)*C+c)*N+n] ; 
+            for(int c=0; c<C ; c++) {
+              transformed_filter[((n*C+c)*H)*W+hw] = pfilter[((hw)*C+c)*N+n] ;
+            }
+          }
+        }
+      }
+      else {
+#pragma omp parallel for
+        for(int n=0; n<N ; n++) {
+#pragma _NEC novector
+          for(int c=0; c<C ; c++) {
+            for(int hw=0; hw<H*W ; hw++) {
+              transformed_filter[((n*C+c)*H)*W+hw] = pfilter[((hw)*C+c)*N+n] ;
+            }
           }
         }
       }
