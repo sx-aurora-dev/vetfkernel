@@ -5,7 +5,7 @@
 #include "vml.h"
 #include "log.h"
 
-namespace vml {
+namespace {
 
 template <typename T>
 void Operate2(
@@ -130,10 +130,10 @@ void Operate(
   }
 #undef CALLOPN
 }
-
+} // namespace
 
 //  pad for float
-int pad(
+int vml::pad(
     vml::Tensor const& out,
     vml::Tensor const& in,
     float pad_value,          // 
@@ -149,7 +149,7 @@ int pad(
 }
 
 //  pad for double
-int pad(
+int vml::pad(
     vml::Tensor const& out,
     vml::Tensor const& in,
     double pad_value,         // 
@@ -163,5 +163,3 @@ int pad(
   LOG(LOG_TRACE) << __FUNCTION__ << ": end, ret = " << 0;
   return 0;
 }
-
-} // namespace vml
