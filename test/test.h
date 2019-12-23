@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <vml.h>
+#include <vml/types.h>
 
 namespace test {
 
@@ -44,8 +45,9 @@ template<typename T> struct dtype_s {};
 template<typename T> struct dtype_s<const T> {
   static const int type = dtype_s<T>::type;
 };
-template<> struct dtype_s<float> { static const int type = 1; };
-template<> struct dtype_s<bool>  { static const int type = 10; };
+template<> struct dtype_s<float>  { static const int type = DT_FLOAT; };
+template<> struct dtype_s<double> { static const int type = DT_DOUBLE; };
+template<> struct dtype_s<bool>   { static const int type = DT_BOOL; };
 
 template <typename T>
 vml::Tensor* allocTensorDesc(size_t dims, std::vector<size_t> const& dim_size,
