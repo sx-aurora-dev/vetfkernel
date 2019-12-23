@@ -200,7 +200,7 @@ def show(args):
   if len(ary) < 0:
     return
   tmp = list(reversed(ary))[0:args.l]
-  a = tmp[-1]
+  latest = tmp[0]
 
   for i, b in enumerate(tmp):
     print("{} {}".format(i, b.to_s()))
@@ -210,10 +210,13 @@ def show(args):
     print(" {:<8}".format(i), end="")
   print()
 
-  for k in a.table.keys():
+  for k in latest.table.keys():
     print("{:<80}".format(k), end="")
     for b in tmp:
-      print(" {:8.3f}".format(b.table[k]), end="")
+      if k in b.table:
+        print(" {:8.3f}".format(b.table[k]), end="")
+      else:
+        print(" {:8}".format(""), end="")
     print()
 
 
