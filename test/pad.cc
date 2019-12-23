@@ -279,10 +279,10 @@ bool test_Pad_3D_f32_0(TestParam const& param)
 
 #undef CHECK
 
-REGISTER_TEST("Pad_2D_f32", test_Pad_2D_f32); // 2D float32
-REGISTER_TEST("Pad_2D_f64", test_Pad_2D_f64); // 2D float64
-REGISTER_TEST("Pad_3D_f32", test_Pad_3D_f32); // 3D float32
-REGISTER_TEST("Pad_3D_f64", test_Pad_3D_f64); // 3D float64
-REGISTER_TEST("Pad_3D_f32-0", test_Pad_3D_f32_0); // 3D float32
+REGISTER_TEST("Pad_01", test_Pad_2D_f32);   // 2D float32
+REGISTER_TEST("Pad_02", test_Pad_2D_f64);   // 2D float64
+REGISTER_TEST("Pad_03", test_Pad_3D_f32);   // 3D float32
+REGISTER_TEST("Pad_04", test_Pad_3D_f64);   // 3D float64
+REGISTER_TEST("Pad_05", test_Pad_3D_f32_0); // 3D float32
 
 
