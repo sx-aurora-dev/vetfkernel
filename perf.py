@@ -167,6 +167,8 @@ def save(args, bench, filename):
 
 def test(args):
   bench = run(args)
+  if not bench:
+    return
   result = compare(args, bench)
   result.print(True)
   if args.output:

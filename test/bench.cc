@@ -1,3 +1,5 @@
+#include <cstring>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 #include <cstdlib>
@@ -38,7 +40,9 @@ vml::Tensor* makeTensor1D(T const* x, size_t n)
   return test::allocTensorDesc<T>(1, {n}, x);
 }
 
+#ifdef __ve__
 #define USE_VML_RANDOM
+#endif
 
 template <typename T>
 void randomInit(T* p, size_t n)
@@ -71,7 +75,7 @@ int check(T const* a, T const* b, size_t n,
           BenchOpts const& opts, double threshold)
 {
   int flag = 1;
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     double diff = a[i] - b[i];
     if (diff != 0.0) {
       double err;
@@ -84,7 +88,7 @@ int check(T const* a, T const* b, size_t n,
       if (err > threshold) {
         flag = 0;
         if (opts.verbose > 1) {
-          fprintf(stderr, "a[%d] %18.12e b[%d] %18.12e diff %18.12e err %18.12e\n", 
+          fprintf(stderr, "a[%lu] %18.12e b[%lu] %18.12e diff %18.12e err %18.12e\n",
                   i, a[i], i, b[i], diff, err);
         }
       }
@@ -116,10 +120,9 @@ struct Bench
   
   std::string name_;
 
-  int ntimes_;
-
   size_t data_size_; // bytes
   size_t flop_count_;
+  int ntimes_;
 };
 
 void run_bench(Bench& bench, int ntimes = 1, bool detail = false)
@@ -772,7 +775,7 @@ class TileOpBench : public Bench
     }
 
     int run() override {
-      vml::tile(*out0_, *in_);
+      return vml::tile(*out0_, *in_);
     }
 
   private:
@@ -1135,6 +1138,8 @@ int main(int argc, char* argv[])
             nchw[0], nchw[1], nchw[2], nchw[3], nchw[0] * nchw[1] * nchw[2] * nchw[3]);
   }
 
+  //vml::initialize();
+
   std::vector<Bench*> v;
 
   size_t nchw_elems = 1;
@@ -1142,7 +1147,6 @@ int main(int argc, char* argv[])
     nchw_elems *= nchw[i];
 
   float* y = new float[nchw_elems];
-
   randomInit(y, nchw_elems);
 
   add_bench<float>(v, n);

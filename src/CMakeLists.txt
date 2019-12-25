@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.0)
 
 option(USE_INTRINSIC "Use intrinsic" ON)
 
+if (USE_INTRINSIC)
+  add_subdirectory(intrinsic)
+endif()
+
 set(CMAKE_C_COMPILER ${NCC})
 set(CMAKE_CXX_COMPILER ${NCXX})
 
@@ -37,14 +41,14 @@ set(SOURCES
   reverse.cc
   revision.h)
 
-add_library(vetfkernel STATIC
-  ${SOURCES}
-  $<TARGET_OBJECTS:vetfkernel_intrinsic>)
+add_library(vetfkernel STATIC)
+target_sources(vetfkernel PRIVATE ${SOURCES})
+if (USE_INTRINSIC)
+  target_sources(vetfkernel PRIVATE $<TARGET_OBJECTS:vetfkernel_intrinsic>)
+  target_compile_definitions(vetfkernel PRIVATE LIBVETF_INTRINSIC)
+endif()
 
 target_compile_options(vetfkernel PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
-if (USE_INTRINSIC)
-        target_compile_definitions(vetfkernel PRIVATE LIBVETF_INTRINSIC)
-endif()
 
 if (USE_PROFILE)
   target_compile_definitions(vetfkernel PRIVATE USE_PROFILE)

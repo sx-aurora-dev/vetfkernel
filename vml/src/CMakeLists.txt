@@ -21,6 +21,7 @@ add_library(vml STATIC
   conv2d.cc
   pad.cc
   randomUniform.cc
+  reduction.cc
   relu.cc
   tile.cc
   training_ops.cc

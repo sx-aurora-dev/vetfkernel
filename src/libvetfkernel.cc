@@ -18,6 +18,7 @@
 
 #define MAX_KERNEL 1024
 
+#ifdef __ve__
 #define USE_DMA
 #ifdef USE_DMA
 extern "C" {
@@ -25,6 +26,7 @@ extern "C" {
 #include <vedma.h>
 }
 #endif
+#endif // __ve__
 
 #define _STR(v) __STR(v)
 #define __STR(v) #v
@@ -151,6 +153,7 @@ void register_kernel(char const* name, char const* func)
   strcpy(k.func, func);
 }
 
+#ifdef __ve__
 static inline unsigned long int __ve_get_usrcc() {
   unsigned long int val;
   asm volatile("smir %0,%usrcc\n" : "=r"(val));
@@ -442,3 +445,4 @@ uint64_t vetfkl_entry_prof(const void* argIn, size_t lenIn,
   return 0;
 }
 
+#endif // __ve__

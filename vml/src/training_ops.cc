@@ -1,3 +1,4 @@
+#include <cmath>
 #include "vml/types.h"
 #include "vml/log.h"
 #include "vml.h"

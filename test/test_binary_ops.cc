@@ -1,3 +1,4 @@
+#include <cmath>
 #include "test.h"
 
 using namespace test;

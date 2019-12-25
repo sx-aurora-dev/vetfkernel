@@ -1,3 +1,5 @@
+#include <cstring>
+#include <cmath>
 #include "ve_ops_common.h"
 #include "vml/types.h"
 #include "vml.h"

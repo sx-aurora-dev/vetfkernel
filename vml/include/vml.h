@@ -11,30 +11,22 @@ namespace vml
 int initialize();
 int finalize();
 
-struct Tensor;
-
-template <int N>
-struct TensorDesc {
+// Tensor with variable number of dimensions
+// typical usage: Tensor* t = reinterpret_cast<Tensor*>(ptr)
+struct Tensor {
   int32_t dtype;
   uint64_t addr;
   int32_t dims;
   int64_t nelems;
-  int64_t dim_size[N];
+  int64_t dim_size[0];
 
-  template <typename T> T ptr() const {
-    return reinterpret_cast<T>(addr);
-  }
-
-  operator Tensor const&() const { *reinterpret_cast<Tensor const*>(this); }
+  template <typename T> T ptr() const { return reinterpret_cast<T>(addr); }
 } __attribute__((__packed__));
 
-// variable size
-// typical usage: Tensor* t = reinterpret_cast<Tensor*>(ptr)
-struct Tensor : public TensorDesc<0>
-{
-  private:
-    Tensor() {}
-};
+template <int N>
+struct TensorDesc : public Tensor {
+  int64_t _dim_size_buf[N];
+} __attribute__((__packed__));
 
 std::ostream& operator<<(std::ostream& s, Tensor const& t);
 
@@ -105,6 +97,9 @@ int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 int randomUniform(vml::Tensor const& t);
 int tile(vml::Tensor const& out, vml::Tensor const& in);
+
+// reduction
+int mean(vml::Tensor const& out, vml::Tensor const& in, std::vector<int> const& axis);
 
 // train op
 int ApplyGradientDescent(

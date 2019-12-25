@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstring>
 #include "types.h"
 #include "log.h"
 #include "vml.h"
