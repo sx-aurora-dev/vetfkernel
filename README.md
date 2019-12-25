@@ -28,6 +28,9 @@ or
 
     % ./test.sh [BUILD_DIR]
 
+Then, run perf test
+
+    % python perf.py [-e <BUILD_DIR>/test/bench] test
 
 ## profiler
 
