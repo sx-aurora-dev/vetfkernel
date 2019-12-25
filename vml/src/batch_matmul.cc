@@ -1,3 +1,7 @@
+/**
+ * \file
+ */
+
 #include "vml/types.h"
 #include "vml/log.h"
 #include "vml.h"
@@ -172,6 +176,11 @@ int BatchMatMul(
 
 }
 
+/**
+ *
+ *
+ * See https://www.tensorflow.org/api_docs/cc/class/tensorflow/ops/batch-mat-mul-v2.
+ */
 int vml::batch_matmul(
     vml::Tensor const & in_x,
     vml::Tensor const & in_y,
