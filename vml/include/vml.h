@@ -21,12 +21,13 @@ int finalize();
  * Typical usage: `Tensor* t = reinterpret_cast<Tensor*>(ptr)`
  */
 struct Tensor {
-  int32_t dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[0];
+  int32_t dtype;        ///< data type
+  uint64_t addr;        ///< address of data
+  int32_t dims;         ///< number of dimensions
+  int64_t nelems;       ///< number of total elements
+  int64_t dim_size[0];  ///< dimensions
 
+  /// Cast addr to a pointer
   template <typename T> T ptr() const { return reinterpret_cast<T>(addr); }
 } __attribute__((__packed__));
 
