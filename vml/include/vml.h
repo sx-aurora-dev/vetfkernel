@@ -5,14 +5,21 @@
 #include <vector>
 #include <ostream>
 
+/**
+ * vml
+ */
 namespace vml
 {
 
 int initialize();
 int finalize();
 
-// Tensor with variable number of dimensions
-// typical usage: Tensor* t = reinterpret_cast<Tensor*>(ptr)
+
+/**
+ * Tensor with variable number of dimensions
+ *
+ * Typical usage: `Tensor* t = reinterpret_cast<Tensor*>(ptr)`
+ */
 struct Tensor {
   int32_t dtype;
   uint64_t addr;

@@ -1,3 +1,8 @@
+/**
+ * \file
+ *
+ * Binary Operations
+ */
 #include <algorithm>
 #include <cstdint>
 #include <cassert>
@@ -78,7 +83,10 @@ bool IsSameSize(const vml::Tensor &out, const vml::Tensor &in0, const vml::Tenso
 }
 
 
+// ----------------------------------------------------------------------
 // Add
+// ----------------------------------------------------------------------
+
 template <typename T>
 int add_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -388,12 +396,8 @@ int add_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
   return 0;
 }
 
-} // namespace
-
-
-
 template <typename T>
-int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
+int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
 //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
 //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
@@ -470,22 +474,24 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
   return 1;
 }
 
+} // namespace
 
-
+/// X = Y + Z
 int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
-    return vml::add<float>(X, Y, Z);
+    return ::add<float>(X, Y, Z);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
+// ----------------------------------------------------------------------
+// Sub
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Sub
 
 template <typename T>
 int sub_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -500,8 +506,6 @@ int sub_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
-
-
 template <typename T>
 int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -514,8 +518,6 @@ int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
-
-
 
 template <typename T>
 int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -530,8 +532,6 @@ int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
-
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -539,8 +539,6 @@ inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
   return sub_nn_f32(out,in0,in1,nelems) ;
 }
 #endif
-
-
 
 template <typename T>
 int sub2_nn_n1(uint64_t out, 
@@ -560,8 +558,6 @@ int sub2_nn_n1(uint64_t out,
   }
   return 0;
 }
-
-
 
 template <typename T>
 int sub2_nn_1n(uint64_t out,
@@ -617,8 +613,6 @@ int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor cons
   return 0;
 }
 
-
-
 template <typename T>
 int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -641,12 +635,8 @@ int sub_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   return 0;
 }
 
-} // namespace
-
-
-
 template<typename T>
-int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
@@ -716,22 +706,24 @@ int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   return 1;
 }
 
+} // namespace
 
-
+/// X = Y - Z
 int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::sub<float>(out, in0, in1);
+    return ::sub<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
+// ----------------------------------------------------------------------
+// Mul
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Mul
 template <typename T>
 int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -746,8 +738,6 @@ int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -755,8 +745,6 @@ inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return mul_n1_f32(out, in0, in1, n) ;
 }
 #endif
-
-
 
 template <typename T>
 int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -771,8 +759,6 @@ int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
-
-
 
 #ifdef LIBVETF_INTRINSIC
 template <>
@@ -798,8 +784,6 @@ inline int mul_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 #endif
 
-
-
 // nelems_in0 > nelems_in1
 template <typename T>
 int mul2_nn_n1(uint64_t out, 
@@ -819,8 +803,6 @@ int mul2_nn_n1(uint64_t out,
   }
   return 0;
 }
-
-
 
 template <typename T>
 int mul2_nn_1n(uint64_t out,
@@ -862,8 +844,6 @@ int mul2_nm_n1(uint64_t out,
   return 0;
 }
 
-
-
 template <typename T, int M, int N>
 int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -877,8 +857,6 @@ int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor cons
   }
   return 0;
 }
-
-
 
 template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
@@ -902,8 +880,6 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   return 0;
 }
 
-
-
 template <typename T>
 int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -925,8 +901,6 @@ int mul_8x16x64x8x8_8x16x64x8x8_1x1x64x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
-
-
 
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
@@ -953,8 +927,6 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x16x32x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
-
-
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
@@ -989,8 +961,6 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x16x16x1x1(
   return 0;
 }
 
-
-
 template <typename T>
 int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -1017,8 +987,6 @@ int mul_8x16x32x16x16_8x16x32x16x16_1x1x32x1x1(
   LOG(LOG_DETAIL) << __FUNCTION__ << ": done";
   return 0;
 }
-
-
 
 template <typename T>
 int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
@@ -1047,12 +1015,8 @@ int mul_8x16x16x32x32_8x16x16x32x32_1x1x16x1x1(
   return 0;
 }
 
-} // namespace
-
-
-
 template<typename T>
-int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
@@ -1175,23 +1139,24 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   return 1;
 }
 
+} // namespace
 
-
+/// X = Y * Z
 int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::mul<float>(out, in0, in1);
+    return ::mul<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// Div
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Div
 
 template <typename T>
 int div_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -1272,10 +1237,8 @@ inline int div2_nn_n1<float>(uint64_t out,
 }
 #endif
 
-} // namespace
-
 template <typename T>
-int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vmldiv(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 
 //  printf("in0.dims = %ld\n", in0.dims) ;
@@ -1313,23 +1276,24 @@ int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   return 1;
 }
 
+} // namespace
 
-
+/// X = Y / Z
 int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::div<float>(out, in0, in1);
+    return ::vmldiv<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// DivNoNan
+// ----------------------------------------------------------------------
 
 namespace {
-
-// DivNoNan
 
 template <typename T>
 int divnonan_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -1344,8 +1308,6 @@ int divnonan_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
-
-
 
 template <typename T>
 int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -1367,8 +1329,6 @@ int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
-
-
 template <typename T>
 int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1382,8 +1342,6 @@ int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
-
-
 
 template <typename T>
 int divnonan2_nn_n1(uint64_t out, 
@@ -1411,12 +1369,8 @@ int divnonan2_nn_n1(uint64_t out,
   return 0;
 }
 
-} // namespace
-
-
-
 template <typename T>
-int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   // printf("args.in0.dims = %ld\n", args.in0.dims) ;
   // for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
@@ -1449,23 +1403,24 @@ int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor co
   return 1;
 }
 
-
+} // namespace
 
 int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::divnonan<float>(out, in0, in1);
+    return ::divnonan<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// Pow
+// ----------------------------------------------------------------------
 
 namespace {
 
-// Pow
 template <typename T>
 int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1479,8 +1434,6 @@ int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
-
-
 
 template <typename T>
 int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1496,8 +1449,6 @@ int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1512,12 +1463,8 @@ int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template<typename T>
-int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int vmlpow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
   //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
@@ -1544,23 +1491,24 @@ int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   return 1;
 }
 
-
+} // namspace
 
 int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::pow<float>(out, in0, in1);
+    return ::vmlpow<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
   
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// SquaredDifference
+// ----------------------------------------------------------------------
 
 namespace {
 
-// SquaredDifference
 template <typename T>
 int sqdiff_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1677,12 +1625,8 @@ int sqdiff_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
   return 0;
 }
 
-} // namespace
-
-
-
 template <typename T>
-int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
 //  printf("in0.dims = %ld\n", in0.dims) ;
 //  for(int i=0; i<in0.dims ; i++ ) printf(" [%d] = %ld\n", i, in0.dim_size[i]) ;
@@ -1753,23 +1697,24 @@ int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor cons
   return 1;
 }
 
-
+} // namespace
 
 int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::sqdiff<float>(out, in0, in1);
+    return ::sqdiff<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// RsqrtGrad
+// ----------------------------------------------------------------------
 
 namespace {
 
-// RsqrtGrad
 template <typename T>
 int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1786,12 +1731,8 @@ int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template <typename T>
-int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
   //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
@@ -1813,12 +1754,12 @@ int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor 
   return 1;
 }
 
-
+} // namspace
 
 int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::rsqrt_grad<float>(out, in0, in1);
+    return ::rsqrt_grad<float>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
@@ -1826,10 +1767,11 @@ int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor 
 }
 
 
+// ----------------------------------------------------------------------
+// Minimum
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Minimum
 
 template <typename T>
 int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1844,8 +1786,6 @@ int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1859,12 +1799,8 @@ int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template <typename T>
-int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return minimum_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
@@ -1886,29 +1822,29 @@ int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
   return 1;
 }
 
-
+} // namspace
 
 int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::minimum<float>(out, in0, in1);
+    return ::minimum<float>(out, in0, in1);
   }
   if (CheckTypesAll(out, in0, in1, DT_DOUBLE)) {
-    return vml::minimum<double>(out, in0, in1);
+    return ::minimum<double>(out, in0, in1);
   }
   if (CheckTypesAll(out, in0, in1, DT_INT64)) {
-    return vml::minimum<int64_t>(out, in0, in1);
+    return ::minimum<int64_t>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// Maximum
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Maximum
 
 template <typename T>
 int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -1923,8 +1859,6 @@ int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1938,12 +1872,8 @@ int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template <typename T>
-int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return maximum_n1<T>(out.addr, in0.addr, in1.addr, out.nelems);
@@ -1965,29 +1895,29 @@ int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
   return 1;
 }
 
-
+} // namspace
 
 int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
-    return vml::maximum<float>(out, in0, in1);
+    return ::maximum<float>(out, in0, in1);
   }
   if (CheckTypesAll(out, in0, in1, DT_DOUBLE)) {
-    return vml::maximum<double>(out, in0, in1);
+    return ::maximum<double>(out, in0, in1);
   }
   if (CheckTypesAll(out, in0, in1, DT_INT64)) {
-    return vml::maximum<int64_t>(out, in0, in1);
+    return ::maximum<int64_t>(out, in0, in1);
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// Equal
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Equal
 
 template <typename T>
 int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2002,8 +1932,6 @@ int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2017,12 +1945,8 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template <typename T>
-int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return equal_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2044,19 +1968,19 @@ int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const
   return 1;
 }
 
-
+} // namspace
 
 int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
     if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::equal<float>(out, in0, in1);
+      return ::equal<float>(out, in0, in1);
     }
     if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::equal<double>(out, in0, in1);
+      return ::equal<double>(out, in0, in1);
     }
     if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::equal<int64_t>(out, in0, in1);
+      return ::equal<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2064,11 +1988,11 @@ int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// NotEqual
+// ----------------------------------------------------------------------
 
 namespace {
-
-// NotEqual
 
 template <typename T>
 int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2083,8 +2007,6 @@ int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2098,12 +2020,8 @@ int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
 template <typename T>
-int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return notEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2125,19 +2043,19 @@ int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor co
   return 1;
 }
 
-
+} // namspace
 
 int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
     if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::notEqual<float>(out, in0, in1);
+      return ::notEqual<float>(out, in0, in1);
     }
     if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::notEqual<double>(out, in0, in1);
+      return ::notEqual<double>(out, in0, in1);
     }
     if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::notEqual<int64_t>(out, in0, in1);
+      return ::notEqual<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
@@ -2145,11 +2063,11 @@ int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor co
   return 1;
 }
 
-
+// ----------------------------------------------------------------------
+// Compaire operation
+// ----------------------------------------------------------------------
 
 namespace {
-
-// Compaire operation
 
 template <typename T>
 int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2164,8 +2082,6 @@ int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2178,8 +2094,6 @@ int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
-
-
 
 template <typename T>
 int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2194,8 +2108,6 @@ int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2208,8 +2120,6 @@ int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
-
-
 
 template <typename T>
 int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2250,8 +2160,6 @@ int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2264,8 +2172,6 @@ int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   }
   return 0;
 }
-
-
 
 template <typename T>
 int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -2306,8 +2212,6 @@ int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-
-
 template <typename T>
 int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2321,14 +2225,8 @@ int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-} // namspace
-
-
-
-// Less
-
 template <typename T>
-int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return less_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2350,32 +2248,8 @@ int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const&
   return 1;
 }
 
-
-
-int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
-{
-  if (out.dtype == DT_BOOL) {
-    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::less<float>(out, in0, in1);
-    }
-    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::less<double>(out, in0, in1);
-    }
-    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::less<int64_t>(out, in0, in1);
-    }
-  }
-  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
-
-  return 1;
-}
-
-
-
-// LessEqual
-
 template <typename T>
-int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return lessEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2397,32 +2271,8 @@ int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor c
   return 1;
 }
 
-
-
-int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
-{
-  if (out.dtype == DT_BOOL) {
-    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::lessEqual<float>(out, in0, in1);
-    }
-    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::lessEqual<double>(out, in0, in1);
-    }
-    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::lessEqual<int64_t>(out, in0, in1);
-    }
-  }
-  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
-
-  return 1;
-}
-
-
-
-// Greater
-
 template <typename T>
-int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return greater_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2444,32 +2294,8 @@ int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
   return 1;
 }
 
-
-
-int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
-{
-  if (out.dtype == DT_BOOL) {
-    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::greater<float>(out, in0, in1);
-    }
-    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::greater<double>(out, in0, in1);
-    }
-    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::greater<int64_t>(out, in0, in1);
-    }
-  }
-  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
-
-  return 1;
-}
-
-
-
-// GreaterEqual
-
 template <typename T>
-int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (in1.nelems == 1) {
     return greaterEqual_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
@@ -2491,19 +2317,81 @@ int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tenso
   return 1;
 }
 
+} // namspace
 
+// Less
+
+int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return ::less<float>(out, in0, in1);
+    }
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return ::less<double>(out, in0, in1);
+    }
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return ::less<int64_t>(out, in0, in1);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+// LessEqual
+
+int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return ::lessEqual<float>(out, in0, in1);
+    }
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return ::lessEqual<double>(out, in0, in1);
+    }
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return ::lessEqual<int64_t>(out, in0, in1);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+// Greater
+
+int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (out.dtype == DT_BOOL) {
+    if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
+      return ::greater<float>(out, in0, in1);
+    }
+    if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
+      return ::greater<double>(out, in0, in1);
+    }
+    if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
+      return ::greater<int64_t>(out, in0, in1);
+    }
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+
+  return 1;
+}
+
+// GreaterEqual
 
 int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
     if (in0.dtype == DT_FLOAT && in1.dtype == DT_FLOAT) {
-      return vml::greaterEqual<float>(out, in0, in1);
+      return ::greaterEqual<float>(out, in0, in1);
     }
     if (in0.dtype == DT_DOUBLE && in1.dtype == DT_DOUBLE) {
-      return vml::greaterEqual<double>(out, in0, in1);
+      return ::greaterEqual<double>(out, in0, in1);
     }
     if (in0.dtype == DT_INT64 && in1.dtype == DT_INT64) {
-      return vml::greaterEqual<int64_t>(out, in0, in1);
+      return ::greaterEqual<int64_t>(out, in0, in1);
     }
   }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";

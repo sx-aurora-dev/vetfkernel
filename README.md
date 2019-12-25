@@ -39,3 +39,10 @@ See [here](doc/perf.md) for details.
 1. cmake with -DUSE_PROFILE=ON
 2. run with VML_PROFILE=conv2d,conv2d_backprop_input
    
+
+## Document
+
+   % doxygen
+   % python3 -m http.server
+
+See in your browser.
