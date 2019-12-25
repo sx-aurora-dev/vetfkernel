@@ -32,6 +32,8 @@ Then, run perf test
 
     % python perf.py [-e <BUILD_DIR>/test/bench] test
 
+See [here](doc/perf.md) for details.
+
 ## profiler
 
 1. cmake with -DUSE_PROFILE=ON
