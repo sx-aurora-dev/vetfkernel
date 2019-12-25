@@ -151,6 +151,12 @@ int conv2d(vml::Tensor const& in,
            vml::Tensor const& out,
            std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
 
+int batch_matmul(vml::Tensor const & in_x,
+                 vml::Tensor const & in_y,
+                 vml::Tensor const & out,
+                 const bool adj_x,
+		 const bool adj_y ) ;
+
 // pad op
 int pad(
     vml::Tensor const& out,
