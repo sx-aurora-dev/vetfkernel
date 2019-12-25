@@ -38,7 +38,6 @@ else()
 endif()
 
 add_subdirectory(vml)
-add_subdirectory(src/intrinsic)
 add_subdirectory(src)
 add_subdirectory(test)
 

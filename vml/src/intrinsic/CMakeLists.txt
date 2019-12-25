@@ -17,6 +17,6 @@ add_library(vml_intrinsic OBJECT
   #	Transpose.c
   	ApplyAdam.c
   #	Sum.c
-  #	Mean.c
+  	Mean.c
   	Tile.c
   )

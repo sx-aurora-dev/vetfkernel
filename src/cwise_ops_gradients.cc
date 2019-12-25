@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cmath>
 #include "kernel.h"
 #include "vml/types.h"
 #include "vml/log.h"

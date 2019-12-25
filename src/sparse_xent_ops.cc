@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdint>
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 #include "kernel.h"
 #include "vml/types.h"

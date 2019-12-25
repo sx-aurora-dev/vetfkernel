@@ -1,15 +1,18 @@
-#include "vml.h"
+#include <vml.h>
+#include <vml/log.h>
 #include "asl.h"
 
 namespace vml
 {
 
 int initialize() {
+  LOG(LOG_TRACE) << __FUNCTION__;
   ASL::initialize();
   return 0;
 }
 
 int finalize() {
+  LOG(LOG_TRACE) << __FUNCTION__;
   ASL::finalize();
   return 0;
 }
@@ -27,6 +30,7 @@ std::ostream& operator<<(std::ostream& s, Tensor const& t)
       s << ",";
   }
   s << "]]";
+  return s;
 }
 
 } // namespace vml

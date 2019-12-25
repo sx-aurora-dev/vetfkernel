@@ -4,6 +4,7 @@
 #include <cassert>
 #include <algorithm>
 #include "kernel.h"
+#include "vml.h"
 #include "vml/types.h"
 #include "vml/log.h"
 
@@ -477,105 +478,6 @@ int op_Prod(const void* args, size_t len)
 // Mean
 //
 
-namespace {
-template <typename T>
-int mean_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
-{
-    T* po = reinterpret_cast<T*>(out);
-    const T* pi = reinterpret_cast<const T*>(in);
-
-    for (size_t j = 0; j < dim1; ++j) {
-        T s = T(0);
-        for (size_t i = 0; i < dim0; ++i) {
-            s += pi[i * dim1 + j];
-        }
-        po[j] = s / dim0 ;
-    }
-
-    return 0;
-}
-
-#ifdef LIBVETF_INTRINSIC
-template <>
-int mean_d2a0<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
-{
-    return mean_d2a0_f32(out, in, dim0, dim1);
-}
-#endif
-
-template <typename T>
-int mean_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
-{
-    T* po = reinterpret_cast<T*>(out);
-    const T* pi = reinterpret_cast<const T*>(in);
-
-    for (size_t i = 0; i < dim0; ++i) {
-        T s = T(0);
-        for (size_t j = 0; j < dim1; ++j) {
-            s += pi[i * dim1 + j];
-        }
-        po[i] = s / dim1;
-    }
-
-    return 0;
-}
-
-template <typename T>
-int mean_d3a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
-{
-    T* po = reinterpret_cast<T*>(out);
-    const T* pi = reinterpret_cast<const T*>(in);
-
-    size_t dim12 = dim1 * dim2;
-
-    for (size_t i = 0; i < dim0; ++i) {
-        for (size_t k = 0; k < dim2; ++k) {
-            T s = T(0);
-            for (size_t j = 0; j < dim1; ++j) {
-                s += pi[i * dim12 + j * dim2 + k];
-            }
-            po[i * dim2 + k] = s / dim1 ;
-        }
-    }
-
-    return 0;
-}
-
-
-
-
-template <typename T>
-int mean_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
-{
-    T* po = reinterpret_cast<T*>(out);
-    const T* pi = reinterpret_cast<const T*>(in);
-
-    size_t dim12 = dim1 * dim2;
-
-    for (size_t j = 0; j < dim1; ++j) {
-        T s = T(0);
-        for (size_t i = 0; i < dim0; ++i) {
-            for (size_t k = 0; k < dim2; ++k) {
-                s += pi[i * dim12 + j * dim2 + k];
-            }
-        }
-        po[j] = s / (dim0*dim2);
-    }
-
-    return 0;
-}
-
-#ifdef LIBVETF_INTRINSIC
-template <>
-int mean_d3a02<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
-{
-    return mean_d3a02_f32(out, in, dim0, dim1, dim2);
-}
-#endif
-
-} // namespace
-
-
 int op_Mean(const void* args, size_t len)
 {
     LOG(LOG_TRACE) << __FUNCTION__ << " begin";
@@ -589,30 +491,53 @@ int op_Mean(const void* args, size_t len)
         int axis;
     } const* p;
 
+
     CHECK_ARG_LEN(len, sizeof(Args));
     p = reinterpret_cast<const Args*>(args);
 
-    int ret = 0;
+    LOG(LOG_PARAM) << __FUNCTION__ << " ndims=" << p->ndims;
 
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
 
-    if (p->dtype == DT_FLOAT) {
-        if (p->ndims == 2 && p->axis == 1) {
-            ret = mean_d2a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
-        }
-        if (p->ndims == 2 && p->axis == 0) {
-            ret = mean_d2a0<float>(p->out, p->in, p->dim_size[0], p->dim_size[1]);
-        }
-        if (p->ndims == 3 && p->axis == 1) {
-            ret = mean_d3a1<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
-        }
-        if (p->ndims == 3 && p->axis == 0) {
-            ret = mean_d3a02<float>(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
-        }
+    vml::TensorDesc<3> in;
+    vml::TensorDesc<3> out;
+    std::vector<int> axis;
+
+    in.dtype = p->dtype;
+    in.addr = p->in;
+    in.dims = p->ndims;
+    in.nelems = 1;
+
+#pragma _NEC novector
+    for (int i = 0; i < p->ndims; ++i) {
+      int64_t d = p->dim_size[i];
+      in.dim_size[i] = d;
+      in.nelems *= d;
     }
 
-    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-    return ret;
+    out.dtype = p->dtype;
+    out.addr = p->out;
+
+    if (p->ndims == 3 && p->axis == 0) { // axis = {0, 2}
+      out.dims = 1;
+      out.dim_size[0] = p->dim_size[1];
+      out.nelems = p->dim_size[1];
+      axis.push_back(0);
+      axis.push_back(2);
+    } else { // axis = {p->axis}
+      out.dims = p->ndims - 1;
+      out.nelems = 1;
+      int j = 0;
+#pragma _NEC novector
+      for (int i = 0; i < p->ndims; ++i) {
+        if (i != p->axis) {
+          out.dim_size[j++] = p->dim_size[i];
+          out.nelems *= p->dim_size[i];
+        }
+      }
+      axis.push_back(p->axis);
+    }
+
+    return vml::mean(out, in, axis);
 }
 
 

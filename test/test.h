@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <vml.h>
 #include <vml/types.h>
 
@@ -59,7 +60,7 @@ vml::Tensor* allocTensorDesc(size_t dims, std::vector<size_t> const& dim_size,
     t->dtype = dtype_s<T>::type;
     t->dims = dims;
     t->nelems = 1;
-    for (int i = 0; i < dims; ++i) {
+    for (size_t i = 0; i < dims; ++i) {
         t->dim_size[i] = dim_size[i];
         t->nelems *= dim_size[i];
     }
@@ -100,6 +101,11 @@ class Tensor {
         size_t dims() const { return t->dims; }
         size_t dim_size(size_t i) const { return t->dim_size[i]; }
         size_t stride(size_t i) const { return stride_[i]; }
+
+        void copy(std::vector<T> const& src) {
+          for (size_t i = 0; i < std::min((size_t)t->nelems, src.size()); ++i)
+            this->data()[i] = src[i];
+        }
 
         operator vml::Tensor const&() const { return *t; }
 

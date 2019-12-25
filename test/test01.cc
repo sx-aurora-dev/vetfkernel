@@ -1,9 +1,11 @@
+#include <cstring>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cmath>
 
 #include <vml.h>
 #include <vml/types.h>

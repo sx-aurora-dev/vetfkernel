@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cassert>
+#include <cmath>
 #include "types.h"
 #include "log.h"
 #include <sstream>

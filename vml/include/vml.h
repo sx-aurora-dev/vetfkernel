@@ -25,7 +25,7 @@ struct TensorDesc {
     return reinterpret_cast<T>(addr);
   }
 
-  operator Tensor const&() const { *reinterpret_cast<Tensor const*>(this); }
+  operator Tensor const&() const { return *reinterpret_cast<Tensor const*>(this); }
 } __attribute__((__packed__));
 
 // variable size
@@ -105,6 +105,9 @@ int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 int randomUniform(vml::Tensor const& t);
 int tile(vml::Tensor const& out, vml::Tensor const& in);
+
+// reduction
+int mean(vml::Tensor const& out, vml::Tensor const& in, std::vector<int> const& axis);
 
 // train op
 int ApplyGradientDescent(

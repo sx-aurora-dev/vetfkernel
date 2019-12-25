@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cmath>
 #include "vml/types.h"
 #include <sstream>
 #include "ve_ops_common.h"
