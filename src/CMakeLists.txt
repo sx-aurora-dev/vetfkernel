@@ -17,6 +17,7 @@ set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
 set(SOURCES
   avgpooling.cc
   libvetfkernel.cc
+  batch_matmul.cc
   conv2d.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc
