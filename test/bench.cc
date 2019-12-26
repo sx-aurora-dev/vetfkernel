@@ -946,6 +946,7 @@ class ApplyAdamOpBench : public Bench
     const bool use_nesterov_ = false ;
 };
 
+#ifdef USE_VEDNN
 template<typename F>
 class Conv2DBench : public Bench
 {
@@ -1057,6 +1058,7 @@ void add_conv2d_bench(std::vector<Bench*>& v)
   F({32, 1024, 16, 16}, {1024, 256, 4, 4}, {32, 256, 32, 32}, {2, 2, 1, 1, 1, 1});
 #undef F
 }
+#endif // USE_VEDNN
 
 template <typename T>
 void add_bench(std::vector<Bench*>& v, size_t n)
@@ -1171,8 +1173,10 @@ int main(int argc, char* argv[])
                                {0, 3, 1, 2}, 200));
   PUSH(ApplyAdamOpBench<float>("ApplyAdam", n, 200));
 
+#ifdef USE_VEDNN
   if (!opt_validation_only)
     add_conv2d_bench(v);
+#endif
 
   if (opts.verbose > 0)
     fprintf(stderr, "Initialization done\n");

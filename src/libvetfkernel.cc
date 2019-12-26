@@ -6,9 +6,11 @@
 #include <sched.h>
 #include <omp.h>
 
+#ifdef USE_VEDNN
 #include <vednn.h>
 #if VEDNN_VERSION < 1001
 #error Require vednn version 1.0.1 or higher
+#endif
 #endif
 
 #include <vml.h>

@@ -10,15 +10,19 @@
 
 #include <omp.h>
 
+#ifdef USE_VEDNN
 #include "vednn.h"
+#endif
 
 #ifdef LIBVETF_INTRINSIC
 #include "intrinsic/intrinsic.h"
 #endif
 
+#ifdef __ve__
 #define ADD_
 #include <cblas_f77.h>
 #undef ADD_
+#endif
 
 REGISTER_KERNEL("Fill", "op_fill");
 REGISTER_KERNEL("ZerosLike", "op_ZerosLike");
@@ -29,7 +33,9 @@ REGISTER_KERNEL("Relu", "op_Relu");
 REGISTER_KERNEL("ReluGrad", "op_ReluGrad");
 REGISTER_KERNEL("Snapshot", "op_Snapshot")
 REGISTER_KERNEL("Transpose", "op_Transpose");
+#ifdef __ve__
 REGISTER_KERNEL("MatMul", "op_MatMul");
+#endif // __ve__
 REGISTER_KERNEL("Pack", "op_Pack");
 REGISTER_KERNEL("Slice", "op_Slice");
 
@@ -517,6 +523,7 @@ int op_BiasAddGrad(const void* args, size_t len)
   return ret;
 }
 
+#ifdef USE_VEDNN
 //
 // Relu and ReluGrad
 //
@@ -575,6 +582,7 @@ int op_ReluGrad(const void* args, size_t len)
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
+#endif // USE_VEDNN
 
 
 int op_Snapshot(const void* arg, size_t len)
@@ -992,6 +1000,7 @@ int op_Transpose(const void* args, size_t len)
   return ret;
 }
 
+#ifdef __ve__
 //
 // MatMul
 //
@@ -1089,7 +1098,7 @@ int op_MatMul(const void* args, size_t len)
   if (p->dtype == DT_FLOAT) {
     if (!p->transpose_a && !p->transpose_b) {
       assert(p->dim_size_a[1] == p->dim_size_b[0]);
-#if 0
+#ifndef USE_VEDNN
       ret = matmul<float, 'N', 'N'>(
           p->out, p->a, p->b, p->dim_size_a[0], p->dim_size_b[1], p->dim_size_a[1]);
 #else
@@ -1137,6 +1146,7 @@ int op_MatMul(const void* args, size_t len)
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
 }
+#endif // __ve__
 
 
 //

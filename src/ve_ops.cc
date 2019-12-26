@@ -5,7 +5,9 @@
 #include "ve_ops_common.h"
 #include "vml.h"
 
-#include "vednn.h"
+#ifdef USE_VEDNN
+#include <vednn.h>
+#endif
 
 #ifdef LIBVETF_INTRINSIC
 #include "intrinsic/intrinsic.h"
@@ -234,7 +236,7 @@ int op_tile(const VEOpArgs& args)
 
 DEFINE_KERNEL(Tile, op_tile);
 
-
+#ifdef USE_VEDNN
 //
 // Softmax
 //
@@ -326,6 +328,7 @@ int op_softmax(const VEOpArgs& args)
 } // namespace
 
 DEFINE_KERNEL(Softmax, op_softmax);
+#endif // USE_VEDNN
 
 //
 // SoftmaxXentWithLogits

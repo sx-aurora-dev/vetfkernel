@@ -7,13 +7,17 @@ namespace vml
 
 int initialize() {
   LOG(LOG_TRACE) << __FUNCTION__;
+#ifdef __ve__
   ASL::initialize();
+#endif
   return 0;
 }
 
 int finalize() {
   LOG(LOG_TRACE) << __FUNCTION__;
+#ifdef __ve__
   ASL::finalize();
+#endif
   return 0;
 }
 
