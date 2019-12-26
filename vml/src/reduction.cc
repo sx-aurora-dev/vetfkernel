@@ -4,6 +4,7 @@
 #include <vml.h>
 #include <vml/log.h>
 #include <vml/types.h>
+#include <vml/profile.h>
 
 #ifdef LIBVETF_INTRINSIC
 #include "intrinsic/intrinsic.h"
@@ -123,6 +124,8 @@ int mean(vml::Tensor const& out, vml::Tensor const& in, std::vector<int> const& 
     int ret = 0;
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << in.dtype << " ndims=" << in.dims << " axis.size()=" << axis.size();
 
+    PROF_BEGIN(mean);
+
     if (in.dtype == DT_FLOAT) {
         if (in.dims == 2 && axis[0] == 1) {
             ret = mean_d2a1<float>(out.addr, in.addr, in.dim_size[0], in.dim_size[1]);
@@ -137,6 +140,8 @@ int mean(vml::Tensor const& out, vml::Tensor const& in, std::vector<int> const& 
             ret = mean_d3a02<float>(out.addr, in.addr, in.dim_size[0], in.dim_size[1], in.dim_size[2]);
         }
     }
+
+    PROF_END(mean) << " dtype=" << in.dtype << " ndims=" << in.dims << " axis.size()=" << axis.size() << " axis[0]=" << axis[0];
 
     LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
     return ret;

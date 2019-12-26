@@ -47,7 +47,11 @@ endif()
 
 target_compile_options(vml PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
 if (USE_INTRINSIC)
-        target_compile_definitions(vml PRIVATE LIBVETF_INTRINSIC)
+  target_compile_definitions(vml PRIVATE LIBVETF_INTRINSIC)
+endif()
+
+if (USE_PROFILE)
+  target_compile_definitions(vml PRIVATE USE_PROFILE)
 endif()
 
 if (NOT X86)
