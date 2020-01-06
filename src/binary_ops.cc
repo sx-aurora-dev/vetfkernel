@@ -44,7 +44,7 @@ int op_Binary(const void* args, size_t len,
     vml::Tensor const* Z = reinterpret_cast<vml::Tensor const*>(&p->in1);
 
     LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
-      << " X=" << X << " Y=" << Y << " Z=" << Z;
+      << " X=" << *X << " Y=" << *Y << " Z=" << *Z;
 
     if (func) {
 #ifdef TIMER

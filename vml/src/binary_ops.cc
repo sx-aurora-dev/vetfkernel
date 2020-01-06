@@ -205,7 +205,32 @@ int binop_dim3(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z,
     return 0;
 }
 
+template<typename T0, typename T1, typename F>
+int binop_dim4(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z, F op)
+{
+    LOG(LOG_DETAIL) << __FUNCTION__;
+    T0* px = reinterpret_cast<T0*>(X.addr);
+    T1 const* py = reinterpret_cast<T1*>(Y.addr);
+    T1 const* pz = reinterpret_cast<T1*>(Z.addr);
 
+    int64_t const* sx = X.dim_size;
+    int64_t const* sy = Y.dim_size;
+    int64_t const* sz = Z.dim_size;
+
+    for (size_t i0 = 0; i0 < sx[0]; ++i0) {
+        for (size_t i1 = 0; i1 < sx[1]; ++i1) {
+            for (size_t i2 = 0; i2 < sx[2]; ++i2) {
+                for (size_t i3 = 0; i3 < sx[3]; ++i3) {
+                    px[i0 * sx[1] * sx[2] * sx[3] + i1 * sx[2] * sx[3] + i2 * sx[3] + i3]
+                        = op(py[(i0 % sy[0]) * sy[1] * sy[2] * sy[3] + (i1 % sy[1]) * sy[2] * sy[3] + (i2 % sy[2]) * sy[3] + (i3 % sy[3])],
+                             pz[(i0 % sz[0]) * sz[1] * sz[2] * sz[3] + (i1 % sz[1]) * sz[2] * sz[3] + (i2 % sz[2]) * sz[3] + (i3 % sz[3])]);
+                }
+            }
+        }
+    }
+
+    return 0;
+}
 
 // X = Y op Z
 template<typename TO, typename TI, typename F>
@@ -221,6 +246,8 @@ int binop_dimN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z,
 
     if (X.dims == 3)
         return binop_dim3<TO,TI>(X, Y, Z, op);
+    if (X.dims == 4)
+        return binop_dim4<TO,TI>(X, Y, Z, op);
 
     LOG(LOG_DETAIL) << __FUNCTION__
         << " [" << X.nelems << "] = [" << Y.nelems << "] op [" << Z.nelems << "]";
@@ -664,6 +691,13 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   }
 
   if (CheckDimsAll(out, in0, in1, 4)) {
+    if ( in0.dim_size[0] == in1.dim_size[0]
+	 && in0.dim_size[1] == in1.dim_size[1]
+	 && in0.dim_size[2] == in1.dim_size[2]
+	 && in1.dim_size[3] == 1 )
+    {
+      return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1]*in0.dim_size[2], in0.dim_size[3]);
+    }
     if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
       return sub2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
