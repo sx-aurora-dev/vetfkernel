@@ -481,6 +481,51 @@ bool test_BinaryOp_17(TestParam const& param, F0 f0, F1 f1)
     return test_BinaryOp(param, out, in0, in1, exp, f1);
 }
 
+template<typename T, typename F0, typename F1>
+bool test_BinaryOp_18(TestParam const& param, F0 f0, F1 f1)
+{
+    Tensor<T> out({8, 9, 10});
+    Tensor<T> in0({8, 9, 10});
+    Tensor<T> in1({8, 1, 10});
+    Tensor<T> exp({8, 9, 10});
+
+    for (size_t i = 0; i < out.nelems(); ++i)
+        out.data()[i] = 0;
+
+    for (size_t i = 0; i < in0.nelems(); ++i)
+      in0.data()[i] = (T)drand48();
+
+    for (size_t i = 0; i < in1.nelems(); ++i)
+      in1.data()[i] = (T)drand48();
+
+    f0(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, f1);
+}
+
+template<typename T, typename F0, typename F1>
+bool test_BinaryOp_19(TestParam const& param, F0 f0, F1 f1)
+{
+    Tensor<T> out({8, 16});
+    Tensor<T> in0({1, 16});
+    Tensor<T> in1({8, 16});
+    Tensor<T> exp({8, 16});
+
+    for (size_t i = 0; i < out.nelems(); ++i)
+        out.data()[i] = 0;
+
+    for (size_t i = 0; i < in0.nelems(); ++i)
+      in0.data()[i] = (T)drand48();
+
+    for (size_t i = 0; i < in1.nelems(); ++i)
+      in1.data()[i] = (T)drand48();
+
+    f0(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, f1);
+}
+
+
 bool test_Add_04(TestParam const& param)
 {
   return test_BinaryOp_04<float>(param, ref_Add<float,float>, vml::add);
@@ -509,6 +554,16 @@ bool test_Sub_05(TestParam const& param)
 bool test_Sub_14(TestParam const& param)
 {
   return test_BinaryOp_14<float>(param, ref_Sub<float,float>, vml::sub);
+}
+
+bool test_Sub_18(TestParam const& param)
+{
+  return test_BinaryOp_18<float>(param, ref_Sub<float,float>, vml::sub);
+}
+
+bool test_Sub_19(TestParam const& param)
+{
+  return test_BinaryOp_19<float>(param, ref_Sub<float,float>, vml::sub);
 }
 
 bool test_Mul_04(TestParam const& param)
@@ -824,6 +879,8 @@ REGISTER_TEST( "Add_06", test_Add_06 );
 REGISTER_TEST( "Sub_04", test_Sub_04 );
 REGISTER_TEST( "Sub_05", test_Sub_05 );
 REGISTER_TEST( "Sub_14", test_Sub_14 );
+REGISTER_TEST( "Sub_18", test_Sub_18 );
+REGISTER_TEST( "Sub_19", test_Sub_19 );
 REGISTER_TEST( "Mul_04", test_Mul_04 );
 REGISTER_TEST( "Mul_05", test_Mul_05 );
 REGISTER_TEST( "Mul_06", test_Mul_06 );

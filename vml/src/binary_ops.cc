@@ -626,6 +626,25 @@ int sub2_nm_n1(uint64_t out,
   return 0;
 }
 
+template <typename T>
+int sub2_1n_nn(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n0,
+               size_t n1)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      po[i * n1 + j] = pi0[j] - pi1[i * n1 + j] ;
+    }
+  }
+  return 0;
+}
+
 template <typename T, int M, int N>
 int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -636,6 +655,29 @@ int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor cons
 
   for (int i = 0; i < M*N; ++i) {
     x[i] = y[i % N] - z[i];
+  }
+  return 0;
+}
+
+template <typename T>
+int sub3_nn_n1_nn(uint64_t out,
+                  uint64_t in0,
+                  uint64_t in1,
+                  size_t n0,
+                  size_t n1,
+	          size_t n2)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      for (size_t k = 0; k < n2; ++k) {
+	po[((i*n1+j)*n2)+k] = pi0[((i*n1+j)*n2)+k] - pi1[(i*n2)+k];
+      }
+    }
   }
   return 0;
 }
@@ -686,6 +728,19 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
     }
     if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
       return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    if ( in0.dim_size[0] == 1 && in0.dim_size[1] == in1.dim_size[1]) {
+      return sub2_1n_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in1.dim_size[1]);
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 3)) {
+    if ( in0.dim_size[0] == in1.dim_size[0]
+  	 && in1.dim_size[1] == 1
+  	 && in0.dim_size[2] == in1.dim_size[2] )
+    {
+      return sub3_nn_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1], in0.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
