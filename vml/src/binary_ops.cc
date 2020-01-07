@@ -878,6 +878,27 @@ int mul2_nm_n1(uint64_t out,
   return 0;
 }
 
+template <typename T>
+int mul2_n1_1m(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n,
+               size_t m )
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < m; ++j) {
+      po[i * m + j] = pi0[i] * pi1[j];
+    }
+  }
+  return 0;
+}
+
+
 template <typename T, int M, int N>
 int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
@@ -1074,6 +1095,9 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[1] == in1.dim_size[1]) {
+      if (in0.dim_size[0] == 1) {
+	return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]) ;
+      }
       if (in1.dim_size[0] == 1) {
 	return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
       }
@@ -1085,6 +1109,12 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
       if (in0.dim_size[1] == 1) {
 	return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
       }
+    }
+    if ( in0.dim_size[0] == 1 && in1.dim_size[1] == 1 ) {
+      return mul2_n1_1m<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in0.dim_size[1]);
+    }
+    if ( in0.dim_size[1] == 1 && in1.dim_size[0] == 1 ) {
+      return mul2_n1_1m<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in1.dim_size[1]);
     }
     goto general_purpose_implementation;
   }

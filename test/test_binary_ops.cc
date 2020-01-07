@@ -415,6 +415,71 @@ bool test_BinaryOp_14(TestParam const& param, F0 f0, F1 f1)
     return test_BinaryOp(param, out, in0, in1, exp, f1);
 }
 
+template<typename T, typename F0, typename F1>
+bool test_BinaryOp_15(TestParam const& param, F0 f0, F1 f1)
+{
+    Tensor<T> out({8, 8});
+    Tensor<T> in0({1, 8});
+    Tensor<T> in1({8, 8});
+    Tensor<T> exp({8, 8});
+
+    for (size_t i = 0; i < out.nelems(); ++i)
+        out.data()[i] = 0;
+
+    for (size_t i = 0; i < in0.nelems(); ++i)
+      in0.data()[i] = (T)drand48();
+
+    for (size_t i = 0; i < in1.nelems(); ++i)
+      in1.data()[i] = (T)drand48();
+
+    f0(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, f1);
+}
+
+template<typename T, typename F0, typename F1>
+bool test_BinaryOp_16(TestParam const& param, F0 f0, F1 f1)
+{
+    Tensor<T> out({8, 16});
+    Tensor<T> in0({1, 16});
+    Tensor<T> in1({8,  1});
+    Tensor<T> exp({8, 16});
+
+    for (size_t i = 0; i < out.nelems(); ++i)
+        out.data()[i] = 0;
+
+    for (size_t i = 0; i < in0.nelems(); ++i)
+      in0.data()[i] = (T)drand48();
+
+    for (size_t i = 0; i < in1.nelems(); ++i)
+      in1.data()[i] = (T)drand48();
+
+    f0(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, f1);
+}
+
+template<typename T, typename F0, typename F1>
+bool test_BinaryOp_17(TestParam const& param, F0 f0, F1 f1)
+{
+    Tensor<T> out({8, 16});
+    Tensor<T> in0({8,  1});
+    Tensor<T> in1({1, 16});
+    Tensor<T> exp({8, 16});
+
+    for (size_t i = 0; i < out.nelems(); ++i)
+        out.data()[i] = 0;
+
+    for (size_t i = 0; i < in0.nelems(); ++i)
+      in0.data()[i] = (T)drand48();
+
+    for (size_t i = 0; i < in1.nelems(); ++i)
+      in1.data()[i] = (T)drand48();
+
+    f0(exp, in0, in1);
+
+    return test_BinaryOp(param, out, in0, in1, exp, f1);
+}
 
 bool test_Add_04(TestParam const& param)
 {
@@ -494,6 +559,21 @@ bool test_Mul_12(TestParam const& param)
 bool test_Mul_13(TestParam const& param)
 {
   return test_BinaryOp_13<float>(param, ref_Mul<float,float>, vml::mul);
+}
+
+bool test_Mul_15(TestParam const& param)
+{
+  return test_BinaryOp_15<float>(param, ref_Mul<float,float>, vml::mul);
+}
+
+bool test_Mul_16(TestParam const& param)
+{
+  return test_BinaryOp_16<float>(param, ref_Mul<float,float>, vml::mul);
+}
+
+bool test_Mul_17(TestParam const& param)
+{
+  return test_BinaryOp_17<float>(param, ref_Mul<float,float>, vml::mul);
 }
 
 bool test_SquaredDifference_05(TestParam const& param)
@@ -754,6 +834,9 @@ REGISTER_TEST( "Mul_10", test_Mul_10 );
 REGISTER_TEST( "Mul_11", test_Mul_11 );
 REGISTER_TEST( "Mul_12", test_Mul_12 );
 REGISTER_TEST( "Mul_13", test_Mul_13 );
+REGISTER_TEST( "Mul_15", test_Mul_15 );
+REGISTER_TEST( "Mul_16", test_Mul_16 );
+REGISTER_TEST( "Mul_17", test_Mul_17 );
 REGISTER_TEST( "SquaredDifference_05", test_SquaredDifference_05 );
 
 // 配列の次元数を最大の次元数に変更(次元数2以下のケースの仕様変更)
