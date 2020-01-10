@@ -477,8 +477,8 @@ DEFINE_KERNEL(SoftmaxXentWithLogits, op_softmax_xent_with_logits);
 // Concat
 //
 template<typename T>
-int concat(uint64_t n, uint64_t dim0, uint64_t out,
-           uint64_t *ins, uint64_t *dim1_offset )
+int concat2d(uint64_t n, uint64_t dim0, uint64_t out,
+             uint64_t *ins, uint64_t *dim1_offset )
 {
     const T** pi = reinterpret_cast<const T**>(ins);
     const uint64_t* dim1ost = reinterpret_cast<const uint64_t*>(dim1_offset);
@@ -511,118 +511,65 @@ int concat(uint64_t n, uint64_t dim0, uint64_t out,
 }
 
 namespace {
-int op_Concat(const VEOpArgs& args)
+
+/*
+ * 2-dimensional concat
+ *
+ * At TensorFlow side, the concat of N-D Tensors is reduced into 2-D concat.
+ * This function is called from following TensorFlow-Ops.
+ * - Concat / ConcatV2
+ * - Pack
+ */
+int Concat2D(const VEOpArgs& args)
 {
     int ret=1;
 
     int narg = 0 ;
-    const int64_t dtype              = *args.arg<int64_t>(narg++) ;
-    const uint64_t n_input           = *args.arg<uint64_t>(narg++) ;
-    const uint64_t outputs_flat_dim0 = *args.arg<uint64_t>(narg++) ;
-    const uint64_t output_ptr        = *args.arg<uint64_t>(narg++) ;
+    const int64_t  dtype      = *args.arg<int64_t>(narg++) ;
+    const uint64_t n_input    = *args.arg<uint64_t>(narg++) ;
+    const uint64_t dim0       = *args.arg<uint64_t>(narg++) ;
+    const uint64_t output_ptr = *args.arg<uint64_t>(narg++) ;
 
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
-    uint64_t ins[n_input] ;
+    uint64_t input_ptrs[n_input] ;
     uint64_t dim1_offset[n_input+1] ;
     dim1_offset[0] = *args.arg<uint64_t>(narg++) ;
 
     for(int64_t i=0; i<n_input; i++) {
-        ins[i]   = *args.arg<uint64_t>(narg++) ;
+        input_ptrs[i]    = *args.arg<uint64_t>(narg++) ;
         dim1_offset[i+1] = *args.arg<uint64_t>(narg++) ;
     }
 
     if (dtype == DT_FLOAT) {
-        ret = concat<float>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<float>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 #if 0 // do int32 type's concat in CPU.
     else if (dtype == DT_INT32) {
-        ret = concat<int32_t>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<int32_t>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 #endif
     else if (dtype == DT_DOUBLE) {
-        ret = concat<double>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<double>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 
     return ret;
 }
 }
 
-DEFINE_KERNEL(Concat, op_Concat);
+DEFINE_KERNEL(Concat, Concat2D);
 
-
-//
-// Split
-//
+/*
+ * 3-dimensional split
+ *
+ * At TensorFlow side, the split of N-D Tensors is reduced into 3-D split.
+ * This function is called from following TensorFlow-Ops.
+ * - Split
+ * - SplitV
+ * - Unpack
+ */
 template<typename T>
-int split(const int64_t  num_split,
-          const int64_t  prefix_dim_size,
-          const int64_t  split_dim_size,
-          const int64_t  suffix_dim_size,
-          const uint64_t input_addr,
-          uint64_t       *output_addrs)
-{
-    const T* pi = reinterpret_cast<const T*>(input_addr);
-    T** po = reinterpret_cast<T**>(output_addrs);
-
-    const int64_t split_dim_output_size = split_dim_size / num_split ;
-
-    for(int64_t i=0; i<prefix_dim_size; i++) {
-        for(int64_t n=0; n<num_split; n++) {
-            for(int64_t j=0; j<split_dim_output_size*suffix_dim_size; j++) {
-                po[n][(i*split_dim_output_size)*suffix_dim_size+j]
-                        = pi[(i*split_dim_size+(n*split_dim_output_size))*suffix_dim_size+j] ;
-            }
-        }
-    }
-    return 0 ;
-}
-
-namespace {
-int op_Split(const VEOpArgs& args)
-{
-    int ret=1;
-
-    int narg = 0 ;
-    const int64_t num_split       = *args.arg<int64_t>(narg++) ;
-    const int64_t prefix_dim_size = *args.arg<int64_t>(narg++) ;
-    const int64_t split_dim_size  = *args.arg<int64_t>(narg++) ;
-    const int64_t suffix_dim_size = *args.arg<int64_t>(narg++) ;
-
-    const vml::Tensor *input_tensor = args.arg<vml::Tensor>(narg++) ;
-    const uint64_t input_addr  = input_tensor->addr ;
-
-    uint64_t output_addrs[num_split] ;
-    for(int64_t i=0; i<num_split; i++) {
-        const vml::Tensor *result = args.arg<vml::Tensor>(narg++) ;
-        output_addrs[i] = result->addr ;
-    }
-
-    const int dtype = input_tensor->dtype ;
-
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
-
-    if (dtype == DT_FLOAT) {
-        ret = split<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
-                           input_addr, output_addrs) ;
-    }
-    else if (dtype == DT_DOUBLE) {
-        ret = split<double>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
-                            input_addr, output_addrs) ;
-    }
-
-    return ret;
-}
-}
-
-DEFINE_KERNEL(Split, op_Split);
-
-
-//
-// SplitV
-//
-template<typename T>
-int split_v(const int64_t  num_split,
+int split3d(const int64_t  num_split,
             const int64_t  prefix_dim_size,
             const int64_t  split_dim_size,
             const int64_t  suffix_dim_size,
@@ -649,7 +596,7 @@ int split_v(const int64_t  num_split,
 }
 
 namespace {
-int op_SplitV(const VEOpArgs& args)
+int Split3D(const VEOpArgs& args)
 {
     int ret=1;
 
@@ -675,19 +622,19 @@ int op_SplitV(const VEOpArgs& args)
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
     if (dtype == DT_FLOAT) {
-        ret = split_v<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
-                             split_sizes, input_addr, output_addrs) ;
+        ret = split3d<float>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
+                           split_sizes, input_addr, output_addrs) ;
     }
     else if (dtype == DT_DOUBLE) {
-        ret = split_v<double>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
-                              split_sizes, input_addr, output_addrs) ;
+        ret = split3d<double>(num_split, prefix_dim_size, split_dim_size, suffix_dim_size,
+                            split_sizes, input_addr, output_addrs) ;
     }
 
     return ret;
 }
 }
 
-DEFINE_KERNEL(SplitV, op_SplitV);
+DEFINE_KERNEL(Split, Split3D);
 
 
 //
