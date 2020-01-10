@@ -36,7 +36,6 @@ REGISTER_KERNEL("Transpose", "op_Transpose");
 #ifdef __ve__
 REGISTER_KERNEL("MatMul", "op_MatMul");
 #endif // __ve__
-REGISTER_KERNEL("Pack", "op_Pack");
 REGISTER_KERNEL("Slice", "op_Slice");
 
 #define CHECK_ARG_LEN(l0, l1) \
@@ -56,7 +55,6 @@ extern "C" {
   int op_Snapshot(const void* arg, size_t len);
   int op_Transpose(const void* arg, size_t len);
   int op_MatMul(const void* arg, size_t len);
-  int op_Pack(const void* arg, size_t len);
   int op_Slice(const void* arg, size_t len);
 }
 
@@ -1148,56 +1146,6 @@ int op_MatMul(const void* args, size_t len)
 }
 #endif // __ve__
 
-
-//
-// Pack
-//
-
-template<typename T>
-  int pack(uint64_t n, uint64_t l, uint64_t *in, uint64_t out)
-  {
-    const T** pi = reinterpret_cast<const T**>(in);
-    T* po = reinterpret_cast<T*>(out);
-
-    for(int64_t i=0; i<n; i++) {
-      for(int64_t j=0; j<l; j++) {
-        po[j] = pi[i][j] ;
-      }
-      po += l ;
-    }
-
-    return 0 ;
-  }
-
-int op_Pack(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  int ret=1;
-
-  struct Args {
-    int dtype;
-    uint64_t n;
-    uint64_t l;
-    uint64_t out;
-    uint64_t in[1] ;
-  } const* p;
-
-  p = reinterpret_cast<const Args*>(args);
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  if (p->dtype == DT_FLOAT) {
-    ret = pack<float>(p->n, p->l, (uint64_t*)&p->in[0], p->out) ;
-  }
-  else if (p->dtype == DT_INT32) {
-    ret = pack<int32_t>(p->n, p->l, (uint64_t*)&p->in[0], p->out) ;
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-
-  return ret;
-}
 
 
 //

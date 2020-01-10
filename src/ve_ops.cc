@@ -477,8 +477,8 @@ DEFINE_KERNEL(SoftmaxXentWithLogits, op_softmax_xent_with_logits);
 // Concat
 //
 template<typename T>
-int concat(uint64_t n, uint64_t dim0, uint64_t out,
-           uint64_t *ins, uint64_t *dim1_offset )
+int concat2d(uint64_t n, uint64_t dim0, uint64_t out,
+             uint64_t *ins, uint64_t *dim1_offset )
 {
     const T** pi = reinterpret_cast<const T**>(ins);
     const uint64_t* dim1ost = reinterpret_cast<const uint64_t*>(dim1_offset);
@@ -511,44 +511,53 @@ int concat(uint64_t n, uint64_t dim0, uint64_t out,
 }
 
 namespace {
-int op_Concat(const VEOpArgs& args)
+
+/*
+ * 2-dimensional concat
+ *
+ * At TensorFlow side, the concat of N-D Tensors is reduced into 2-D concat.
+ * This function is called from following TensorFlow-Ops.
+ * - Concat / ConcatV2
+ * - Pack
+ */
+int Concat2D(const VEOpArgs& args)
 {
     int ret=1;
 
     int narg = 0 ;
-    const int64_t dtype              = *args.arg<int64_t>(narg++) ;
-    const uint64_t n_input           = *args.arg<uint64_t>(narg++) ;
-    const uint64_t outputs_flat_dim0 = *args.arg<uint64_t>(narg++) ;
-    const uint64_t output_ptr        = *args.arg<uint64_t>(narg++) ;
+    const int64_t  dtype      = *args.arg<int64_t>(narg++) ;
+    const uint64_t n_input    = *args.arg<uint64_t>(narg++) ;
+    const uint64_t dim0       = *args.arg<uint64_t>(narg++) ;
+    const uint64_t output_ptr = *args.arg<uint64_t>(narg++) ;
 
     LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
 
-    uint64_t ins[n_input] ;
+    uint64_t input_ptrs[n_input] ;
     uint64_t dim1_offset[n_input+1] ;
     dim1_offset[0] = *args.arg<uint64_t>(narg++) ;
 
     for(int64_t i=0; i<n_input; i++) {
-        ins[i]   = *args.arg<uint64_t>(narg++) ;
+        input_ptrs[i]    = *args.arg<uint64_t>(narg++) ;
         dim1_offset[i+1] = *args.arg<uint64_t>(narg++) ;
     }
 
     if (dtype == DT_FLOAT) {
-        ret = concat<float>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<float>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 #if 0 // do int32 type's concat in CPU.
     else if (dtype == DT_INT32) {
-        ret = concat<int32_t>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<int32_t>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 #endif
     else if (dtype == DT_DOUBLE) {
-        ret = concat<double>(n_input, outputs_flat_dim0, output_ptr, ins, dim1_offset ) ;
+        ret = concat2d<double>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 
     return ret;
 }
 }
 
-DEFINE_KERNEL(Concat, op_Concat);
+DEFINE_KERNEL(Concat, Concat2D);
 
 
 //
