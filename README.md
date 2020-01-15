@@ -1,10 +1,9 @@
-See [tensorflow/README_ve.md](https://github.com/sx-aurora-dev/tensorflow/blob/develop/README_ve.md)
+This repository includes machine learning kernels for Vector Engine and its wrapper for TensorFlow for SX-Aurora.
 
 # Prerequisites
-
 - ncc/nc++
 - llvm-ve
-
+- vednn
 # build
 
 ## build with prebuilt vednn in extra/vednn directory
