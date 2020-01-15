@@ -40,9 +40,12 @@ See [here](doc/perf.md) for details.
 2. run with VML_PROFILE=conv2d,conv2d_backprop_input
    
 
-## Document
+## VML API Document
 
-   % doxygen
-   % python3 -m http.server
+The document is generated into `doc/api` directory.
 
-See in your browser.
+    % doxygen
+
+See in your browser. If you need http server, try
+
+    % python3 -m http.server
