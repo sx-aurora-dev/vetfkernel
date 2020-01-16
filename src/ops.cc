@@ -24,8 +24,6 @@
 #undef ADD_
 #endif
 
-REGISTER_KERNEL("Fill", "op_fill");
-REGISTER_KERNEL("ZerosLike", "op_ZerosLike");
 REGISTER_KERNEL("AddN", "op_AddN");
 REGISTER_KERNEL("BiasAdd", "op_BiasAdd");
 REGISTER_KERNEL("BiasAddGrad", "op_BiasAddGrad");
@@ -45,8 +43,6 @@ REGISTER_KERNEL("Slice", "op_Slice");
   }
 
 extern "C" {
-  int op_fill(const void* arg, size_t len);
-  int op_ZerosLike(const void* arg, size_t len);
   int op_AddN(const void* arg, size_t len);
   int op_BiasAdd(const void* arg, size_t len);
   int op_BiasAddGrad(const void* arg, size_t len);
@@ -58,123 +54,6 @@ extern "C" {
   int op_Slice(const void* arg, size_t len);
 }
 
-//
-// Fill
-//
-
-namespace {
-template <typename T>
-  int fill(const void* args, size_t len)
-  {
-    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__;
-    struct Args {
-      int data_type;
-      uint64_t in;
-      uint64_t out;
-      size_t num_elems;
-    } const* p;
-
-    if (len != sizeof(*p)) {
-      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
-      return 1;
-    }
-
-    p = reinterpret_cast<const Args*>(args);
-#if 0
-    fprintf(stderr, "%s: data_type=%d out=%016lx num_elems=%lu\n",
-          __FUNCTION__, p->data_type, p->out, p->num_elems);
-#endif
-
-    const T* in = (T*)p->in;
-    T* out = (T*)p->out;
-
-    // LOG(LOG_DETAIL) << __FUNCTION__ << ": value=" << *in;
-
-    for (size_t i = 0; i < p->num_elems; ++i)
-      out[i] = *in;
-
-    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << ": done";
-    return 0;
-  }
-}
-
-#define DATA_TYPE(p) *(int*)(p)
-
-int op_fill(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  int dtype = DATA_TYPE(args);
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
-
-  int ret = 1;
-  if (dtype == DT_FLOAT) {
-    ret = fill<float>(args, len);
-  }
-  else if (dtype == DT_DOUBLE) {
-    ret = fill<double>(args, len);
-  }
-  else if (dtype == DT_INT64) {
-    ret = fill<int64_t>(args, len);
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
-
-//
-// ZerosLike
-//
-
-namespace {
-template <typename T>
-  int zeroslike(const void* args, size_t len)
-  {
-    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__;
-    struct Args {
-      int data_type;
-      uint64_t out;
-      size_t num_elems;
-    } const* p;
-
-    if (len != sizeof(*p)) {
-      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << sizeof(*p) << " expected but " << len;
-      return 1;
-    }
-
-    p = reinterpret_cast<const Args*>(args);
-
-    T* out = (T*)p->out;
-
-    // LOG(LOG_DETAIL) << __FUNCTION__ ;
-
-    for (size_t i = 0; i < p->num_elems; ++i)
-      out[i] = T(0.);
-
-    // LOG(LOG_DETAIL) << __PRETTY_FUNCTION__ << ": done";
-    return 0;
-  }
-}
-
-#define DATA_TYPE(p) *(int*)(p)
-
-int op_ZerosLike(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  int dtype = DATA_TYPE(args);
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << dtype;
-
-  int ret = 1;
-  if (dtype == DT_FLOAT) {
-    ret = zeroslike<float>(args, len);
-  } else if (dtype == DT_DOUBLE) {
-    ret = zeroslike<double>(args, len);
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
 
 namespace {
 template <typename T>
