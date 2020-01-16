@@ -36,6 +36,7 @@ set(SOURCES
   pad.cc
   relu.cc
   reverse.cc
+  fill_functor.cc
   revision.h)
 
 add_library(vetfkernel STATIC)
