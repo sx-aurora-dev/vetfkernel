@@ -16,6 +16,7 @@ add_executable(test01
   batch_matmul.cc
   matmul.cc
   biasAdd.cc
+  conv2d.cc
   pad.cc
   reduction.cc
   relu.cc 

@@ -21,7 +21,7 @@ extern "C" {
   int op_Mean(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
-  int conv2d(const void* arg, size_t len);
+  int op_Conv2d(const void* arg, size_t len);
   int conv2d_backprop_input(const void* arg, size_t len);
 }
 
@@ -872,11 +872,63 @@ class ApplyAdamOpBench : public Bench
 };
 
 #ifdef USE_VEDNN
-template<typename F>
 class Conv2DBench : public Bench
 {
   public:
-    Conv2DBench(F func,
+    Conv2DBench(//F func,
+                std::string name,
+                vml::Tensor const& out_bp,
+                vml::Tensor const& filter,
+                vml::Tensor& in_bp,
+                std::vector<int> param, // stride[2], dilation[2], padding[2]
+                int data_format,
+                int data_type) : Bench(name) {
+
+      _in     = in_bp;
+      _filter = filter;
+      _out    = out_bp;
+  
+      _params.push_back(param[0]);
+      _params.push_back(param[1]);
+      _params.push_back(param[2]);
+      _params.push_back(param[3]);
+      _params.push_back(param[4]);
+      _params.push_back(param[5]);
+      _params.push_back(data_format);
+
+    }
+  
+    int validate(BenchOpts const&) override { return 1; }
+
+    int run() override {
+      vml::conv2d(_in, _filter, _out, _params);
+      return 0;
+    }
+
+  private:
+    struct TensorParam {
+      int w,h,c,n ;
+    } ;
+
+    TensorParam nchw(vml::Tensor const& t) {
+      int64_t const* d = t.dim_size;
+      TensorParam p = {(int)d[2], (int)d[3], (int)d[1], (int)d[0]};
+      return p;
+    }
+
+  vml::Tensor _in;
+  vml::Tensor _filter;
+  vml::Tensor _out;
+  std::vector<int> _params;
+  
+  //F func_;
+};
+
+template<typename F>
+class Conv2DBackPropBench : public Bench
+{
+  public:
+    Conv2DBackPropBench(F func,
                 std::string name,
                 vml::Tensor const& out_bp,
                 vml::Tensor const& filter,
@@ -942,8 +994,7 @@ class Conv2DBench : public Bench
     F func_;
 };
 
-template <typename F>
-Bench* make_conv2d_bench(F func,
+Bench* make_conv2d_bench(
                          std::string name,
                          std::vector<size_t> const& in_shape,
                          std::vector<size_t> const& filter_shape,
@@ -965,24 +1016,56 @@ Bench* make_conv2d_bench(F func,
     << "-" << param[4] << "x" << param[5]
     << "-" << data_format << "-" << data_type;
 
-  return new Conv2DBench<F>(func, buf.str(), *in, *filter, *out, param, data_format, data_type);
+  return new Conv2DBench(buf.str(), *in, *filter, *out, param, data_format, data_type);
+}
+
+template <typename F>
+Bench* make_conv2d_backprop_bench(F func,
+                         std::string name,
+                         std::vector<size_t> const& in_shape,
+                         std::vector<size_t> const& filter_shape,
+                         std::vector<size_t> const& out_shape,
+                         std::vector<int> param,
+                         int data_format = FORMAT_NCHW,
+                         int data_type = DT_FLOAT)
+{
+  vml::Tensor* in = createRandomTensor<float>(in_shape);
+  vml::Tensor* filter = createRandomTensor<float>(filter_shape);
+  vml::Tensor* out = createRandomTensor<float>(out_shape);
+
+  std::stringstream buf;
+
+#define S(t) (t).dim_size[0] << "x" << (t).dim_size[1] << "x" << (t).dim_size[2] << "x" << (t).dim_size[3]
+  buf << name << "-" << S(*in) << "-" << S(*filter) << "-" << S(*out)
+    << "-" << param[0] << "x" << param[1]
+    << "-" << param[2] << "x" << param[3]
+    << "-" << param[4] << "x" << param[5]
+    << "-" << data_format << "-" << data_type;
+
+  return new Conv2DBackPropBench<F>(func, buf.str(), *in, *filter, *out, param, data_format, data_type);
 }
 
 void add_conv2d_bench(std::vector<Bench*>& v)
 {
+
   // in, filter, out, {stride[2], dilation[2], stride[2]}
-  
   // conv2d
-#define F(...) v.push_back(make_conv2d_bench(conv2d, "Conv2D", __VA_ARGS__))
+#define F(...) v.push_back(make_conv2d_bench("Conv2D", __VA_ARGS__))
   F({32, 256, 34, 34}, {512, 256, 4, 4}, {32, 512, 31, 31}, {1, 1, 1, 1, 0, 0});
   F({32, 1024, 14, 14}, {2048, 1024, 1, 1}, {32, 2048, 7, 7}, {2, 2, 1, 1, 0, 0}); // ResNet50
 #undef F
+}
 
+void add_conv2d_backprop_bench(std::vector<Bench*>& v)
+{
+  // in, filter, out, {stride[2], dilation[2], stride[2]}
+  
   // conv2d_backprop_input
-#define F(...) v.push_back(make_conv2d_bench(conv2d_backprop_input, "Conv2DBackpropInput", __VA_ARGS__))
+#define F(...) v.push_back(make_conv2d_backprop_bench(conv2d_backprop_input, "Conv2DBackpropInput", __VA_ARGS__))
   F({32, 1024, 16, 16}, {1024, 256, 4, 4}, {32, 256, 32, 32}, {2, 2, 1, 1, 1, 1});
 #undef F
 }
+
 #endif // USE_VEDNN
 
 template <typename T>
