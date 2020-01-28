@@ -769,6 +769,7 @@ int op_TransposeBase(const void* args, size_t len)
     uint64_t in;
     uint64_t out;
     int size;
+    int conjugate ;
     int32_t dim_size[4]; // in
     int32_t perm[4];
   } const* p;
@@ -867,6 +868,7 @@ int op_Transpose(const void* args, size_t len)
     uint64_t in;
     uint64_t out;
     int size;
+    int conjugate ;
     int32_t dim_size[4]; // in
     int32_t perm[4];
   } const* p;
@@ -876,6 +878,7 @@ int op_Transpose(const void* args, size_t len)
 
   LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype
     << " size=" << p->size
+    << " conjugate=" << p->conjugate
     << " perm=(" << p->perm[0]
     << " " << p->perm[1]
     << " " << p->perm[2]
@@ -901,7 +904,12 @@ int op_Transpose(const void* args, size_t len)
   } else if (p->dtype == DT_INT8) {
     ret = op_TransposeBase<int8_t>(args, len);
   } else if (p->dtype == DT_COMPLEX64) {
-    ret = op_TransposeBase<float _Complex>(args, len);
+    if( p->conjugate ) {
+      LOG(LOG_ERROR) << __FUNCTION__ << " : current impl does not support conjugate transpose !" ;
+    }
+    else {
+      ret = op_TransposeBase<float _Complex>(args, len);
+    }
   } else if (p->dtype == DT_INT64) {
     ret = op_TransposeBase<int64_t>(args, len);
   } else if (p->dtype == DT_BOOL) {
@@ -909,7 +917,12 @@ int op_Transpose(const void* args, size_t len)
   } else if (p->dtype == DT_UINT16) {
     ret = op_TransposeBase<uint16_t>(args, len);
   } else if (p->dtype == DT_COMPLEX128) {
-    ret = op_TransposeBase<double _Complex>(args, len);
+    if( p->conjugate ) {
+      LOG(LOG_ERROR) << __FUNCTION__ << " : current impl does not support conjugate transpose !" ;
+    }
+    else {
+      ret = op_TransposeBase<double _Complex>(args, len);
+    }
   } else if (p->dtype == DT_HALF) {
     ret = op_TransposeBase<uint16_t>(args, len);
   }
