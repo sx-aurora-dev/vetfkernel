@@ -8,6 +8,12 @@
 #include "vml/types.h"
 #include "vml/log.h"
 
+#define USE_VML
+
+#ifdef USE_VML
+#include "vml.h"
+#endif
+
 #include <omp.h>
 
 #ifdef USE_VEDNN
@@ -124,6 +130,8 @@ int op_AddN(const void* args, size_t len)
   return ret;
 }
 
+#ifndef USE_VML
+
 namespace {
 
 template<typename T>
@@ -188,7 +196,6 @@ inline int BiasAdd_NCHW<float>(uint64_t out, uint64_t in, uint64_t bias, int bat
   BiasAdd_NCHW_f32(out, in, bias, batch, width, height, channel) ;
 }
 #endif
-};
 
 template<typename T>
 int op_BiasAdd(const void* args, size_t len)
@@ -269,6 +276,10 @@ int op_BiasAdd(const void* args, size_t len)
   return ret;
 }
 
+} // namespace
+
+#endif // USE_VML
+
 int op_BiasAdd(const void* args, size_t len)
 {
   LOG(LOG_TRACE) << __FUNCTION__ << " begin";
@@ -290,6 +301,35 @@ int op_BiasAdd(const void* args, size_t len)
 
   LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " dformat=" << p->data_format;
 
+#ifdef USE_VML
+  vml::TensorDesc<4> out;
+  vml::TensorDesc<4> in;
+  vml::TensorDesc<1> bias;
+#define INIT(t, address) \
+  t.dtype = p->dtype; \
+  t.addr = address; \
+  t.dims = 4; \
+  t.nelems = p->batch * p->height * p->width * p->channel; \
+  if (p->data_format == FORMAT_NHWC) { \
+    t.dim_size[0] = p->batch; \
+    t.dim_size[1] = p->height; \
+    t.dim_size[2] = p->width; \
+    t.dim_size[3] = p->channel; \
+  } else { \
+    t.dim_size[0] = p->batch; \
+    t.dim_size[2] = p->height; \
+    t.dim_size[3] = p->width; \
+    t.dim_size[1] = p->channel; \
+  }
+  INIT(out, p->out);
+  INIT(in, p->in);
+  bias.dtype = p->dtype;
+  bias.addr = p->bias;
+  bias.dims = 1;
+  bias.nelems = p->channel;
+  bias.dim_size[0] = p->channel;
+  return vml::biasAdd(out, in, bias, p->data_format);
+#else
   int ret = 1 ;
 
   if (p->dtype == DT_FLOAT) {
@@ -300,6 +340,7 @@ int op_BiasAdd(const void* args, size_t len)
 
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
+#endif
 }
 
 #ifndef LIBVETF_INTRINSIC

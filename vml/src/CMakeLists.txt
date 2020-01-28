@@ -21,6 +21,7 @@ set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 add_library(vml STATIC
   avgpooling.cc
   batch_matmul.cc
+  biasAdd.cc
   binary_ops.cc
   pad.cc
   randomUniform.cc

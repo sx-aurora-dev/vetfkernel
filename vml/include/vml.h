@@ -171,4 +171,8 @@ int pad(
     int32_t *padding          // padding range
 );
 
+
+int biasAdd(Tensor const& out, Tensor const& in, Tensor const& bias,
+            int data_format);
+
 }; // namespace vml

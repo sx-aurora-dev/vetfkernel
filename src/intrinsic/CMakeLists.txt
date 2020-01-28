@@ -4,7 +4,7 @@ set(CMAKE_C_COMPILER ${LLVM_INSTALL_PREFIX}/bin/clang)
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target ve -O3 -fno-vectorize -fno-slp-vectorize -fno-crash-diagnostics")
 
 add_library(vetfkernel_intrinsic OBJECT
-	BiasAdd.c
+	# BiasAdd.c
 	BiasAddGrad.c
         #	Add.c
         #	Sub.c
