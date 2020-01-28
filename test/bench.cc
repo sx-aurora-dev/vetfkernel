@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <sstream>
+#include <iostream>
 #include <cassert>
 #include <algorithm>
 #include <time.h>
@@ -197,54 +198,8 @@ int sum_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 }
 
 //
-// BiasAdd
+// BiasAddGrad
 //
-
-template<typename T>
-int BiasAdd_NHWC(uint64_t out, uint64_t in, uint64_t bias, int batch, int width, int height, int channel)
-{
-  T* pout = reinterpret_cast<T*>(out);
-  const T* pin = reinterpret_cast<const T*>(in);
-  const T* pbias = reinterpret_cast<const T*>(bias);
-
-  for (int b = 0; b < batch; ++b) {
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-        for (int c = 0; c < channel; ++c) {
-          int i
-            = b * height * width * channel
-            + y * width * channel
-            + x * channel;
-          pout[i + c] = pin[i + c] + pbias[c];
-        }
-      }
-    }
-  }
-
-  return 0;
-}
-
-template<typename T>
-int BiasAdd_NCHW(uint64_t out, uint64_t in, uint64_t bias,
-                 int batch, int width, int height, int channel)
-{
-  T* pout = reinterpret_cast<T*>(out);
-  const T* pin = reinterpret_cast<const T*>(in);
-  const T* pbias = reinterpret_cast<const T*>(bias);
-
-  for (int b = 0; b < batch; ++b) {
-    for (int c = 0; c < channel; ++c) {
-      for (int xy = 0; xy < width*height; ++xy) {
-        int i 
-          = b * height * width * channel
-          + c * height * width ;
-        pout[i + xy] = pin[i + xy] + pbias[c];
-      }
-    }
-  }
-
-  return 0;
-}
 
 template<typename T>
 int BiasAddGrad_NHWC(uint64_t output, uint64_t output_backprop,
@@ -615,74 +570,39 @@ template <typename T>
 class BiasAddOpBench : public Bench
 {
   public:
-    BiasAddOpBench(std::string name, int data_format, 
-                   int (*ref_op)(uint64_t out, uint64_t in, 
-                                 uint64_t bias, int batch, int width, int height, int channel),
-                   T const* in, size_t nchw[4], int ntimes)
-      : Bench(name, ntimes), ref_op_(ref_op), in_(in) {
-      memcpy(nchw_, nchw, sizeof(size_t) * 4);
-      size_t szio = nchw[0] * nchw[1] * nchw[2] * nchw[3];
-      size_t szb = nchw[1];
-      this->data_size_ =  (szio * 2 + szb) * sizeof(T);
-      this->flop_count_ = szio;
+    BiasAddOpBench(std::string name,
+                   int data_format,
+                   T const* in,
+                   std::vector<size_t> shape,
+                   int ntimes)
+      : Bench(name, ntimes), data_format_(data_format) {
 
-      out0_ = new T[szio];
-      out1_ = new T[szio];
-      bias_ = new T[szb];
+        out_ = test::makeTensor<float>(4, shape);
+        in_ = test::allocTensorDesc(4, shape, in);
+        int channel = shape[3];
+        if (data_format == FORMAT_NCHW)
+          channel = shape[1];
+        bias_ = createRandomTensor<float>({channel}); // channel
 
-      randomInit(bias_, szb);
-
-      szio_ = szio;
-
-      args_.dtype = to_dtype<float>::val;
-      args_.data_format = data_format;
-      args_.in = reinterpret_cast<uint64_t>(in_);
-      args_.bias = reinterpret_cast<uint64_t>(bias_);
-      args_.out = reinterpret_cast<uint64_t>(out0_);
-      args_.batch = nchw[0];
-      args_.width = nchw[3];
-      args_.height = nchw[2];
-      args_.channel = nchw[1];
+#if 0
+        std::cerr << *in_ << std::endl;
+        std::cerr << *bias_ << std::endl;
+#endif
     }
 
     int validate(BenchOpts const& opts) override {
-      memset(out0_, 0, sizeof(T) * szio_);
-      memset(out1_, 0, sizeof(T) * szio_);
-      run();
-      ref_op_(reinterpret_cast<uint64_t>(out1_),
-              reinterpret_cast<uint64_t>(in_),
-              reinterpret_cast<uint64_t>(bias_),
-              nchw_[0], nchw_[3], nchw_[2], nchw_[1]);
-      return check_exact(out0_, out1_, szio_, opts);
+      return 1;
     }
 
     int run() override {
-      return op_BiasAdd(reinterpret_cast<void const*>(&args_), sizeof(Args));
+      return vml::biasAdd(*out_, *in_, *bias_, data_format_);
     }
 
   private:
-    struct Args {
-      int dtype;
-      int data_format;
-      uint64_t in;
-      uint64_t bias;
-      uint64_t out;
-      int batch;
-      int width;
-      int height;
-      int channel;
-    } args_;
-
-    size_t nchw_[4];
-    size_t szio_;
-
-    T const* in_;
-    T* bias_;
-    T* out0_;
-    T* out1_;
-
-    int (*ref_op_)(uint64_t out, uint64_t in, 
-                   uint64_t bias, int batch, int width, int height, int channel);
+    vml::Tensor* out_;
+    vml::Tensor* in_;
+    vml::Tensor* bias_;
+    int data_format_;
 };
 
 template <typename T>
@@ -692,9 +612,10 @@ class BiasAddGradOpBench : public Bench
     BiasAddGradOpBench(std::string name, int data_format,
                        int (*ref_op)(uint64_t output, uint64_t output_backprop,
                                      int batch, int width, int height, int channel),
-                       T const* in, size_t nchw[4], int ntimes = -1) 
-      : Bench(name, ntimes), ref_op_(ref_op), in_(in) {
-      memcpy(nchw_, nchw, sizeof(size_t) * 4);
+                       T const* in,
+                       std::vector<size_t> const& nchw,
+                       int ntimes = -1)
+      : Bench(name, ntimes), ref_op_(ref_op), in_(in), nchw_(nchw) {
       size_t szb = nchw[1];
 
       output0_ = new T[szb];
@@ -739,7 +660,7 @@ class BiasAddGradOpBench : public Bench
       int channel;
     } args_;
 
-    size_t nchw_[4];
+    std::vector<size_t> nchw_;
     size_t szb_;
 
     T const* in_;
@@ -788,10 +709,12 @@ template <typename T>
 class TransposeOpBench : public Bench
 {
   public:
-    TransposeOpBench(std::string name, 
+    TransposeOpBench(std::string name,
                      int (*ref_op)(uint64_t, uint64_t, const int32_t*),
                      T const* y,
-                     size_t dims[4], std::vector<int> perm, int ntimes = -1) 
+                     std::vector<size_t> const& dims,
+                     std::vector<int> perm,
+                     int ntimes = -1)
       : Bench(name, ntimes), ref_op_(ref_op), y_(y) {
         int ndims = 4;
         nelems_ = 1;
@@ -1091,7 +1014,7 @@ void add_bench(std::vector<Bench*>& v, size_t n)
 int main(int argc, char* argv[])
 {
   size_t n = 20000000;
-  size_t nchw[4] = {256, 16, 64, 64};
+  std::vector<size_t> nchw{256, 16, 64, 64};
   int repeat = 10;
 
   BenchOpts opts;
@@ -1144,20 +1067,20 @@ int main(int argc, char* argv[])
 
   std::vector<Bench*> v;
 
-  size_t nchw_elems = 1;
+  size_t nelems = 1;
   for (int i = 0; i < 4; ++i)
-    nchw_elems *= nchw[i];
+    nelems *= nchw[i];
 
-  float* y = new float[nchw_elems];
-  randomInit(y, nchw_elems);
+  float* y = new float[nelems];
+  randomInit(y, nelems);
 
   add_bench<float>(v, n);
 
 #define PUSH(B) v.push_back(new B);
-  PUSH(BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, 
-                             ref::BiasAdd_NHWC<float>, y, nchw, 200));
-  PUSH(BiasAddOpBench<float>("BiasAdd(NCHW)", FORMAT_NCHW, 
-                             ref::BiasAdd_NCHW<float>, y, nchw, 500));
+  PUSH(BiasAddOpBench<float>("BiasAdd(NHWC)", FORMAT_NHWC, y,
+                             {nchw[0], nchw[2], nchw[3], nchw[1]}, 200));
+  PUSH(BiasAddOpBench<float>("BiasAdd(NCHW)", FORMAT_NCHW, y, nchw, 500));
+
   PUSH(BiasAddGradOpBench<float>("BiasAddGrad(NHWC)", FORMAT_NHWC, 
                                  ref::BiasAddGrad_NHWC<float>, y, nchw, 30));
   PUSH(BiasAddGradOpBench<float>("BiasAddGrad(NCHW)", FORMAT_NCHW, 
