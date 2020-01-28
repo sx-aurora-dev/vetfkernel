@@ -17,10 +17,12 @@ int vml::NAME(vml::Tensor const& out, vml::Tensor const& in) { \
                           FUNC<double, double>, \
                           FUNC<int64_t, int64_t>); \
 }
+#if 0
 #define DEFINE_UNARY_OP3(NAME, FUNC1, FUNC2, FUNC3) \
 int vml::NAME(vml::Tensor const& out, vml::Tensor const& in) { \
   return unary_op_wrapper(out, in, FUNC1, FUNC2, FUNC3); \
 }
+#endif
 
 namespace {
 
@@ -131,6 +133,7 @@ int op_abs(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Abs. 
 DEFINE_UNARY_OP(abs, op_abs);
 
 //
@@ -147,6 +150,7 @@ int op_sign(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Sign
 DEFINE_UNARY_OP(sign, op_sign);
 
 //
@@ -163,6 +167,7 @@ int op_exp(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Exp
 DEFINE_UNARY_OP(exp, op_exp);
 
 //
@@ -179,6 +184,7 @@ int op_expm1(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// `X = exp(Y) - 1.0`
 DEFINE_UNARY_OP(expm1, op_expm1);
 
 //
@@ -195,6 +201,7 @@ int op_floor(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Floor
 DEFINE_UNARY_OP(floor, op_floor);
 
 //
@@ -211,6 +218,7 @@ int op_log(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Log
 DEFINE_UNARY_OP(log, op_log);
 
 //
@@ -227,6 +235,7 @@ int op_log1p(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Log1p
 DEFINE_UNARY_OP(log1p, op_log1p);
 
 //
@@ -251,6 +260,7 @@ inline int neg<float, float>(float* out, float const* in, size_t nelems)
 }
 #endif
 
+/// Neg
 DEFINE_UNARY_OP(neg, ::neg);
 
 //
@@ -267,6 +277,7 @@ int op_reciprocal(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Reciprocal.
 DEFINE_UNARY_OP(reciprocal, op_reciprocal);
 
 //
@@ -290,6 +301,7 @@ inline int rsqrt<float, float>(float* po, float const* pi, size_t n)
 }
 #endif
 
+/// Rsqrt.
 DEFINE_UNARY_OP(rsqrt, ::rsqrt);
 
 //
@@ -317,6 +329,7 @@ int op_sigmoid(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Sigmoid.
 DEFINE_UNARY_OP(sigmoid, op_sigmoid);
 
 //
@@ -340,6 +353,7 @@ int sqrt_<float, float>(float* out, float const* in, size_t nelems)
 }
 #endif
 
+/// Sqrt
 DEFINE_UNARY_OP(sqrt, sqrt_);
 
 //
@@ -363,6 +377,7 @@ int square<float, float>(float* out, float const* in, size_t nelems)
 }
 #endif
 
+/// Square
 DEFINE_UNARY_OP(square, ::square);
 
 //
@@ -378,6 +393,7 @@ int op_sin(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Sin
 DEFINE_UNARY_OP(sin, op_sin);
 
 //
@@ -393,6 +409,7 @@ int op_cos(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Cos
 DEFINE_UNARY_OP(cos, op_cos);
 
 //
@@ -408,6 +425,7 @@ int op_tan(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Tan
 DEFINE_UNARY_OP(tan, op_tan);
 
 //
@@ -423,6 +441,7 @@ int op_sinh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Sinh
 DEFINE_UNARY_OP(sinh, op_sinh);
 
 //
@@ -438,6 +457,7 @@ int op_cosh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Cosh
 DEFINE_UNARY_OP(cosh, op_cosh);
 
 //
@@ -453,6 +473,7 @@ int op_tanh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Tanh
 DEFINE_UNARY_OP(tanh, op_tanh);
 
 //
@@ -468,6 +489,7 @@ int op_asinh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Asinh
 DEFINE_UNARY_OP(asinh, op_asinh);
 
 //
@@ -483,6 +505,7 @@ int op_acosh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Acosh
 DEFINE_UNARY_OP(acosh, op_acosh);
 
 //
@@ -498,4 +521,5 @@ int op_atanh(Tout* po, Tin const* pi, size_t nelems)
   return 0;
 }
 
+/// Atanh
 DEFINE_UNARY_OP(atanh, op_atanh);

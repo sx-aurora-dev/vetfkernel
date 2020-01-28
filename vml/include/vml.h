@@ -1,12 +1,10 @@
 #pragma once
 
-// VML: VE Machile Learning Kernels
-
 #include <vector>
 #include <ostream>
 
 /**
- * vml
+ * VML: VE Machine Learning Kernels.
  */
 namespace vml
 {

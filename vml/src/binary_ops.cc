@@ -503,7 +503,7 @@ int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 
 } // namespace
 
-/// X = Y + Z
+/// Element-wise add.
 int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 {
   if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
@@ -797,7 +797,7 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 
 } // namespace
 
-/// X = Y - Z
+/// Element-wise sub.
 int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1260,7 +1260,7 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 
 } // namespace
 
-/// X = Y * Z
+/// Element-wise mul.
 int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1397,7 +1397,7 @@ int vmldiv(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
 
 } // namespace
 
-/// X = Y / Z
+/// Element-wise div.
 int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1524,6 +1524,7 @@ int divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
 } // namespace
 
+/// Element-wise div where 0 is returned when the denominator is zero.
 int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1612,6 +1613,7 @@ int vmlpow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
 
 } // namspace
 
+/// Element-wise pow.
 int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1818,6 +1820,7 @@ int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
 
 } // namespace
 
+/// Element-wise squre diff.
 int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -1943,6 +1946,7 @@ int minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& i
 
 } // namspace
 
+/// Element-wise min
 int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -2016,6 +2020,7 @@ int maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& i
 
 } // namspace
 
+/// Element-wise max
 int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
@@ -2089,6 +2094,7 @@ int equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1
 
 } // namspace
 
+/// Element-wise equal
 int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
@@ -2440,6 +2446,7 @@ int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 // Less
 
+/// Element-wise less
 int vml::less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
@@ -2480,6 +2487,7 @@ int vml::lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor c
 
 // Greater
 
+/// Element-wise greater
 int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {
@@ -2500,6 +2508,7 @@ int vml::greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 // GreaterEqual
 
+/// Element-wise greater equal
 int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
   if (out.dtype == DT_BOOL) {

@@ -114,11 +114,9 @@ int mean_d3a02<float>(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_
 
 namespace vml {
 
-/**
- * Reduction mean
- *
- * See https://www.tensorflow.org/api_docs/python/tf/math/reduce_mean?version=stable.
- */
+/// Reduction mean.
+///
+/// See https://www.tensorflow.org/api_docs/python/tf/math/reduce_mean?version=stable.
 int mean(vml::Tensor const& out, vml::Tensor const& in, std::vector<int> const& axis)
 {
     int ret = 0;
