@@ -14,6 +14,7 @@ set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 add_executable(test01 
   test01.cc # test01.cc have to be first???
   batch_matmul.cc
+  biasAdd.cc
   pad.cc
   reduction.cc
   relu.cc 
