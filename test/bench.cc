@@ -731,6 +731,7 @@ class TransposeOpBench : public Bench
         args_.in = reinterpret_cast<uint64_t>(y_);
         args_.out = reinterpret_cast<uint64_t>(x0_);
         args_.size = ndims;
+        args_.conjugate = 0;
       }
 
     int validate(BenchOpts const& opts) override {
@@ -752,8 +753,9 @@ class TransposeOpBench : public Bench
       uint64_t in;
       uint64_t out;
       int size;
-      int32_t dim_size[4]; // in
-      int32_t perm[4];
+      int conjugate;
+      int32_t dim_size[8]; // in
+      int32_t perm[8];
     } args_;
 
     int (*ref_op_)(uint64_t, uint64_t, const int32_t*);
