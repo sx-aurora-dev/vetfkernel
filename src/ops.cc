@@ -759,6 +759,186 @@ int transpose4(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t
 
   return 0;
 }
+
+template<typename Tin, typename Tout = Tin>
+int transpose5(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
+  const int64_t d4 = dim_size[4] ;
+
+  int64_t stride_out[5] ;
+  stride_out[perm[4]] = 1 ;
+  for(int64_t d=3; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
+  }
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+  const int64_t s3 = stride_out[3] ;
+  const int64_t s4 = stride_out[4] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	for (int64_t i3 = 0; i3 < d3; ++i3) {
+	  for (int64_t i4 = 0; i4 < d4; ++i4) {
+	    po[i0*s0+i1*s1+i2*s2+i3*s3+i4*s4]
+	       = pi[(((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4];
+	  }
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose6(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
+  const int64_t d4 = dim_size[4] ;
+  const int64_t d5 = dim_size[5] ;
+
+  int64_t stride_out[6] ;
+  stride_out[perm[5]] = 1 ;
+  for(int64_t d=4; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
+  }
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+  const int64_t s3 = stride_out[3] ;
+  const int64_t s4 = stride_out[4] ;
+  const int64_t s5 = stride_out[5] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	for (int64_t i3 = 0; i3 < d3; ++i3) {
+	  for (int64_t i4 = 0; i4 < d4; ++i4) {
+	    for (int64_t i5 = 0; i5 < d5; ++i5) {
+		po[i0*s0+i1*s1+i2*s2+i3*s3+i4*s4+i5*s5]
+		   = pi[((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5];
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose7(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
+  const int64_t d4 = dim_size[4] ;
+  const int64_t d5 = dim_size[5] ;
+  const int64_t d6 = dim_size[6] ;
+
+  int64_t stride_out[7] ;
+  stride_out[perm[6]] = 1 ;
+  for(int64_t d=5; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
+  }
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+  const int64_t s3 = stride_out[3] ;
+  const int64_t s4 = stride_out[4] ;
+  const int64_t s5 = stride_out[5] ;
+  const int64_t s6 = stride_out[6] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	for (int64_t i3 = 0; i3 < d3; ++i3) {
+	  for (int64_t i4 = 0; i4 < d4; ++i4) {
+	    for (int64_t i5 = 0; i5 < d5; ++i5) {
+	      for (int64_t i6 = 0; i6 < d6; ++i6) {
+		po[i0*s0+i1*s1+i2*s2+i3*s3+i4*s4+i5*s5+i6*s6]
+		   = pi[(((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5)*d6+i6];
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose8(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
+  const int64_t d4 = dim_size[4] ;
+  const int64_t d5 = dim_size[5] ;
+  const int64_t d6 = dim_size[6] ;
+  const int64_t d7 = dim_size[7] ;
+
+  int64_t stride_out[8] ;
+  stride_out[perm[7]] = 1 ;
+  for(int64_t d=6; d>=0; --d) {
+    stride_out[perm[d]] = stride_out[perm[d+1]] * dim_size[perm[d+1]] ;
+  }
+  const int64_t s0 = stride_out[0] ;
+  const int64_t s1 = stride_out[1] ;
+  const int64_t s2 = stride_out[2] ;
+  const int64_t s3 = stride_out[3] ;
+  const int64_t s4 = stride_out[4] ;
+  const int64_t s5 = stride_out[5] ;
+  const int64_t s6 = stride_out[6] ;
+  const int64_t s7 = stride_out[7] ;
+
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i2 = 0; i2 < d2; ++i2) {
+	for (int64_t i3 = 0; i3 < d3; ++i3) {
+	  for (int64_t i4 = 0; i4 < d4; ++i4) {
+	    for (int64_t i5 = 0; i5 < d5; ++i5) {
+	      for (int64_t i6 = 0; i6 < d6; ++i6) {
+		for (int64_t i7 = 0; i7 < d7; ++i7) {
+		  po[i0*s0+i1*s1+i2*s2+i3*s3+i4*s4+i5*s5+i6*s6+i7*s7]
+		     = pi[((((((i0*d1+i1)*d2+i2)*d3+i3)*d4+i4)*d5+i5)*d6+i6)*d7+i7];
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  return 0;
+}
 }
 
 template<typename T>
@@ -770,8 +950,8 @@ int op_TransposeBase(const void* args, size_t len)
     uint64_t out;
     int size;
     int conjugate ;
-    int32_t dim_size[4]; // in
-    int32_t perm[4];
+    int32_t dim_size[8]; // in
+    int32_t perm[8];
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -852,6 +1032,18 @@ int op_TransposeBase(const void* args, size_t len)
 	ret = transpose4<T>(p->out, p->in, p->dim_size, p->perm) ;
       }
     break ;
+  case 5 :
+    ret = transpose5<T>(p->out, p->in, p->dim_size, p->perm) ;
+    break ;
+  case 6 :
+    ret = transpose6<T>(p->out, p->in, p->dim_size, p->perm) ;
+    break ;
+  case 7 :
+    ret = transpose7<T>(p->out, p->in, p->dim_size, p->perm) ;
+    break ;
+  case 8 :
+    ret = transpose8<T>(p->out, p->in, p->dim_size, p->perm) ;
+    break ;
   default :
     break ;
   }
@@ -869,8 +1061,8 @@ int op_Transpose(const void* args, size_t len)
     uint64_t out;
     int size;
     int conjugate ;
-    int32_t dim_size[4]; // in
-    int32_t perm[4];
+    int32_t dim_size[8]; // in
+    int32_t perm[8];
   } const* p;
 
   CHECK_ARG_LEN(len, sizeof(Args));
@@ -883,10 +1075,18 @@ int op_Transpose(const void* args, size_t len)
     << " " << p->perm[1]
     << " " << p->perm[2]
     << " " << p->perm[3]
+    << " " << p->perm[4]
+    << " " << p->perm[5]
+    << " " << p->perm[6]
+    << " " << p->perm[7]
     << ") dim=(" << p->dim_size[0]
     << " " << p->dim_size[1]
     << " " << p->dim_size[2]
     << " " << p->dim_size[3]
+    << " " << p->dim_size[4]
+    << " " << p->dim_size[5]
+    << " " << p->dim_size[6]
+    << " " << p->dim_size[7]
     << ")";
 
   int ret = 1;

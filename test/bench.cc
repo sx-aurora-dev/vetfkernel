@@ -754,8 +754,8 @@ class TransposeOpBench : public Bench
       uint64_t out;
       int size;
       int conjugate;
-      int32_t dim_size[4]; // in
-      int32_t perm[4];
+      int32_t dim_size[8]; // in
+      int32_t perm[8];
     } args_;
 
     int (*ref_op_)(uint64_t, uint64_t, const int32_t*);
