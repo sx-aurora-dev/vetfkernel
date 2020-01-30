@@ -517,6 +517,7 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 
 namespace {
 
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
 template <typename T>
 int sub_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -530,6 +531,7 @@ int sub_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -543,6 +545,7 @@ int sub_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -555,7 +558,6 @@ int sub_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -564,6 +566,8 @@ inline int sub_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
 }
 #endif
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int sub2_nn_n1(uint64_t out, 
                uint64_t in0,
@@ -583,8 +587,10 @@ int sub2_nn_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == 1
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == n1
 template <typename T>
-int sub2_nn_1n(uint64_t out,
+int sub2_n1_nn(uint64_t out,
                uint64_t in0,
                uint64_t in1,
                size_t n0,
@@ -602,6 +608,8 @@ int sub2_nn_1n(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == m0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int sub2_nm_n1(uint64_t out,
                uint64_t in0,
@@ -623,6 +631,8 @@ int sub2_nm_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == 1,  in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == n1
 template <typename T>
 int sub2_1n_nn(uint64_t out,
                uint64_t in0,
@@ -642,20 +652,9 @@ int sub2_1n_nn(uint64_t out,
   return 0;
 }
 
-template <typename T, int M, int N>
-int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
-{
-  LOG(LOG_DETAIL) << __FUNCTION__;
-  T* x = reinterpret_cast<T*>(X.addr);
-  T const* y = reinterpret_cast<T const*>(Y.addr);
-  T const* z = reinterpret_cast<T const*>(Z.addr);
-
-  for (int i = 0; i < M*N; ++i) {
-    x[i] = y[i % N] - z[i];
-  }
-  return 0;
-}
-
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
+// out.dim[2] = n2, in0.dim[2] == n2, in1.dim[2] == n2
 template <typename T>
 int sub3_nn_n1_nn(uint64_t out,
                   uint64_t in0,
@@ -675,6 +674,20 @@ int sub3_nn_n1_nn(uint64_t out,
 	po[((i*n1+j)*n2)+k] = pi0[((i*n1+j)*n2)+k] - pi1[(i*n2)+k];
       }
     }
+  }
+  return 0;
+}
+
+template <typename T, int M, int N>
+int sub_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
+{
+  LOG(LOG_DETAIL) << __FUNCTION__;
+  T* x = reinterpret_cast<T*>(X.addr);
+  T const* y = reinterpret_cast<T const*>(Y.addr);
+  T const* z = reinterpret_cast<T const*>(Z.addr);
+
+  for (int i = 0; i < M*N; ++i) {
+    x[i] = y[i % N] - z[i];
   }
   return 0;
 }
@@ -721,12 +734,15 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      // (Y0,Y1) - (Y0, 1)
       return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
     if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
-      return sub2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+      // (Y0,Y1) - (1, Y1)
+      return sub2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
     if ( in0.dim_size[0] == 1 && in0.dim_size[1] == in1.dim_size[1]) {
+      // (1,Z1) - (Z0, Z1)
       return sub2_1n_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in1.dim_size[1]);
     }
     goto general_purpose_implementation;
@@ -737,6 +753,7 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   	 && in1.dim_size[1] == 1
   	 && in0.dim_size[2] == in1.dim_size[2] )
     {
+      // (Y0,Y1,Y2) - (Y0,1,Y2)
       return sub3_nn_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1], in0.dim_size[2]) ;
     }
     goto general_purpose_implementation;
@@ -748,9 +765,11 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 	 && in0.dim_size[2] == in1.dim_size[2]
 	 && in1.dim_size[3] == 1 )
     {
+      // (Y0,Y1,Y2,Y3) - (Y0,Y1,Y2,1) => (Y0*Y1*Y2,Y3) - (Y0*Y1*Y2, 1)
       return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1]*in0.dim_size[2], in0.dim_size[3]);
     }
     if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      // (Y0,Y1,Y2,Y3) - (1,Y1,1,1) => (Y0*Y1,Y2*Y3) - (Y1, 1)
       return sub2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     goto general_purpose_implementation;
