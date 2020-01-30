@@ -829,6 +829,8 @@ int vml::sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 // ----------------------------------------------------------------------
 
 namespace {
+
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -842,7 +844,6 @@ int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -851,6 +852,7 @@ inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 #endif
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -864,7 +866,6 @@ int mul_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 
   return 0;
 }
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int mul_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
@@ -889,7 +890,8 @@ inline int mul_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 }
 #endif
 
-// nelems_in0 > nelems_in1
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int mul2_nn_n1(uint64_t out, 
                uint64_t in0,
@@ -909,8 +911,10 @@ int mul2_nn_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == 1
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == n1
 template <typename T>
-int mul2_nn_1n(uint64_t out,
+int mul2_n1_nn(uint64_t out,
                uint64_t in0,
                uint64_t in1,
                size_t n0,
@@ -928,6 +932,8 @@ int mul2_nn_1n(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == m0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int mul2_nm_n1(uint64_t out,
                uint64_t in0,
@@ -949,8 +955,10 @@ int mul2_nm_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == 1
+// out.dim[1] = n1, in0.dim[1] == 1,  in1.dim[1] == n1
 template <typename T>
-int mul2_n1_1m(uint64_t out,
+int mul2_n1_1n(uint64_t out,
                uint64_t in0,
                uint64_t in1,
                size_t n,
@@ -1159,52 +1167,62 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
     return mul_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
   }
 
-  // 2次元以下で配列の次元サイズを最大次元に合わせない旧呼び出しパターン用
   if (in0.dims == 2 && in1.dims == 1  &&  in0.dim_size[1] == in1.dim_size[0] ) {
-    return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+    // (Y0,Y1) * (Y1) => (Y0,Y1) * (1,Y1)
+    return mul2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
   }
 
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[1] == in1.dim_size[1]) {
       if (in0.dim_size[0] == 1) {
-	return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]) ;
+	// (1,Z1) * (Z0,Z1) => (Z0,Z1) * (1,Z1)
+	return mul2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]) ;
       }
       if (in1.dim_size[0] == 1) {
-	return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+	// (Y0,Y1) * (1,Y1)
+	return mul2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
       }
     }
     if (in0.dim_size[0] == in1.dim_size[0]) {
       if (in1.dim_size[1] == 1) {
+	// (Y0,Y1) * (Y0,1)
 	return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
       }
       if (in0.dim_size[1] == 1) {
+	// (Z0,1) * (Z0,Z1) => (Z0,Z1) * (Z0,1)
 	return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
       }
     }
     if ( in0.dim_size[0] == 1 && in1.dim_size[1] == 1 ) {
-      return mul2_n1_1m<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in0.dim_size[1]);
+      // (1,Y1) * (Z0,1) => (Z0,1) * (1,Y0)
+      return mul2_n1_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in0.dim_size[1]);
     }
     if ( in0.dim_size[1] == 1 && in1.dim_size[0] == 1 ) {
-      return mul2_n1_1m<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in1.dim_size[1]);
+      // (Y0,1) * (1,Z1)
+      return mul2_n1_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in1.dim_size[1]);
     }
     goto general_purpose_implementation;
   }
 
   if (CheckDimsAll(out, in0, in1, 3)) {
     if (in1.dim_size[0] == 1  &&  in1.dim_size[1] == 1  &&  in1.dim_size[2] == in0.dim_size[2]) {
-      return mul2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+      // (Y0,Y1,Y2) * (1,1,Y2) => (Y0*Y1,Y2) * (1,Y2)
+      return mul2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
-      return mul2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+      // (1,1,Z2) * (Z0,Z1,Z2) => (Z0*Z1,Z2) * (1,Z2)
+      return mul2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
 
   if (CheckDimsAll(out, in0, in1, 4)) {
     if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      // (Y0,Y1,Y2,Y3) * (1,Y1,1,1) => (Y0*Y1,Y2*Y3) * (Y1,1)
       return mul2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     if (in0.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in0.dim_size[2] == 1  &&  in0.dim_size[3] == 1 ) {
+      // (1,Z1,1,1) * (Z0,Z1,Z2,Z3) => (Z0*Z1,Z2*Z3) * (Z1,1)
       return mul2_nm_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in0.dim_size[1], in1.dim_size[2]*in1.dim_size[3]) ;
     }
     goto general_purpose_implementation;
