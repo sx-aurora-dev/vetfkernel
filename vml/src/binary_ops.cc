@@ -1311,6 +1311,7 @@ int vml::mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
 namespace {
 
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
 template <typename T>
 int div_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -1324,6 +1325,7 @@ int div_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int div_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -1337,6 +1339,7 @@ int div_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int div_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -1349,7 +1352,6 @@ int div_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   }
   return 0;
 }
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int div_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
@@ -1358,7 +1360,8 @@ inline int div_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems
 }
 #endif
 
-// nelems_in0 > nelems_in1
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int div2_nn_n1(uint64_t out, 
                uint64_t in0,
@@ -1377,7 +1380,6 @@ int div2_nn_n1(uint64_t out,
   }
   return 0;
 }
-
 #ifdef LIBVETF_INTRINSIC
 template <>
 inline int div2_nn_n1<float>(uint64_t out,
@@ -1414,6 +1416,7 @@ int vmldiv(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
 
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      // (Y0,Y1) / (Y0, 1)
       return div2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
     goto general_purpose_implementation;
@@ -1448,6 +1451,7 @@ int vml::div(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
 namespace {
 
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
 template <typename T>
 int divnonan_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -1462,6 +1466,7 @@ int divnonan_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
 {
@@ -1482,6 +1487,7 @@ int divnonan_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t nelems)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1496,6 +1502,8 @@ int divnonan_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int divnonan2_nn_n1(uint64_t out, 
                     uint64_t in0,
@@ -1541,6 +1549,7 @@ int divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
   } 
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      // (Y0,Y1) / (Y0, 1)
       return divnonan2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
     }
     goto general_purpose_implementation;
@@ -1575,6 +1584,7 @@ int vml::divnonan(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor co
 
 namespace {
 
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
 template <typename T>
 int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1589,6 +1599,7 @@ int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1603,6 +1614,7 @@ int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1664,6 +1676,7 @@ int vml::pow(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& 
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int sqdiff_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1679,6 +1692,7 @@ int sqdiff_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int sqdiff_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1694,7 +1708,8 @@ int sqdiff_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
-// nelems_in0 > nelems_in1
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
 template <typename T>
 int sqdiff2_nn_n1(uint64_t out,
                uint64_t in0,
@@ -1715,8 +1730,10 @@ int sqdiff2_nn_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == 1
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == n1
 template <typename T>
-int sqdiff2_nn_1n(uint64_t out,
+int sqdiff2_n1_nn(uint64_t out,
                uint64_t in0,
                uint64_t in1,
                size_t n0,
@@ -1735,6 +1752,8 @@ int sqdiff2_nn_1n(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == m0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == n1
 template <typename T>
 int sqdiff2_nm_n1(uint64_t out,
                   uint64_t in0,
@@ -1801,30 +1820,36 @@ int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[0] == in1.dim_size[0]) {
       if (in1.dim_size[1] == 1) {
+	// SQDIFF((Y0,Y1),(Y0, 1))
 	return sqdiff2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
       }
       if (in0.dim_size[1] == 1) {
+	// SQDIFF((Z0,1),(Z0, Z1)) => SQDIFF((Z0,Z1),(Z0, 1))
 	return sqdiff2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
       }
     }
     if (in0.dim_size[1] == in1.dim_size[1]  &&  in1.dim_size[0] == 1) {
-      return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+	// SQDIFF((Y0,Y1),(1, Y1))
+      return sqdiff2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
     }
     goto general_purpose_implementation;
   }
 
   if (CheckDimsAll(out, in0, in1, 3)) {
     if (in1.dim_size[0] == 1  &&  in1.dim_size[1] == 1  &&  in1.dim_size[2] == in0.dim_size[2]) {
-      return sqdiff2_nn_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+      // SQDIFF((Y0,Y1,Y2),(1, 1, Y2)) => SQDIFF((Y0*Y1,Y2),(1, Y2))
+      return sqdiff2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
-      return sqdiff2_nn_1n<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+      // SQDIFF((1,1,Z2),(Z0,Z1,Z2)) => SQDIFF((Z0*Z1,Z2),(1,Z2))
+      return sqdiff2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
 
   if (CheckDimsAll(out, in0, in1, 4)) {
     if (in1.dim_size[0] == 1  &&  (in0.dim_size[1] == in1.dim_size[1]) && in1.dim_size[2] == 1  &&  in1.dim_size[3] == 1 ) {
+      // SQDIFF((Y0,Y1,Y2,Y3),(1,Y1,1,1)) => SQDIFF((Y0*Y1,Y2*Y3),(Y1,1))
       return sqdiff2_nm_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[1], in0.dim_size[2]*in0.dim_size[3]) ;
     }
     goto general_purpose_implementation;
@@ -1871,6 +1896,7 @@ int vml::sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor cons
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int rsqrt_grad_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1929,6 +1955,7 @@ int vml::rsqrt_grad(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor 
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -1942,6 +1969,7 @@ int minimum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int minimum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2003,6 +2031,7 @@ int vml::minimum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2016,6 +2045,7 @@ int maximum_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int maximum_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2077,6 +2107,7 @@ int vml::maximum(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor con
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2090,6 +2121,7 @@ int equal_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2153,6 +2185,7 @@ int vml::equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2166,6 +2199,7 @@ int notEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int notEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2228,6 +2262,7 @@ int vml::notEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor co
 
 namespace {
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2241,6 +2276,7 @@ int less_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2254,6 +2290,7 @@ int less_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2267,6 +2304,7 @@ int lessEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2280,6 +2318,7 @@ int lessEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2319,6 +2358,7 @@ int greater_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2332,6 +2372,7 @@ int greater_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
 template <typename T>
 int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
@@ -2371,6 +2412,7 @@ int greaterEqual_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.nelems = n, in0.nelems = n, in1.nelems = n
 template <typename T>
 int greaterEqual_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
