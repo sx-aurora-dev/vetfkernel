@@ -374,6 +374,31 @@ int add2_nm_n1(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
+// out.dim[2] = n2, in0.dim[1] == n2, in1.dim[1] == n2
+template <typename T>
+int add3_nn_n1_nn(uint64_t out,
+                  uint64_t in0,
+                  uint64_t in1,
+                  size_t n0,
+                  size_t n1,
+		  size_t n2)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i0 = 0; i0 < n0; ++i0) {
+    for (size_t i1 = 0; i1 < n1; ++i1) {
+      for (size_t i2 = 0; i2 < n2; ++i2) {
+	po[((i0*n1)+i1)*n2+i2] = pi0[((i0*n1)+i1)*n2+i2] + pi1[i0*n2+i2];
+      }
+    }
+  }
+  return 0;
+}
+
 template <typename T>
 int add_8x16x64x8x8_8x16x64x8x8_1x16x64x1x1(
         vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -459,6 +484,13 @@ int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
 	// (1,1,Z2) + (Z0,Z1,Z2) => (1, Z2) + (Z0*Z1,Z2)
 	return add2_n1_nn<T>(X.addr, Z.addr, Y.addr, Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]) ;
       }
+      if (Z.dim_size[0] == 1
+	  && Y.dim_size[1] == Z.dim_size[1]
+	  && Y.dim_size[2] == Z.dim_size[2] )
+      {
+	// (Y0,Y1,Y2) + (1,Y1,Y2) => (Y0,Y1*Y2) + (1, Y1*Y2)
+	return add2_n1_nn<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1]*Y.dim_size[2]) ;
+      }
     }
     goto general_purpose_implementation;
   }
@@ -467,6 +499,36 @@ int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
     if (Z.dim_size[0] == 1  &&  (Y.dim_size[1] == Z.dim_size[1]) && Z.dim_size[2] == 1  &&  Z.dim_size[3] == 1 ) {
       // (Y0,Y1,Y2,Y3) + (1,Y1,1,1) => (Y0*Y1, Y2*Y3) + (Y1,1)
       return add2_nm_n1<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0]*Y.dim_size[1], Z.dim_size[1], Y.dim_size[2]*Y.dim_size[3]) ;
+    }
+    if (Z.dim_size[0] == 1  &&  (Y.dim_size[1] == Z.dim_size[1]) && Z.dim_size[2] == 1  &&  Z.dim_size[3] == 1 ) {
+      // (Y0,Y1,Y2,Y3) + (1,Y1,1,1) => (Y0*Y1, Y2*Y3) + (Y1,1)
+      return add2_nm_n1<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0]*Y.dim_size[1], Z.dim_size[1], Y.dim_size[2]*Y.dim_size[3]) ;
+    }
+    if (Z.dim_size[0] == 1 && Z.dim_size[1] == 1
+	&& (Y.dim_size[2] == Z.dim_size[2]) && (Y.dim_size[3] == Z.dim_size[3]) )
+    {
+      // (Y0,Y1,Y2,Y3) + (1,1,Y2,Y3) => (Y0*Y1, Y2*Y3) + (1,Y2*Y3)
+      return add2_n1_nn<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0]*Y.dim_size[1], Y.dim_size[2]*Y.dim_size[3]) ;
+    }
+    if (Y.dim_size[0] == 1 && Y.dim_size[1] == 1
+	&& (Y.dim_size[2] == Z.dim_size[2]) && (Y.dim_size[3] == Z.dim_size[3]) )
+    {
+      // (1,1,Z2,Z3) + (Z0,Z1,Z2,Z3) => (Z0*Z1, Z2*Z3) + (1,Z2*Z3)
+      return add2_n1_nn<T>(X.addr, Z.addr, Y.addr, Z.dim_size[0]*Z.dim_size[1], Z.dim_size[2]*Z.dim_size[3]) ;
+    }
+    if (Y.dim_size[0] == Z.dim_size[0]
+	&& Z.dim_size[1] == 1
+	&& (Y.dim_size[2] == Z.dim_size[2]) && (Y.dim_size[3] == Z.dim_size[3]) )
+    {
+      // (Y0,Y1,Y2,Y3) + (Y0,1,Y2,Y3) => (Y0,Y1,Y2*Y3) + (Y0,1,Y2*Y3)
+      return add3_nn_n1_nn<T>(X.addr, Y.addr, Z.addr, Y.dim_size[0], Y.dim_size[1], Y.dim_size[2]*Y.dim_size[3]) ;
+    }
+    if (Y.dim_size[0] == Z.dim_size[0]
+	&& Y.dim_size[1] == 1
+	&& (Y.dim_size[2] == Z.dim_size[2]) && (Y.dim_size[3] == Z.dim_size[3]) )
+    {
+      // (Z0,1,Z2,Z3) + (Z0,Z1,Z2,Z3) => (Z0,Z1,Z2*Z3) + (Z0,1,Z2*Z3)
+      return add3_nn_n1_nn<T>(X.addr, Z.addr, Y.addr, Z.dim_size[0], Z.dim_size[1], Z.dim_size[2]*Z.dim_size[3]) ;
     }
     goto general_purpose_implementation;
   }
@@ -755,6 +817,19 @@ int sub(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
     {
       // (Y0,Y1,Y2) - (Y0,1,Y2)
       return sub3_nn_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if ( in0.dim_size[0] == 1 && in0.dim_size[1] == 1
+  	 && in0.dim_size[2] == in1.dim_size[2] )
+    {
+      // (1,1,Z2) - (Z0,Z1,Z2) => (1,Z2) - (Z0*Z1,Z2)
+      return sub2_1n_nn<T>(out.addr, in0.addr, in1.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    if ( in0.dim_size[0] == in1.dim_size[0]
+	 && in0.dim_size[1] == in1.dim_size[1]
+  	 && in1.dim_size[2] == 1 )
+    {
+      // (Y0,Y1,Y2) - (Y0,Y1,1) => (Y0*Y1,Y2) - (Y0*Y1,1)
+      return sub2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
@@ -1213,6 +1288,16 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
       // (1,1,Z2) * (Z0,Z1,Z2) => (Z0*Z1,Z2) * (1,Z2)
       return mul2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
     }
+    if (in1.dim_size[0] == 1  &&  in1.dim_size[1] == 1  &&  in0.dim_size[2] == 1) {
+      // (Y0,Y1,1) * (1,1,Z2) => (Y0*Y1,1) * (1,Z2)
+      return mul2_n1_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[2]) ;
+    }
+    if (in1.dim_size[0] == in1.dim_size[0]
+	&&  in0.dim_size[1] == in1.dim_size[1]
+	&&  in1.dim_size[2] == 1) {
+      // (Y0,Y1,Y2) * (Y0,Y1,1) => (Y0*Y1,Y2) * (Y0*Y1,1)
+      return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+    }
     goto general_purpose_implementation;
   }
 
@@ -1418,6 +1503,17 @@ int vmldiv(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
     if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
       // (Y0,Y1) / (Y0, 1)
       return div2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 3)) {
+    if ( in0.dim_size[0] == in1.dim_size[0]
+	 && in0.dim_size[1] == in1.dim_size[1]
+	 && in1.dim_size[2] == 1 )
+    {
+      // (Y0,Y1,Y2) / (Y0,Y1,1) => (Y0*Y1,Y2) / (Y0*Y1,1)
+      return div2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
@@ -1843,6 +1939,12 @@ int sqdiff(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in
     if (in0.dim_size[0] == 1  &&  in0.dim_size[1] == 1  &&  in0.dim_size[2] == in1.dim_size[2]) {
       // SQDIFF((1,1,Z2),(Z0,Z1,Z2)) => SQDIFF((Z0*Z1,Z2),(1,Z2))
       return sqdiff2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    if (in1.dim_size[0] == in1.dim_size[0]
+	&&  in0.dim_size[1] == in1.dim_size[1]
+	&&  in1.dim_size[2] == 1) {
+      // SQDIFF((Y0,Y1,Y2),(Y0,Y1,1)) => SQDIFF((Y0*Y1,Y2),(Y0*Y1,1))
+      return sqdiff2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
