@@ -1271,6 +1271,10 @@ int op_MatMul(const void* args, size_t len)
       void*       pDataGradWeight  = reinterpret_cast<void*>(p->out);
       ret = vednnLinearBackwardWeight(inDim,outDim,nBatch, pDataIn, pDataGradOut, pDataGradWeight) ;
 #endif
+    } else if (p->transpose_a && p->transpose_b) {
+      assert(p->dim_size_a[0] == p->dim_size_b[1]);
+      ret = matmul<float, 'T', 'T'>(
+          p->out, p->a, p->b, p->dim_size_a[1], p->dim_size_b[0], p->dim_size_a[0]);
     }
   }
 
