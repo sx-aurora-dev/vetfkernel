@@ -2602,3 +2602,188 @@ int vml::greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tenso
 
   return 1;
 }
+
+// ----------------------------------------------------------------------
+// Xlogy
+// ----------------------------------------------------------------------
+
+namespace {
+
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
+template <typename T>
+int xlogy_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  T i0 = *reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = i0 * std::log(pi1[i]);
+  }
+
+  return 0;
+}
+
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
+template <typename T>
+int xlogy_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] * std::log(i1);
+  }
+
+  return 0;
+}
+
+// out.nelems = n, in0.nelems = n, in1.nelems = n
+template <typename T>
+int xlogy_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] * std::log(pi1[i]) ;
+  }
+
+  return 0;
+}
+
+template<typename T>
+int vmlxlogy(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
+  //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
+  //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
+  //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+
+  // TODO : impl other patterns
+  if (in0.nelems == 1) {
+    return xlogy_1n<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+  if (in1.nelems == 1) {
+    return xlogy_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+  if (IsSameSize(out, in0, in1)) {
+    return xlogy_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+ general_purpose_implementation:
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T y, T z) -> T { return y * std::log(z); });
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  
+  return 1;
+}
+
+} // namspace
+
+/// Element-wise xlogy.
+int vml::xlogy(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return ::vmlxlogy<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+  
+  return 1;
+}
+
+// ----------------------------------------------------------------------
+// Xlog1py
+// ----------------------------------------------------------------------
+
+namespace {
+
+// out.nelems = n, in0.nelems = 1, in1.nelems = n
+template <typename T>
+int xlog1py_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  T i0 = *reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = i0 * std::log1p(pi1[i]);
+  }
+
+  return 0;
+}
+
+// out.nelems = n, in0.nelems = n, in1.nelems = 1
+template <typename T>
+int xlog1py_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  T i1 = *reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] * std::log1p(i1);
+  }
+
+  return 0;
+}
+
+// out.nelems = n, in0.nelems = n, in1.nelems = n
+template <typename T>
+int xlog1py_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+  for (size_t i = 0; i < n; ++i) {
+    po[i] = pi0[i] * std::log1p(pi1[i]) ;
+  }
+
+  return 0;
+}
+
+template<typename T>
+int vmlxlog1py(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  //  printf("args.in0.dims = %ld\n", args.in0.dims) ;
+  //  for(int i=0; i<args.in0.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in0.dim_size[i]) ;
+  //  printf("args.in1.dims = %ld\n", args.in1.dims) ;
+  //  for(int i=0; i<args.in1.dims ; i++ ) printf(" [%d] = %ld\n", i, args.in1.dim_size[i]) ;
+
+  // TODO : impl other patterns
+  if (in0.nelems == 1) {
+    return xlog1py_1n<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+  if (in1.nelems == 1) {
+    return xlog1py_n1<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+  if (IsSameSize(out, in0, in1)) {
+    return xlog1py_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+ general_purpose_implementation:
+  if (IsSameDims(out, in0, in1)) {
+    return binop_dimN<T, T>(out, in0, in1,
+			    [](T y, T z) -> T { return y * std::log1p(z); });
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " parameter combination not supported on VE.";
+  
+  return 1;
+}
+
+} // namspace
+
+/// Element-wise xlog1py.
+int vml::xlog1py(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
+{
+  if (CheckTypesAll(out, in0, in1, DT_FLOAT)) {
+    return ::vmlxlog1py<float>(out, in0, in1);
+  }
+  LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
+  
+  return 1;
+}
+

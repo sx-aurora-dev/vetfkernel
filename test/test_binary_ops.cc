@@ -91,6 +91,8 @@ DEFINE_REF_BINOP(Less, y < z);
 DEFINE_REF_BINOP(LessEqual, y <= z);
 DEFINE_REF_BINOP(Greater, y > z);
 DEFINE_REF_BINOP(GreaterEqual, y >= z);
+DEFINE_REF_BINOP(Xlogy, y * std::log(z));
+DEFINE_REF_BINOP(Xlog1py, y * std::log1p(z));
 
 
 bool test_Add_01(TestParam const& param)
@@ -870,6 +872,16 @@ bool test_GreaterEqual_generic(TestParam const& param)
   return test_generic<bool, float>(param, ref_GreaterEqual, vml::greaterEqual);
 }
 
+bool test_Xlogy_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Xlogy, vml::xlogy);
+}
+
+bool test_Xlog1py_generic(TestParam const& param)
+{
+  return test_generic<float, float>(param, ref_Xlog1py, vml::xlog1py);
+}
+
 REGISTER_TEST( "Add_01", test_Add_01 );
 REGISTER_TEST( "Add_02", test_Add_02 );
 REGISTER_TEST( "Add_03", test_Add_03 );
@@ -919,3 +931,5 @@ REGISTER_TEST( "Less[generic]",             test_Less_generic         );
 REGISTER_TEST( "LessEqual[generic]",        test_LessEqual_generic    );
 REGISTER_TEST( "Greater[generic]",          test_Greater_generic      );
 REGISTER_TEST( "GreaterEqual[generic]",     test_GreaterEqual_generic );
+REGISTER_TEST( "Xlogy[generic]",            test_Xlogy_generic );
+REGISTER_TEST( "Xlog1py[generic]",          test_Xlog1py_generic );

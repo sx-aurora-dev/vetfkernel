@@ -93,3 +93,5 @@ DEFINE_BINARY_OP(Less, vml::less);
 DEFINE_BINARY_OP(LessEqual, vml::lessEqual);
 DEFINE_BINARY_OP(Greater, vml::greater);
 DEFINE_BINARY_OP(GreaterEqual, vml::greaterEqual);
+DEFINE_BINARY_OP(Xlogy, vml::xlogy);
+DEFINE_BINARY_OP(Xlog1py, vml::xlog1py);

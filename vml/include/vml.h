@@ -100,6 +100,8 @@ int less(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 int lessEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1);
 int greater(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1);
 int greaterEqual(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1);
+int xlogy(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1);
+int xlog1py(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1);
 
 int randomUniform(vml::Tensor const& t);
 int tile(vml::Tensor const& out, vml::Tensor const& in);
