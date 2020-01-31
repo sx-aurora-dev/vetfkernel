@@ -106,7 +106,7 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
 		if(n1<=VLEN){
 			if(n0<=VLEN){
 				float temp[VLEN];
-				;
+				
 				__vr vr_pin = _vel_vldu_vssl(4,pi1, n0);
 				__vr vr_div = _vel_vfdivs_vsvl(1.0f, vr_pin, n0);
 				_vel_vstu_vssl(vr_div,4,temp, n0);
@@ -147,7 +147,7 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
                                                 float dval2 = temp[ii-i+1];
                                                 float dval3 = temp[ii-i+2];
                                                 float dval4 = temp[ii-i+3];
-                                                ;
+                                                
                                                 for (size_t j = 0; j < n1; j+=VLEN) {
                                                         __vr vr_pin1 = _vel_vldu_vssl(4,pi0+(ii+0)*n1+j, n1);
                                                         __vr vr_pin2 = _vel_vldu_vssl(4,pi0+(ii+1)*n1+j, n1);
@@ -171,16 +171,16 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
 				float temp[VLEN];
 				for (size_t i = 0; i < n0; i+=VLEN) {
 					const int64_t vlen = n0-i < VLEN ? n0-i : VLEN;
-					;
+					
 					__vr vr_pin = _vel_vldu_vssl(4,pi1+i, vlen);
 					__vr vr_div = _vel_vfdivs_vsvl(1.0f, vr_pin, vlen);
 					_vel_vstu_vssl(vr_div,4,temp, vlen);
 
 					for (int ii = i ; ii < vlen+i; ii+=4) {
-						float dval1 = temp[ii+0];
-						float dval2 = temp[ii+1];
-						float dval3 = temp[ii+2];
-						float dval4 = temp[ii+3];
+						float dval1 = temp[ii-i+0];
+						float dval2 = temp[ii-i+1];
+						float dval3 = temp[ii-i+2];
+						float dval4 = temp[ii-i+3];
 						;
 						for (size_t j = 0; j < n1; j+=VLEN) {
 							__vr vr_pin1 = _vel_vldu_vssl(4,pi0+(ii+0)*n1+j, n1);
@@ -204,16 +204,16 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
 			float temp[VLEN];
 			for (size_t i = 0; i < n0; i+=VLEN) {
 				const int64_t vlen = n0-i < VLEN ? n0-i : VLEN;
-				;
+				
 				__vr vr_pin = _vel_vldu_vssl(4,pi1+i, vlen);
 				__vr vr_div = _vel_vfdivs_vsvl(1.0f, vr_pin, vlen);
 				_vel_vstu_vssl(vr_div,4,temp, vlen);
 
 				for (int ii = i ; ii < vlen+i; ii+=4) {
-					float dval1 = temp[ii+0];
-					float dval2 = temp[ii+1];
-					float dval3 = temp[ii+2];
-					float dval4 = temp[ii+3];
+					float dval1 = temp[ii-i+0];
+					float dval2 = temp[ii-i+1];
+					float dval3 = temp[ii-i+2];
+					float dval4 = temp[ii-i+3];
 					for (size_t j = 0; j < n1; j+=VLEN) {
 						const int64_t vlen1 = n1-j < VLEN ? n1-j : VLEN;
 						;
@@ -239,7 +239,7 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
 			float dval = 1.0f / pi1[i];
 			for (size_t j = 0; j < n1; j+=VLEN) {
 				const int64_t vlen = n1-j < VLEN ? n1-j : VLEN;
-				;
+				
 				__vr vr_pin = _vel_vldu_vssl(4,pi0+i*n1+j, vlen);
 				__vr vr_mul = _vel_vfmuls_vsvl(dval, vr_pin, vlen);
 				_vel_vstu_vssl(vr_mul,4,po+i*n1+j, vlen);
@@ -248,7 +248,7 @@ int div2_nn_n1_f32(uint64_t out, uint64_t in0, uint64_t in1, size_t n0, size_t n
 	}else{
 		for (size_t i = 0; i < n0; i+=VLEN) {
 			const int64_t vlen = n0-i < VLEN ? n0-i : VLEN;
-			;
+			
 			__vr vr_pi1 = _vel_vldu_vssl(4,pi1+i, vlen);
 			__vr dval = _vel_vfdivs_vsvl(1.0f,vr_pi1, vlen);
 			for (size_t j = 0; j < n1; j++) {
