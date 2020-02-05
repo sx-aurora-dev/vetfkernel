@@ -43,7 +43,27 @@ template<> void blas_gemm<float>(GEMM_ARGS(float)) { sgemm_(GEMM_REAL_ARGS); }
 //   = B[K x N] (RxC in RM) * A[M x K] (RxC in RM)
 //
 template<typename T, char TransA, char TransB>
-int matmul(uint64_t c, uint64_t a, uint64_t b, int M, int N, int K)
+int matmul_sequential(uint64_t c, uint64_t a, uint64_t b, int M, int N, int K)
+{
+  T* C = reinterpret_cast<T*>(c);
+  const T* A = reinterpret_cast<const T*>(a);
+  const T* B = reinterpret_cast<const T*>(b);
+
+  T alpha = T(1);
+  T beta = T(0);
+
+  char transa = TransA;
+  char transb = TransB;
+  int lda = TransA == 'N' ? K : M;
+  int ldb = TransB == 'N' ? N : K;
+
+  blas_gemm<T>(&transb, &transa, &N, &M, &K, &alpha, B, &ldb, A, &lda, &beta, C, &N);
+
+  return 0;
+}
+
+template<typename T, char TransA, char TransB>
+int matmul_parallel(uint64_t c, uint64_t a, uint64_t b, int M, int N, int K)
 {
   T* C = reinterpret_cast<T*>(c);
   const T* A = reinterpret_cast<const T*>(a);
@@ -125,23 +145,25 @@ int BatchMatMul(
   int (*mm)(uint64_t,uint64_t,uint64_t,int,int,int) ;
   int M, N, K ;
 
+  const bool use_parallel = out_batch < 8 ;
+
   if (!adj_x && !adj_y) {
-    mm = matmul<T,'N','N'> ;
+    mm = use_parallel ? matmul_parallel<T,'N','N'> : matmul_sequential<T,'N','N'> ;
     M = reshaped_x_dim_size[dims-2] ;
     N = reshaped_y_dim_size[dims-1] ;
     K = reshaped_x_dim_size[dims-1] ;
   } else if (!adj_x && adj_y)  {
-    mm = matmul<T,'N','T'> ;
+    mm = use_parallel ? matmul_parallel<T,'N','T'> : matmul_sequential<T,'N','T'> ;
     M = reshaped_x_dim_size[dims-2] ;
     N = reshaped_y_dim_size[dims-2] ;
     K = reshaped_x_dim_size[dims-1] ;
   } else if (adj_x && !adj_y)  {
-    mm = matmul<T,'T','N'> ;
+    mm = use_parallel ? matmul_parallel<T,'T','N'> : matmul_sequential<T,'T','N'> ;
     M = reshaped_x_dim_size[dims-1] ;
     N = reshaped_y_dim_size[dims-1] ;
     K = reshaped_x_dim_size[dims-2] ;
   } else {
-    mm = matmul<T,'T','T'> ;
+    mm = use_parallel ? matmul_parallel<T,'T','T'> : matmul_sequential<T,'T','T'> ;
     M = reshaped_x_dim_size[dims-1] ;
     N = reshaped_y_dim_size[dims-2] ;
     K = reshaped_x_dim_size[dims-2] ;
@@ -154,21 +176,42 @@ int BatchMatMul(
     stO[dim] = stO[dim+1] * out.dim_size[dim+1] ;
   }
 
-  for(int64_t io=0; io<out_batch; io++) {
-    int64_t tmp = io ;
-    int64_t ix = 0 ;
-    int64_t iy = 0 ;
+  if( use_parallel ) {
+    for(int64_t io=0; io<out_batch; io++) {
+      int64_t tmp = io ;
+      int64_t ix = 0 ;
+      int64_t iy = 0 ;
 
 #pragma _NEC novector
-    for(int64_t dim=0; dim < dims-2; dim++) {
-      int64_t tmp1 = tmp / stO[dim] ;
-      ix = (ix * reshaped_x_dim_size[dim]) + tmp1 % reshaped_x_dim_size[dim];
-      iy = (iy * reshaped_y_dim_size[dim]) + tmp1 % reshaped_y_dim_size[dim];
-      tmp = tmp % stO[dim];
-    }
+      for(int64_t dim=0; dim < dims-2; dim++) {
+        int64_t tmp1 = tmp / stO[dim] ;
+        ix = (ix * reshaped_x_dim_size[dim]) + tmp1 % reshaped_x_dim_size[dim];
+        iy = (iy * reshaped_y_dim_size[dim]) + tmp1 % reshaped_y_dim_size[dim];
+        tmp = tmp % stO[dim];
+      }
 
-    mm((uint64_t)(&po[io*out_matsize]), (uint64_t)(&px[ix*x_matsize]), (uint64_t)(&py[iy*y_matsize]), M, N, K) ;
-    LOG(LOG_TRACE) << __FUNCTION__ << " ix=" << ix << " iy=" << iy << " io=" << io;
+      mm((uint64_t)(&po[io*out_matsize]), (uint64_t)(&px[ix*x_matsize]), (uint64_t)(&py[iy*y_matsize]), M, N, K) ;
+//      LOG(LOG_TRACE) << __FUNCTION__ << " ix=" << ix << " iy=" << iy << " io=" << io;
+    }
+  }
+  else {
+#pragma omp parallel for
+    for(int64_t io=0; io<out_batch; io++) {
+      int64_t tmp = io ;
+      int64_t ix = 0 ;
+      int64_t iy = 0 ;
+
+#pragma _NEC novector
+      for(int64_t dim=0; dim < dims-2; dim++) {
+        int64_t tmp1 = tmp / stO[dim] ;
+        ix = (ix * reshaped_x_dim_size[dim]) + tmp1 % reshaped_x_dim_size[dim];
+        iy = (iy * reshaped_y_dim_size[dim]) + tmp1 % reshaped_y_dim_size[dim];
+        tmp = tmp % stO[dim];
+      }
+
+      mm((uint64_t)(&po[io*out_matsize]), (uint64_t)(&px[ix*x_matsize]), (uint64_t)(&py[iy*y_matsize]), M, N, K) ;
+//      LOG(LOG_TRACE) << __FUNCTION__ << " ix=" << ix << " iy=" << iy << " io=" << io;
+    }
   }
 
   return 0 ;
