@@ -77,4 +77,5 @@ REGISTER_UNARY_OP(Tanh, vml::tanh);
 REGISTER_UNARY_OP(Asinh, vml::asinh);
 REGISTER_UNARY_OP(Acosh, vml::acosh);
 REGISTER_UNARY_OP(Atanh, vml::atanh);
+REGISTER_UNARY_OP(Erf, vml::erf);
 

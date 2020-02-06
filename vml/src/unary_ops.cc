@@ -525,3 +525,20 @@ int op_atanh(Tout* po, Tin const* pi, size_t nelems)
 
 /// Atanh
 DEFINE_UNARY_OP(atanh, op_atanh);
+
+
+//
+// Erf
+//
+
+template<typename Tout, typename Tin>
+int op_erf(Tout* po, Tin const* pi, size_t nelems)
+{
+  for (int64_t i = 0; i < nelems; ++i) {
+    po[i] = std::erf(pi[i]) ;
+  }
+  return 0;
+}
+
+/// Erf
+DEFINE_UNARY_OP(erf, op_erf);

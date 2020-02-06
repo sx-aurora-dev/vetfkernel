@@ -82,6 +82,7 @@ int tanh(vml::Tensor const& out, vml::Tensor const& in);
 int asinh(vml::Tensor const& out, vml::Tensor const& in);
 int acosh(vml::Tensor const& out, vml::Tensor const& in);
 int atanh(vml::Tensor const& out, vml::Tensor const& in);
+int erf(vml::Tensor const& out, vml::Tensor const& in);
 
 // binary op
 int add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z);
