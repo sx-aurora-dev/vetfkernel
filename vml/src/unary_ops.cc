@@ -467,6 +467,8 @@ DEFINE_UNARY_OP(cosh, op_cosh);
 template<typename Tout, typename Tin>
 int op_tanh(Tout* po, Tin const* pi, size_t nelems)
 {
+  /* B/F is small, so use packed_vector  */
+#pragma _NEC packed_vector
   for (int64_t i = 0; i < nelems; ++i) {
     po[i] = std::tanh(pi[i]) ;
   }
