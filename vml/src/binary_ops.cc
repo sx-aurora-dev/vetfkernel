@@ -343,6 +343,7 @@ int add2_n1_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] + pi1[j];
@@ -389,6 +390,7 @@ int add3_nn_n1_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i0 = 0; i0 < n0; ++i0) {
     for (size_t i1 = 0; i1 < n1; ++i1) {
       for (size_t i2 = 0; i2 < n2; ++i2) {
@@ -641,6 +643,7 @@ int sub2_nn_n1(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] - pi1[i];
@@ -662,6 +665,7 @@ int sub2_n1_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] - pi1[j];
@@ -706,6 +710,7 @@ int sub2_1n_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[j] - pi1[i * n1 + j] ;
@@ -978,6 +983,7 @@ int mul2_nn_n1(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] * pi1[i];
@@ -999,6 +1005,7 @@ int mul2_n1_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] * pi1[j];
@@ -1458,6 +1465,7 @@ int div2_nn_n1(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       po[i * n1 + j] = pi0[i * n1 + j] / pi1[i];
@@ -1611,6 +1619,7 @@ int divnonan2_nn_n1(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     if( pi1[i] == T(0.) ) {
       for (size_t j = 0; j < n1; ++j) {
@@ -1688,8 +1697,16 @@ int pow_1n(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   T i0 = *reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = std::pow(i0, pi1[i]);
+  if( n >= 8 * 256 ) {
+#pragma omp parallel for
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(i0, pi1[i]);
+    }
+  }
+  else {
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(i0, pi1[i]);
+    }
   }
 
   return 0;
@@ -1703,8 +1720,16 @@ int pow_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   const T* pi0 = reinterpret_cast<const T*>(in0);
   T i1 = *reinterpret_cast<const T*>(in1);
 
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = std::pow(pi0[i], i1);
+  if( n >= 8 * 256 ) {
+#pragma omp parallel for
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(pi0[i], i1);
+    }
+  }
+  else {
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(pi0[i], i1);
+    }
   }
 
   return 0;
@@ -1718,8 +1743,16 @@ int pow_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
-  for (size_t i = 0; i < n; ++i) {
-    po[i] = std::pow(pi0[i], pi1[i]) ;
+  if( n >= 8 * 256 ) {
+#pragma omp parallel for
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(pi0[i], pi1[i]) ;
+    }
+  }
+  else {
+    for (size_t i = 0; i < n; ++i) {
+      po[i] = std::pow(pi0[i], pi1[i]) ;
+    }
   }
 
   return 0;
@@ -1817,6 +1850,7 @@ int sqdiff2_nn_n1(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       T diff = pi0[i * n1 + j] - pi1[i];
@@ -1839,6 +1873,7 @@ int sqdiff2_n1_nn(uint64_t out,
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+#pragma omp parallel for
   for (size_t i = 0; i < n0; ++i) {
     for (size_t j = 0; j < n1; ++j) {
       T diff = pi0[i * n1 + j] - pi1[j];
