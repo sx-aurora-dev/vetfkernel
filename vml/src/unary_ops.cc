@@ -534,6 +534,8 @@ DEFINE_UNARY_OP(atanh, op_atanh);
 template<typename Tout, typename Tin>
 int op_erf(Tout* po, Tin const* pi, size_t nelems)
 {
+  /* B/F is small, so use packed_vector  */
+#pragma _NEC packed_vector
   for (int64_t i = 0; i < nelems; ++i) {
     po[i] = std::erf(pi[i]) ;
   }
