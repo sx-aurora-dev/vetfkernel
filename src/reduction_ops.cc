@@ -18,6 +18,7 @@ REGISTER_KERNEL("Max", "op_Max");
 REGISTER_KERNEL("Sum", "op_Sum");
 REGISTER_KERNEL("Prod", "op_Prod");
 REGISTER_KERNEL("Mean", "op_Mean");
+REGISTER_KERNEL("All", "op_All");
 
 #define CHECK_ARG_LEN(l0, l1) \
     if ((l0) != (l1)) { \
@@ -30,6 +31,7 @@ int op_Max(const void* arg, size_t len);
 int op_Sum(const void* arg, size_t len);
 int op_Prod(const void* arg, size_t len);
 int op_Mean(const void* arg, size_t len);
+int op_All(const void* arg, size_t len);
 }
 
 
@@ -538,6 +540,127 @@ int op_Mean(const void* args, size_t len)
     }
 
     return vml::mean(out, in, axis);
+}
+
+
+//
+// All
+//
+
+namespace {
+
+int all_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    bool* po = reinterpret_cast<bool*>(out);
+    const bool* pi = reinterpret_cast<const bool*>(in);
+
+    for (size_t i = 0; i < dim0; ++i) {
+        bool s = true ;
+        for (size_t j = 0; j < dim1; ++j) {
+            s *= pi[i * dim1 + j];
+        }
+        po[i] = s;
+    }
+
+    return 0;
+}
+
+
+int all_d2a0(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
+{
+    bool* po = reinterpret_cast<bool*>(out);
+    const bool* pi = reinterpret_cast<const bool*>(in);
+
+    for (size_t j = 0; j < dim1; ++j) {
+        bool s = true ;
+        for (size_t i = 0; i < dim0; ++i) {
+            s = s && pi[i * dim1 + j];
+        }
+        po[j] = s;
+    }
+
+    return 0;
+}
+
+
+int all_d3a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
+{
+    bool* po = reinterpret_cast<bool*>(out);
+    const bool* pi = reinterpret_cast<const bool*>(in);
+
+    size_t dim12 = dim1 * dim2;
+
+    for (size_t i = 0; i < dim0; ++i) {
+        for (size_t k = 0; k < dim2; ++k) {
+            bool s = true ;
+            for (size_t j = 0; j < dim1; ++j) {
+                s = s && pi[i * dim12 + j * dim2 + k];
+            }
+            po[i * dim2 + k] = s;
+        }
+    }
+
+    return 0;
+}
+
+int all_d3a02(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t dim2)
+{
+    bool* po = reinterpret_cast<bool*>(out);
+    const bool* pi = reinterpret_cast<const bool*>(in);
+
+    size_t dim12 = dim1 * dim2;
+
+    for (size_t j = 0; j < dim1; ++j) {
+        bool s = true ;
+        for (size_t i = 0; i < dim0; ++i) {
+            for (size_t k = 0; k < dim2; ++k) {
+                s = s && pi[i * dim12 + j * dim2 + k];
+            }
+        }
+        po[j] = s;
+    }
+
+    return 0;
+}
+}
+
+int op_All(const void* args, size_t len)
+{
+    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
+
+    struct Args {
+        int dtype;
+        int ndims;
+        uint64_t in;
+        uint64_t out;
+        int64_t dim_size[3];
+        int axis;
+    } const* p;
+
+    CHECK_ARG_LEN(len, sizeof(Args));
+    p = reinterpret_cast<const Args*>(args);
+
+    int ret = 1;
+
+    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype << " ndims=" << p->ndims << " axis=" << p->axis;
+
+    if (p->dtype == DT_BOOL) {
+        if (p->ndims == 2 && p->axis == 1) {
+            ret = all_d2a1(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 2 && p->axis == 0) {
+            ret = all_d2a0(p->out, p->in, p->dim_size[0], p->dim_size[1]);
+        }
+        if (p->ndims == 3 && p->axis == 1) {
+            ret = all_d3a1(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+        if (p->ndims == 3 && p->axis == 0) {
+            ret = all_d3a02(p->out, p->in, p->dim_size[0], p->dim_size[1], p->dim_size[2]);
+        }
+    }
+
+    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
+    return ret;
 }
 
 
