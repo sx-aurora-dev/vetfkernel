@@ -180,6 +180,56 @@ int tile_dim5(vml::Tensor const& X, vml::Tensor const& Y)
     return 0;
 }
 
+template<typename T>
+int tile_handle(vml::Tensor const& X, vml::Tensor const& Y)
+{
+    int rc = 1 ;
+
+    const T* pi = reinterpret_cast<const T*>(Y.addr);
+    T* po = reinterpret_cast<T*>(X.addr);
+    if (Y.nelems == 1) {
+	for (size_t i = 0; i < X.nelems; ++i) {
+	    po[i] = pi[0];
+	}
+	rc = 0 ;
+    } else if (Y.dims == 2 && X.dims == 2
+	       && Y.dim_size[0] == X.dim_size[0]
+	       && Y.dim_size[1] == 1) {
+	for (size_t i = 0; i < Y.dim_size[0]; ++i) {
+	    for (size_t j = 0; j < X.dim_size[1]; ++j) {
+		po[i * X.dim_size[1] + j] = pi[i];
+	    }
+	}
+	rc = 0 ;
+    } else if (Y.dims == 2 && X.dims == 2
+	       && Y.dim_size[1] == X.dim_size[1]
+	       && Y.dim_size[0] == 1) {
+	for (size_t i = 0; i < X.dim_size[0]; ++i) {
+	    for (size_t j = 0; j < X.dim_size[1]; ++j) {
+		po[i * X.dim_size[1] + j] = pi[j];
+	    }
+	}
+	rc = 0 ;
+    } else if ( Y.dims == X.dims && Y.dims == 3 ) {
+	rc = tile_dim3<T>(X, Y) ;
+    } else if ( Y.dims == X.dims && Y.dims == 4 ) {
+	if( Y.dim_size[2]==1 && Y.dim_size[3]==1 ) {
+	    rc = tile_dim4_11<T>(X, Y) ;
+	}
+	else {
+	    rc = tile_dim4<T>(X, Y) ;
+	}
+    } else if ( Y.dims == X.dims && Y.dims == 5 ) {
+	if( Y.dim_size[3]==1 && Y.dim_size[4]==1 ) {
+	    rc = tile_dim5_11<T>(X, Y) ;
+	}
+	else {
+	    rc = tile_dim5<T>(X, Y) ;
+	}
+    }
+
+    return rc ;
+}
 } // namespace
 
 int vml::tile(vml::Tensor const& X, vml::Tensor const& Y)
@@ -189,48 +239,16 @@ int vml::tile(vml::Tensor const& X, vml::Tensor const& Y)
     int rc = 1 ;
 
     if (Y.dtype == DT_FLOAT && X.dtype == DT_FLOAT) {
-        const float* pi = reinterpret_cast<const float*>(Y.addr);
-        float* po = reinterpret_cast<float*>(X.addr);
-        if (Y.nelems == 1) {
-            for (size_t i = 0; i < X.nelems; ++i) {
-                po[i] = pi[0];
-            }
-            rc = 0 ;
-        } else if (Y.dims == 2 && X.dims == 2
-                   && Y.dim_size[0] == X.dim_size[0]
-                   && Y.dim_size[1] == 1) {
-            for (size_t i = 0; i < Y.dim_size[0]; ++i) {
-                for (size_t j = 0; j < X.dim_size[1]; ++j) {
-                    po[i * X.dim_size[1] + j] = pi[i];
-                }
-            }
-            rc = 0 ;
-        } else if (Y.dims == 2 && X.dims == 2
-                   && Y.dim_size[1] == X.dim_size[1]
-                   && Y.dim_size[0] == 1) {
-            for (size_t i = 0; i < X.dim_size[0]; ++i) {
-                for (size_t j = 0; j < X.dim_size[1]; ++j) {
-                    po[i * X.dim_size[1] + j] = pi[j];
-                }
-            }
-            rc = 0 ;
-        } else if ( Y.dims == X.dims && Y.dims == 3 ) {
-            rc = tile_dim3<float>(X, Y) ;
-        } else if ( Y.dims == X.dims && Y.dims == 4 ) {
-            if( Y.dim_size[2]==1 && Y.dim_size[3]==1 ) {
-                rc = tile_dim4_11<float>(X, Y) ;
-            }
-            else {
-                rc = tile_dim4<float>(X, Y) ;
-            }
-        } else if ( Y.dims == X.dims && Y.dims == 5 ) {
-            if( Y.dim_size[3]==1 && Y.dim_size[4]==1 ) {
-                rc = tile_dim5_11<float>(X, Y) ;
-            }
-            else {
-                rc = tile_dim5<float>(X, Y) ;
-            }
-        }
+      rc = tile_handle<float>(X,Y) ;
+    }
+    else if (Y.dtype == DT_INT32 && X.dtype == DT_INT32) {
+      rc = tile_handle<int32_t>(X,Y) ;
+    }
+    else if (Y.dtype == DT_INT64 && X.dtype == DT_INT64) {
+      rc = tile_handle<int64_t>(X,Y) ;
+    }
+    else if (Y.dtype == DT_BOOL && X.dtype == DT_BOOL) {
+      rc = tile_handle<bool>(X,Y) ;
     }
 
     return rc;
