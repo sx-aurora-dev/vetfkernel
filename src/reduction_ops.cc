@@ -40,18 +40,70 @@ int op_All(const void* arg, size_t len);
 //
 
 template <typename T>
+void max_d2a1_v0(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t ost0)
+{
+  T* po = reinterpret_cast<T*>(out)  ;
+  const T* pi = reinterpret_cast<const T*>(in);
+
+  T s[256] ;
+#pragma _NEC vreg(s)
+
+  for (size_t i0 = 0; i0 < dim0; i0+=256) {
+    const size_t ilen = dim0-i0 < 256 ? dim0-i0 : 256 ;
+
+    for(size_t i1=0; i1<ilen; ++i1) s[i1] = pi[(ost0+i0+i1) * dim1 ] ;
+
+    for (size_t j = 0; j < dim1; ++j) {
+      for(size_t i1=0; i1<ilen; ++i1) {
+	const T tmp = pi[(ost0+i0+i1) * dim1 + j] ;
+	if( s[i1] < tmp )  s[i1] = tmp ;
+      }
+    }
+    for(size_t i1=0; i1<ilen; ++i1) po[ost0+i0+i1] = s[i1] ;
+  }
+}
+
+template <typename T>
+void max_d2a1_v1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t ost0)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi = reinterpret_cast<const T*>(in);
+
+  for (size_t i = 0; i < dim0; ++i) {
+      T s = pi[(ost0+i) * dim1];
+      for (size_t j = 0; j < dim1; ++j) {
+	  const T tmp = pi[(ost0+i) * dim1 + j] ;
+	  if( s < tmp ) s = tmp ;
+      }
+      po[ost0+i] = s;
+  }
+}
+
+template <typename T>
 int max_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 {
     T* po = reinterpret_cast<T*>(out);
     const T* pi = reinterpret_cast<const T*>(in);
 
-    for (size_t i = 0; i < dim0; ++i) {
-        T s = pi[i * dim1];
-        for (size_t j = 0; j < dim1; ++j) {
-            T tmp = pi[i * dim1 + j];
-            if(tmp > s) s = tmp;
-        }
-        po[i] = s;
+#pragma omp parallel
+    {
+      size_t nthreads = omp_get_num_threads() ;
+      size_t threadid = omp_get_thread_num() ;
+
+      size_t chunkSize = dim0 / nthreads ;
+      size_t remain    = dim0 % nthreads ;
+
+      size_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+      size_t nChunk     = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+      if( nChunk > 0 ) {
+	if ( dim1 >= 1024 || dim1 > 3*nChunk ) {
+	  max_d2a1_v1<T>(out, in, nChunk, dim1, chunkBegin) ;
+	}
+	else {
+	  max_d2a1_v0<T>(out, in, nChunk, dim1, chunkBegin) ;
+	}
+      }
     }
 
     return 0;
@@ -181,18 +233,70 @@ int op_Max(const void* args, size_t len)
 //
 
 namespace {
+
+template <typename T>
+void sum_d2a1_v0(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t ost0)
+{
+  T* po = reinterpret_cast<T*>(out)  ;
+  const T* pi = reinterpret_cast<const T*>(in);
+
+  T s[256] ;
+#pragma _NEC vreg(s)
+
+  for (size_t i0 = 0; i0 < dim0; i0+=256) {
+    const size_t ilen = dim0-i0 < 256 ? dim0-i0 : 256 ;
+
+    for(size_t i1=0; i1<ilen; ++i1) s[i1] = T(0) ;
+
+    for (size_t j = 0; j < dim1; ++j) {
+      for(size_t i1=0; i1<ilen; ++i1) {
+	s[i1] += pi[(ost0+i0+i1) * dim1 + j];
+      }
+    }
+    for(size_t i1=0; i1<ilen; ++i1) po[ost0+i0+i1] = s[i1] ;
+  }
+}
+
+template <typename T>
+void sum_d2a1_v1(uint64_t out, uint64_t in, size_t dim0, size_t dim1, size_t ost0)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi = reinterpret_cast<const T*>(in);
+
+  for (size_t i = 0; i < dim0; ++i) {
+      T s = T(0);
+      for (size_t j = 0; j < dim1; ++j) {
+	  s += pi[(ost0+i) * dim1 + j];
+      }
+      po[ost0+i] = s;
+  }
+}
+
 template <typename T>
 int sum_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
 {
     T* po = reinterpret_cast<T*>(out);
     const T* pi = reinterpret_cast<const T*>(in);
 
-    for (size_t i = 0; i < dim0; ++i) {
-        T s = T(0);
-        for (size_t j = 0; j < dim1; ++j) {
-            s += pi[i * dim1 + j];
-        }
-        po[i] = s;
+#pragma omp parallel
+    {
+      size_t nthreads = omp_get_num_threads() ;
+      size_t threadid = omp_get_thread_num() ;
+
+      size_t chunkSize = dim0 / nthreads ;
+      size_t remain    = dim0 % nthreads ;
+
+      size_t chunkBegin = chunkSize * threadid + ( threadid < remain ? threadid : remain ) ;
+      size_t nChunk     = chunkSize + ( threadid < remain ? 1 : 0 ) ;
+
+      if( nChunk > 0 ) {
+	if ( dim1 >= 1024 || dim1 > 3*nChunk ) {
+	  sum_d2a1_v1<T>(out, in, nChunk, dim1, chunkBegin) ;
+	}
+	else {
+	  sum_d2a1_v0<T>(out, in, nChunk, dim1, chunkBegin) ;
+	}
+      }
     }
 
     return 0;
