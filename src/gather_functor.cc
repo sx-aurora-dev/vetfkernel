@@ -96,6 +96,26 @@ int op_Gather(const void* args, size_t len)
                                      p->src_ptr, p->idx_ptr, p->dst_ptr) ;
     }
   }
+  else if (p->dtype == DT_INT32) {
+    if ( p->idxtype == DT_INT32 ) {
+      ret = gather<int32_t, int32_t> (p->outer_size, p->gather_dim_size, p->inner_size, p->nindex,
+                                     p->src_ptr, p->idx_ptr, p->dst_ptr) ;
+    }
+    else if ( p->idxtype == DT_INT64 ) {
+      ret = gather<int32_t, int64_t> (p->outer_size, p->gather_dim_size, p->inner_size, p->nindex,
+                                     p->src_ptr, p->idx_ptr, p->dst_ptr) ;
+    }
+  }
+  else if (p->dtype == DT_INT64) {
+    if ( p->idxtype == DT_INT32 ) {
+      ret = gather<int64_t, int32_t> (p->outer_size, p->gather_dim_size, p->inner_size, p->nindex,
+                                     p->src_ptr, p->idx_ptr, p->dst_ptr) ;
+    }
+    else if ( p->idxtype == DT_INT64 ) {
+      ret = gather<int64_t, int64_t> (p->outer_size, p->gather_dim_size, p->inner_size, p->nindex,
+                                     p->src_ptr, p->idx_ptr, p->dst_ptr) ;
+    }
+  }
 
   LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
   return ret;
