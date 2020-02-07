@@ -1059,6 +1059,32 @@ int mul2_n1_1n(uint64_t out,
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
+// out.dim[2] = n2, in0.dim[1] == n2, in1.dim[1] == n2
+template <typename T>
+int mul3_nn_n1_nn(uint64_t out,
+                  uint64_t in0,
+                  uint64_t in1,
+                  size_t n0,
+                  size_t n1,
+		  size_t n2)
+{
+  T* po = reinterpret_cast<T*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i0 = 0; i0 < n0; ++i0) {
+    for (size_t i1 = 0; i1 < n1; ++i1) {
+      for (size_t i2 = 0; i2 < n2; ++i2) {
+	po[((i0*n1)+i1)*n2+i2] = pi0[((i0*n1)+i1)*n2+i2] * pi1[i0*n2+i2];
+      }
+    }
+  }
+  return 0;
+}
+
 
 template <typename T, int M, int N>
 int mul_MxN_1xN_MxN(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
@@ -1304,6 +1330,18 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 	&&  in1.dim_size[2] == 1) {
       // (Y0,Y1,Y2) * (Y0,Y1,1) => (Y0*Y1,Y2) * (Y0*Y1,1)
       return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if (in1.dim_size[0] == in1.dim_size[0]
+	&&  in0.dim_size[1] == in1.dim_size[1]
+	&&  in0.dim_size[2] == 1) {
+      // (Z0,Z1,1) * (Z0,Z1,Z2) => (Z0*Z1,Z2) * (Z0*Z1,1)
+      return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    if (in1.dim_size[0] == in1.dim_size[0]
+	&&  in0.dim_size[1] == 1
+	&&  in0.dim_size[2] == in1.dim_size[2] ) {
+      // (Z0,1,Z2) * (Z0,Z1,Z2) => (Z0,Z1,Z2) * (Z0,1,Z2)
+      return mul3_nn_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0],in1.dim_size[1], in1.dim_size[2]) ;
     }
     goto general_purpose_implementation;
   }
