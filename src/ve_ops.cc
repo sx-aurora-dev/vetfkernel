@@ -544,13 +544,11 @@ int Concat2D(const VEOpArgs& args)
     if (dtype == DT_FLOAT) {
         ret = concat2d<float>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
-#if 0 // do int32 type's concat in CPU.
-    else if (dtype == DT_INT32) {
-        ret = concat2d<int32_t>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
-    }
-#endif
     else if (dtype == DT_DOUBLE) {
         ret = concat2d<double>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
+    }
+    else if (dtype == DT_BOOL) {
+        ret = concat2d<bool>(n_input, dim0, output_ptr, input_ptrs, dim1_offset ) ;
     }
 
     return ret;
