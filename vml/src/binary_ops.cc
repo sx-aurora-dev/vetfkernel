@@ -303,7 +303,23 @@ int add_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <>
 int add_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
-  return add_n1_f32(out,in0,in1,n) ;
+  if (n > 1024 * 1024) { // Tekito
+#pragma omp parallel
+    {
+      // TODO: align chunk for pack
+      int t = omp_get_thread_num();
+      int nt = omp_get_num_threads();
+      int64_t chunk = (n + nt - 1) / nt;
+      uint64_t d = chunk * t * sizeof(float);
+      if (chunk * (t + 1) > n)
+        chunk = n - chunk * t;
+      if (chunk > 0)
+	add_n1_f32(out + d, in0 + d, in1, chunk);
+    }
+    return 0;
+  } else {
+    return add_n1_f32(out,in0,in1,n) ;
+  }
 }
 #endif
 
@@ -326,7 +342,23 @@ int add_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <>
 inline int add_nn<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
-  return add_nn_f32(out,in0,in1,n) ;
+  if (n > 1024 * 1024) { // Tekito
+#pragma omp parallel
+    {
+      // TODO: align chunk for pack
+      int t = omp_get_thread_num();
+      int nt = omp_get_num_threads();
+      int64_t chunk = (n + nt - 1) / nt;
+      uint64_t d = chunk * t * sizeof(float);
+      if (chunk * (t + 1) > n)
+        chunk = n - chunk * t;
+      if (chunk > 0)
+	add_nn_f32(out + d, in0 + d, in1 + d, chunk);
+    }
+    return 0;
+  } else {
+    return add_nn_f32(out,in0,in1,n) ;
+  }
 }
 #endif
 
@@ -928,7 +960,23 @@ int mul_n1(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 template <>
 inline int mul_n1<float>(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
 {
-  return mul_n1_f32(out, in0, in1, n) ;
+  if (n > 1024 * 1024) { // Tekito
+#pragma omp parallel
+    {
+      // TODO: align chunk for pack
+      int t = omp_get_thread_num();
+      int nt = omp_get_num_threads();
+      int64_t chunk = (n + nt - 1) / nt;
+      uint64_t d = chunk * t * sizeof(float);
+      if (chunk * (t + 1) > n)
+        chunk = n - chunk * t;
+      if (chunk > 0)
+	mul_n1_f32(out + d, in0 + d, in1, chunk);
+    }
+    return 0;
+  } else {
+    return mul_n1_f32(out, in0, in1, n) ;
+  }
 }
 #endif
 
@@ -1519,7 +1567,19 @@ inline int div2_nn_n1<float>(uint64_t out,
                              size_t n0,
                              size_t n1)
 {
-  return div2_nn_n1_f32(out, in0, in1, n0, n1) ;
+#pragma omp parallel
+  {
+    // TODO: align chunk for pack
+    int t = omp_get_thread_num();
+    int nt = omp_get_num_threads();
+    int64_t chunk = (n0 + nt - 1) / nt;
+    uint64_t d = chunk * t * sizeof(float);
+    if (chunk * (t + 1) > n0)
+      chunk = n0 - chunk * t;
+    if (chunk > 0)
+      div2_nn_n1_f32(out + d * n1, in0 + d * n1, in1 + d, chunk, n1);
+  }
+  return 0 ;
 }
 #endif
 
