@@ -97,7 +97,7 @@ int max_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
       size_t nChunk     = chunkSize + ( threadid < remain ? 1 : 0 ) ;
 
       if( nChunk > 0 ) {
-	if ( dim1 >= 1024 || dim1 > 3*nChunk ) {
+	if ( dim1 > 256 || dim1 > nChunk ) {
 	  max_d2a1_v1<T>(out, in, nChunk, dim1, chunkBegin) ;
 	}
 	else {
@@ -290,7 +290,7 @@ int sum_d2a1(uint64_t out, uint64_t in, size_t dim0, size_t dim1)
       size_t nChunk     = chunkSize + ( threadid < remain ? 1 : 0 ) ;
 
       if( nChunk > 0 ) {
-	if ( dim1 >= 1024 || dim1 > 3*nChunk ) {
+	if ( dim1 > 256 || dim1 > nChunk ) {
 	  sum_d2a1_v1<T>(out, in, nChunk, dim1, chunkBegin) ;
 	}
 	else {
