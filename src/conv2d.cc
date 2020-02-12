@@ -1,242 +1,233 @@
+#undef NDEBUG
+
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
 #include <cassert>
+#include <vector>
 
 #include <stdlib.h>
 
 #include <vednn.h>
 
 #include "kernel.h"
-#include <vml.h>
-#include <vector>
+#include "ve_ops_common.h"
+#include "vml.h"
 #include "vml/log.h"
 #include "vml/types.h"
 
-#define USE_VML
-
-#ifndef USE_VML
 #include "vml/profile.h"
-#endif
 
 //#define _DEBUG
 
-REGISTER_KERNEL("Conv2D", "conv2d");
+namespace {
 
-extern "C" {
-    int conv2d(const void* arg, size_t len);
-}
+  struct TensorParam {
+    int w, h, c, n;
+  };
 
-#if 0
-// data layout must be compatible with vml::Tensor
-struct Tensor {
-  int32_t dtype;
-  uint64_t addr;
-  int32_t dims;
-  int64_t nelems;
-  int64_t dim_size[4];
-} __attribute__((__packed__));
-#endif
+int op_Conv2d(VEOpArgs const& args) {
 
-struct TensorParam {
-    int w,h,c,n ;
-};
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
+	
+  int ret = 1;
 
-struct ConvParam {
-    uint64_t in;
-    uint64_t filter;
-    uint64_t out;
-    TensorParam in_param;
-    TensorParam filter_param;
-    TensorParam out_param;
+  // get args
+  uint64_t input           = *args.arg<uint64_t>(0);
+  uint64_t filter          = *args.arg<uint64_t>(1);
+  uint64_t output          = *args.arg<uint64_t>(2);
+  TensorParam in_param     = *args.arg<TensorParam>(3);
+  TensorParam filter_param = *args.arg<TensorParam>(4);
+  TensorParam out_param    = *args.arg<TensorParam>(5);
 
-    int row_stride;
-    int col_stride;
-    int row_dilation;
-    int col_dilation;
-    int row_padding;
-    int col_padding;
+  uint64_t temp_in         = *args.arg<uint64_t>(6);
+  uint64_t temp_filter     = *args.arg<uint64_t>(7);
+  uint64_t temp_out        = *args.arg<uint64_t>(8);
+  
+  int row_stride           = *args.arg<int>(9);
+  int col_stride           = *args.arg<int>(10);
+  int row_dilation         = *args.arg<int>(11);
+  int col_dilation         = *args.arg<int>(12);
+  int row_padding          = *args.arg<int>(13);
+  int col_padding          = *args.arg<int>(14);
 
-    int data_format;
-    int data_type;
-};
-
-int conv2d(const void* arg, size_t len)
-{
-    LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
-
-#ifdef USE_VML
-    // FIXME: use VEOpArgs
-#ifdef _DEBUG
-    fprintf(stderr, "[start]conv2d\n");
-#endif
-    assert(len == sizeof(ConvParam));
-    const ConvParam& p = *(ConvParam*)arg;
-
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
+  int data_format          = *args.arg<int>(15);
+  int data_type            = *args.arg<int>(16);
 
 #ifdef _DEBUG
-    fprintf(stderr, "conv2d: data_format=%d data_type=%d\n", p.data_format, p.data_type);
-    // assert(p.data_type   == 1 ) ; // float
-    // assert(p.data_format == 1 ) ; // NHWC
+#define TVALUE(TENSOR)		\
+  {									\
+    LOG(LOG_PARAM) << "  --- " #TENSOR " = " << std::hex << (TENSOR);	\
+    LOG(LOG_PARAM) << "  ---       .dtype  = " << (TENSOR)->dtype;	\
+    LOG(LOG_PARAM) << "  ---       .addr   = "			\
+                   << std::hex << (TENSOR)->addr;			\
+    LOG(LOG_PARAM) << "  ---       .dims   = " << (TENSOR)->dims;	\
+    LOG(LOG_PARAM) << "  ---       .nelems = " << (TENSOR)->nelems;	\
+    std::stringstream ss;						\
+    ss <<  "  ---       .shape  = ";					\
+    for (int i = 0; i < (TENSOR)->dims; i++) {			\
+      ss << (i==0?"(":",") << (TENSOR)->dim_size[i];			\
+    }									\
+    ss << ")";							\
+    LOG(LOG_PARAM) << ss.str();					\
+  }
 
-    fprintf(stderr, "conv2d: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.in_param.n, p.in_param.c, p.in_param.h, p.in_param.w ) ;
-    fprintf(stderr, "conv2d: outnput (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.out_param.n, p.out_param.c, p.out_param.h, p.out_param.w ) ;
-    fprintf(stderr, "conv2d: filter  (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.filter_param.n, p.filter_param.c, p.filter_param.h, p.filter_param.w ) ;
+  // dump param info
+  LOG(LOG_PARAM) << "  --- input         = "
+                 << std::hex << input << std::dec;                // arg(0)
+  LOG(LOG_PARAM) << "  --- filter        = "
+                 << std::hex << filter << std::dec;               // arg(1)
+  LOG(LOG_PARAM) << "  --- output        = "
+                 << std::hex << output << std::dec;               // arg(2)
 
-    fprintf(stderr, "conv2d: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
-            p.col_stride,   p.row_stride,
-            p.col_dilation, p.row_dilation,
-            p.col_padding,   p.row_padding);
+  LOG(LOG_PARAM) << "  --- temp_in       = "
+                 << std::hex << temp_in << std::dec;              // arg(6)
+  LOG(LOG_PARAM) << "  --- temp_filter   = "
+                 << std::hex << temp_filter << std::dec;          // arg(7)
+  LOG(LOG_PARAM) << "  --- temp_out      = "
+                 << std::hex << temp_out << std::dec;             // arg(8)
+
+  LOG(LOG_PARAM) << "  --- row_stride    = " << row_stride;       // arg(9)
+  LOG(LOG_PARAM) << "  --- col_stride    = " << col_stride;       // arg(10)
+  LOG(LOG_PARAM) << "  --- row_dilation  = " << row_dilation;     // arg(11)
+  LOG(LOG_PARAM) << "  --- col_dilation  = " << col_dilation;     // arg(12)
+  LOG(LOG_PARAM) << "  --- row_padding   = " << row_padding;      // arg(13)
+  LOG(LOG_PARAM) << "  --- col_padding   = " << col_padding;      // arg(14)
+
+  LOG(LOG_PARAM) << "  --- data_format   = "
+		 << (data_format==FORMAT_NHWC ? "NHWC" : "NCHW"); // arg(15)
+  LOG(LOG_PARAM) << "  --- data_type     = " << data_type;        // arg(16)
+
 #endif
 
-    vml::TensorDesc<4> in;
-    vml::TensorDesc<4> filter;
-    vml::TensorDesc<4> out;
-    std::vector<int> params(7);
+  // call vml
+  //   prepare args
+  vml::TensorDesc<4> v_in;
+  vml::TensorDesc<4> v_filter;
+  vml::TensorDesc<4> v_out;
+  std::vector<int> v_params(7);
 
 #define COPY(t, ptr, param) \
-    t.dtype = p.data_type; \
-    t.addr = ptr; \
-    t.dims = 4; \
-    t.dim_size[0] = param.n; \
-    t.dim_size[1] = param.c; \
-    t.dim_size[2] = param.h; \
-    t.dim_size[3] = param.w;
+  t.dtype = data_type;	    \
+  t.addr = ptr;		     \
+  t.dims = 4;		     \
+  t.dim_size[0] = param.n;   \
+  t.dim_size[1] = param.c;   \
+  t.dim_size[2] = param.h;   \
+  t.dim_size[3] = param.w;
 
-    COPY(in, p.in, p.in_param);
-    COPY(filter, p.filter, p.filter_param);
-    COPY(out, p.out, p.out_param);
-    params[0] = p.col_stride;
-    params[1] = p.row_stride;
-    params[2] = p.col_dilation;
-    params[3] = p.row_dilation;
-    params[4] = p.col_padding;
-    params[5] = p.row_padding;
-    params[6] = p.data_format;
+  // if format is NHWC, transform indata to NCHW
+  if (data_format == FORMAT_NHWC){
+    float * transformed_in  = reinterpret_cast<float*>(temp_in);
+    float * transformed_out = reinterpret_cast<float*>(temp_out);
+    float * org_in          = reinterpret_cast<float*>(input);
+    if( in_param.n > 1 || in_param.c > 1 ) {
+      const int N = in_param.n ;
+      const int C = in_param.c ;
+      const int H = in_param.h ;
+      const int W = in_param.w ;
+      LOG(LOG_TRACE) << __FUNCTION__ << ": transform (in)";
 
-    return vml::conv2d(in, filter, out, params);
-#else // USE_VML
-    PROF_BEGIN(conv2d);
-
-#ifdef _DEBUG
-    fprintf(stderr, "[start]conv2d\n");
-#endif
-    assert(len == sizeof(ConvParam));
-    const ConvParam& p = *(ConvParam*)arg;
-
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
-
-#ifdef _DEBUG
-    fprintf(stderr, "conv2d: data_format=%d data_type=%d\n", p.data_format, p.data_type);
-    // assert(p.data_type   == 1 ) ; // float
-    // assert(p.data_format == 1 ) ; // NHWC
-
-    fprintf(stderr, "conv2d: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.in_param.n, p.in_param.c, p.in_param.h, p.in_param.w ) ;
-    fprintf(stderr, "conv2d: outnput (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.out_param.n, p.out_param.c, p.out_param.h, p.out_param.w ) ;
-    fprintf(stderr, "conv2d: filter  (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.filter_param.n, p.filter_param.c, p.filter_param.h, p.filter_param.w ) ;
-
-    fprintf(stderr, "conv2d: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
-            p.col_stride,   p.row_stride,
-            p.col_dilation, p.row_dilation,
-            p.col_padding,   p.row_padding);
-#endif
-     
-    float * transformed_filter = NULL ;
-    if( p.filter_param.n > 1 || p.filter_param.c > 1 ) {
-      const int N = p.filter_param.n ;
-      const int C = p.filter_param.c ;
-      const int H = p.filter_param.h ;
-      const int W = p.filter_param.w ;
-
-      float * filter = (float *) p.filter ;     
-
-      transformed_filter = (float *) malloc(sizeof(float)*N*C*H*W) ;
-#if 0
+      // transform NHWC to NCHW
       for(int n=0; n<N ; n++) {
-        for(int c=0; c<C ; c++) {
-          for(int h=0; h<H ; h++) {
-            for(int w=0; w<W ; w++) {
-              transformed_filter[((n*C+c)*H+h)*W+w] = filter[((h*W+w)*C+c)*N+n] ; 
- 	    }
-          }
-        }
+	for(int c=0; c<C ; c++) {
+	  for(int h=0; h<H ; h++) {
+	    for(int w=0; w<W ; w++) {
+	      transformed_in[((n*C+c)*H+h)*W+w] = org_in[((n*H+h)*W+w)*C+c]; 
+	    }
+	  }
+	}
       }
-#else
-#pragma omp parallel for
-      for(int n=0; n<N ; n++) {
-        for(int c=0; c<C ; c++) {
-          for(int hw=0; hw<H*W ; hw++) {
-            transformed_filter[((n*C+c)*H)*W+hw] = filter[((hw)*C+c)*N+n] ; 
-          }
-        }
-      }
-#endif
+      COPY(v_in, reinterpret_cast<uint64_t>(transformed_in), in_param);
+      COPY(v_out, reinterpret_cast<uint64_t>(transformed_out), out_param);
+    } else {
+      LOG(LOG_TRACE) << __FUNCTION__ << ": not transform (in)";
+      COPY(v_in, input, in_param);
+      COPY(v_out, output, out_param);
     }
+  } else {
+    LOG(LOG_TRACE) << __FUNCTION__ << ": not transform : NCHW";
+    COPY(v_in, input, in_param);
+    COPY(v_out, output, out_param);
+  }
+
+  // transform filter to NCHW
+  float * transformed_filter = reinterpret_cast<float*>(temp_filter);
+  float * org_filter         = reinterpret_cast<float*>(filter);
+  if( filter_param.n > 1 || filter_param.c > 1) {
+    const int N = filter_param.n ;
+    const int C = filter_param.c ;
+    const int H = filter_param.h ;
+    const int W = filter_param.w ;
+    LOG(LOG_TRACE) << __FUNCTION__ << ": transform (filter)";
+
+    // transform HWCN to NCHW
+    for(int c=0; c<C ; c++) {
+      for(int n=0; n<N ; n++) {
+	for(int h=0; h<H ; h++) {
+	  for(int w=0; w<W ; w++) {
+	    transformed_filter[((n*C+c)*H+h)*W+w]
+	      = org_filter[((h*W+w)*C+c)*N+n];
+	  }
+	}
+      }
+    }
+    COPY(v_filter, reinterpret_cast<uint64_t>(transformed_filter), filter_param);
+  } else {
+    LOG(LOG_TRACE) << __FUNCTION__ << ": not transform (filter)";
+    COPY(v_filter, filter, filter_param);
+  }
+
+  v_params[0] = col_stride;
+  v_params[1] = row_stride;
+  v_params[2] = col_dilation;
+  v_params[3] = row_dilation;
+  v_params[4] = col_padding;
+  v_params[5] = row_padding;
+  v_params[6] = FORMAT_NCHW;   // vml and vednn only suppot NCHW
+  
+  LOG(LOG_TRACE) << __FUNCTION__ << ": vml call(NCHW)";
+  ret = vml::conv2d(v_in, v_filter, v_out, v_params);
+  LOG(LOG_TRACE) << __FUNCTION__ << ": vml return";
+
+  // if format is NHWC, transform outdata to NHWC
+  if (data_format == FORMAT_NHWC){
+    LOG(LOG_TRACE) << __FUNCTION__ << ": transpose data-format";
+
+    float * transformed_out = reinterpret_cast<float*>(temp_out);
+    float * org_out         = reinterpret_cast<float*>(output);
     
-    void *pIn     = (void *) p.in ;
-    void *pOut    = (void *) p.out ;
-    void *pFilter = (transformed_filter != NULL) ? (void*)transformed_filter : (void*)p.filter  ;
-    
-    vednnTensorParam_t ParamIn ;
-    vednnFilterParam_t ParamFilter ;
-    vednnTensorParam_t ParamOut ;
+    if( in_param.n > 1 || in_param.c > 1 ) {
+      const int N = out_param.n ;
+      const int C = out_param.c ;
+      const int H = out_param.h ;
+      const int W = out_param.w ;
+      LOG(LOG_TRACE) << __FUNCTION__ << ": transform (out)";
 
-    vednnConvolutionParam_t ParamConv ;
+      // transform NCHW to NHWC
+      for(int n=0; n<N ; n++) {
+	for(int c=0; c<C ; c++) {
+	  for(int h=0; h<H ; h++) {
+	    for(int w=0; w<W ; w++) {
+	      org_out[((n*H+h)*W+w)*C+c] = transformed_out[((n*C+c)*H+h)*W+w];
+	    }
+	  }
+	}
+      }
+    } else {
+      LOG(LOG_TRACE) << __FUNCTION__ << ": not transform (out)";
+    }
+  } else {  // NCHW
+    LOG(LOG_TRACE) << __FUNCTION__ << ": not transpose : NCHW";
+  }
 
-    ParamIn.dtype   = DTYPE_FLOAT ;
-    ParamIn.batch   = p.in_param.n ;
-    ParamIn.channel = p.in_param.c ;
-    ParamIn.height  = p.in_param.h ;
-    ParamIn.width   = p.in_param.w ;
+error_exit:
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
+  return ret;
 
-    ParamFilter.dtype      = DTYPE_FLOAT ;
-    ParamFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
-    ParamFilter.inChannel  = p.in_param.c ;
-    ParamFilter.outChannel = p.out_param.c ;
-    ParamFilter.width      = p.filter_param.w ;
-    ParamFilter.height     = p.filter_param.h ;
-     
-    ParamOut.dtype   = DTYPE_FLOAT ;
-    ParamOut.batch   = p.out_param.n ;
-    ParamOut.channel = p.out_param.c ;
-    ParamOut.width   = p.out_param.w ;
-    ParamOut.height  = p.out_param.h ;
+}  // op_Conv2D
 
-    ParamConv.group          = 1 ;
-    ParamConv.strideWidth    = p.col_stride ; 
-    ParamConv.strideHeight   = p.row_stride ; 
-    ParamConv.padWidth       = p.col_padding ;
-    ParamConv.padHeight      = p.row_padding ;
-    ParamConv.dilationWidth  = p.col_dilation ; 
-    ParamConv.dilationHeight = p.row_dilation ; 
+}  // namespace
 
-    vednnConvolutionForward(&ParamIn,     pIn,
-                     	    &ParamFilter, pFilter,
-                     	    &ParamOut,    pOut, 
-                     	    &ParamConv,
-                     	    VEDNN_CONV_ALGORITHM_DIRECT );
-    
-
-    if( transformed_filter != NULL ) free(transformed_filter) ;
-
-    PROF_END(conv2d)
-      << " in=[ " << p.in_param.n << " " << p.in_param.c << " " <<  p.in_param.h << " " <<  p.in_param.w << " ]"
-      << " filter=[ " << p.filter_param.n << " " << p.filter_param.c << " " <<  p.filter_param.h << " " <<  p.filter_param.w << " ]"
-      << " out=[ " << p.out_param.n << " " << p.out_param.c << " " <<  p.out_param.h << " " <<  p.out_param.w << " ]"
-      << " stride=[" << p.col_stride << " " << p.row_stride << "]"
-      << " padding=[" << p.col_padding << " " << p.row_padding << "]";
-
-#ifdef _DEBUG
-    fprintf(stderr, "[end]conv2d\n");
-#endif
-    LOG(LOG_TRACE) << __FUNCTION__ << ": end. ret=0";
-    return 0;
-#endif // USE_VML
-}
+DEFINE_KERNEL(Conv2D, op_Conv2d);
