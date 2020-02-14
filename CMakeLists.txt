@@ -31,7 +31,7 @@ else()
   set_target_properties(asl_sequential PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${NLC}/include)
 
   set(CLANG_RUNTIME
-    ${LLVM_INSTALL_PREFIX}/lib/clang/10.0.0/lib/linux/libclang_rt.builtins-ve.a)
+    ${LLVM_INSTALL_PREFIX}/lib/clang/11.0.0/lib/linux/libclang_rt.builtins-ve.a)
 endif()
 
 message("llvm: ${LLVM_INSTALL_PREFIX}")
