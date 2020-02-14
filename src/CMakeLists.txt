@@ -11,7 +11,7 @@ set(CMAKE_CXX_COMPILER ${NCXX})
 
 if (NOT X86)
   #set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -report-all -assembly-list")
-  set(CMAKE_CXX_FLAGS "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O4 -fdiag-vector=0 -fdiag-parallel=0 -assembly-list")
 endif()
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
