@@ -130,6 +130,7 @@ int op_Conv2d(VEOpArgs const& args) {
       LOG(LOG_TRACE) << __FUNCTION__ << ": transform (in)";
 
       // transform NHWC to NCHW
+      // [todo] use vml-internal transpose-function
       for(int n=0; n<N ; n++) {
 	for(int c=0; c<C ; c++) {
 	  for(int h=0; h<H ; h++) {
@@ -163,6 +164,7 @@ int op_Conv2d(VEOpArgs const& args) {
     LOG(LOG_TRACE) << __FUNCTION__ << ": transform (filter)";
 
     // transform HWCN to NCHW
+#if 0
     for(int c=0; c<C ; c++) {
       for(int n=0; n<N ; n++) {
 	for(int h=0; h<H ; h++) {
@@ -173,6 +175,18 @@ int op_Conv2d(VEOpArgs const& args) {
 	}
       }
     }
+#else
+    // [todo] use vml-internal transpose-function
+
+#pragma omp parallel for
+      for(int n=0; n<N ; n++) {
+        for(int c=0; c<C ; c++) {
+          for(int hw=0; hw<H*W ; hw++) {
+            transformed_filter[((n*C+c)*H)*W+hw] = org_filter[((hw)*C+c)*N+n] ;
+          }
+        }
+      }
+#endif
     COPY(v_filter, reinterpret_cast<uint64_t>(transformed_filter), filter_param);
   } else {
     LOG(LOG_TRACE) << __FUNCTION__ << ": not transform (filter)";
@@ -206,6 +220,7 @@ int op_Conv2d(VEOpArgs const& args) {
       LOG(LOG_TRACE) << __FUNCTION__ << ": transform (out)";
 
       // transform NCHW to NHWC
+      // [todo] use vml-internal transpose-function
       for(int n=0; n<N ; n++) {
 	for(int c=0; c<C ; c++) {
 	  for(int h=0; h<H ; h++) {
