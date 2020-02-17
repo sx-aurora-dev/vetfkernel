@@ -602,6 +602,9 @@ int vml::add(vml::Tensor const& X, vml::Tensor const& Y, vml::Tensor const& Z)
   if (CheckTypesAll(X, Y, Z, DT_FLOAT)) {
     return ::add<float>(X, Y, Z);
   }
+  if (CheckTypesAll(X, Y, Z, DT_INT64)) {
+    return ::add<int64_t>(X, Y, Z);
+  }
   LOG(LOG_ERROR) << __FUNCTION__ << " unsupported data type on VE.";
 
   return 1;
