@@ -39,6 +39,7 @@ set(SOURCES
   reverse.cc
   fill_functor.cc
   einsum_functor.cc
+  broadcast_to.cc
   revision.h)
 
 add_library(vetfkernel STATIC)
