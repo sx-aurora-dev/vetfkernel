@@ -29,6 +29,7 @@ set(SOURCES
   training_ops.cc
   dense_update_functor.cc
   gather_functor.cc
+  scatter_functor.cc
   segment_reduction_ops.cc
   sparse_xent_ops.cc
   cwise_ops_gradients.cc
