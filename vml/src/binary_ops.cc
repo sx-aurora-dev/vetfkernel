@@ -2373,6 +2373,28 @@ int equal_nn(uint64_t out, uint64_t in0, uint64_t in1, size_t n)
   return 0;
 }
 
+// out.dim[0] = n0, in0.dim[0] == n0, in1.dim[0] == n0
+// out.dim[1] = n1, in0.dim[1] == n1, in1.dim[1] == 1
+template <typename T>
+int equal2_nn_n1(uint64_t out,
+               uint64_t in0,
+               uint64_t in1,
+               size_t n0,
+               size_t n1)
+{
+  bool* po = reinterpret_cast<bool*>(out);
+  const T* pi0 = reinterpret_cast<const T*>(in0);
+  const T* pi1 = reinterpret_cast<const T*>(in1);
+
+#pragma omp parallel for
+  for (size_t i = 0; i < n0; ++i) {
+    for (size_t j = 0; j < n1; ++j) {
+      po[i * n1 + j] = ( pi0[i * n1 + j] == pi1[i] );
+    }
+  }
+  return 0;
+}
+
 template <typename T>
 int equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
 {
@@ -2384,6 +2406,36 @@ int equal(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1
   } 
   if (IsSameSize(out, in0, in1)) {
     return equal_nn<T>(out.addr, in0.addr, in1.addr, in0.nelems);
+  }
+
+  if (CheckDimsAll(out, in0, in1, 2)) {
+    if (in0.dim_size[0] == in1.dim_size[0]  &&  in1.dim_size[1] == 1) {
+      // (Y0,Y1) == (Y0, 1)
+      return equal2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+    }
+    if (in0.dim_size[0] == in1.dim_size[0]  &&  in0.dim_size[1] == 1) {
+      // (Z0,1) == (Z0, Z1)
+      return equal2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
+    }
+    goto general_purpose_implementation;
+  }
+
+  if (CheckDimsAll(out, in0, in1, 3)) {
+    if ( in0.dim_size[0] == in1.dim_size[0]
+	 && in0.dim_size[1] == in1.dim_size[1]
+	 && in1.dim_size[2] == 1 )
+    {
+      // (Y0,Y1,Y2) == (Y0,Y1,1) => (Y0*Y1,Y2) == (Y0*Y1,1)
+      return equal2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if ( in0.dim_size[0] == in1.dim_size[0]
+	 && in0.dim_size[1] == in1.dim_size[1]
+	 && in0.dim_size[2] == 1 )
+    {
+      // (Z0,Z1,1) == (Z0,Z1,Z2) => (Z0*Z1,Z2) == (Z0*Z1,1)
+      return equal2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
+    }
+    goto general_purpose_implementation;
   }
 
  general_purpose_implementation:
