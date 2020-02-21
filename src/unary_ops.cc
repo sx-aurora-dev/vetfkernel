@@ -38,7 +38,7 @@ int unary_op_helper(const void* args, size_t len,
     const UnaryOpArgs* p = reinterpret_cast<const UnaryOpArgs*>(args);
 
     LOG(LOG_PARAM) << __FUNCTION__ << "::" << name << ":"
-        << " dtype=" << p->in.dtype << " nelems=" << p->in.nelems;
+        << " in=" << p->in << " out=" << p->out;
 
     if (func) {
       ret = func(*reinterpret_cast<vml::Tensor const*>(&p->out),

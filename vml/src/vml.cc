@@ -24,6 +24,7 @@ int finalize() {
 std::ostream& operator<<(std::ostream& s, Tensor const& t)
 {
   s << "[dtype=" << t.dtype
+    << ",addr=" << t.addr
     << ",dims=" << t.dims
     << ",nelems=" << t.nelems
     << ",dim_size=[";

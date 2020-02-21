@@ -184,7 +184,7 @@ int op_cast(const VEOpArgs& args)
     if (!ti || !to)
         return 1;
 
-    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << ti << " to=" << to;
+    LOG(LOG_PARAM) << __FUNCTION__ << " ti=" << *ti << " to=" << *to;
 
     if (ti->nelems != to->nelems)
         return 1;
