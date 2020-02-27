@@ -32,9 +32,9 @@ int op_Conv2d(VEOpArgs const& args) {
 
   int ret = 1;
 
-  const vml::Tensor* input  = args.arg<vml::Tensor>(0);	std::cout<< *input << std::endl ;
-  const vml::Tensor* output = args.arg<vml::Tensor>(1); std::cout<< *output << std::endl ;
-  const vml::Tensor* filter = args.arg<vml::Tensor>(2); std::cout<< *filter << std::endl ;
+  const vml::Tensor* input  = args.arg<vml::Tensor>(0);
+  const vml::Tensor* output = args.arg<vml::Tensor>(1);
+  const vml::Tensor* filter = args.arg<vml::Tensor>(2);
 
   int row_stride           = *args.arg<int>(3);
   int col_stride           = *args.arg<int>(4);
