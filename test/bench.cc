@@ -877,49 +877,38 @@ class Conv2DBench : public Bench
   public:
     Conv2DBench(//F func,
                 std::string name,
-                vml::Tensor const& out_bp,
-                vml::Tensor const& filter,
-                vml::Tensor& in_bp,
+                vml::Tensor *in_bp,
+                vml::Tensor *filter,
+                vml::Tensor *out_bp,
                 std::vector<int> param, // stride[2], dilation[2], padding[2]
                 int data_format,
                 int data_type) : Bench(name) {
 
+      // assert(data_formag = FORMAT_NCHW);
       _in     = in_bp;
       _filter = filter;
       _out    = out_bp;
-  
-      _params.push_back(param[0]);
-      _params.push_back(param[1]);
-      _params.push_back(param[2]);
-      _params.push_back(param[3]);
-      _params.push_back(param[4]);
-      _params.push_back(param[5]);
+
+      _params = param;
       _params.push_back(data_format);
 
+      _data_type = data_type;
     }
   
     int validate(BenchOpts const&) override { return 1; }
 
     int run() override {
-      vml::conv2d(_in, _filter, _out, _params);
+      vml::conv2d(*_in, *_filter, *_out, _params);
       return 0;
     }
 
   private:
-    struct TensorParam {
-      int w,h,c,n ;
-    } ;
 
-    TensorParam nchw(vml::Tensor const& t) {
-      int64_t const* d = t.dim_size;
-      TensorParam p = {(int)d[2], (int)d[3], (int)d[1], (int)d[0]};
-      return p;
-    }
-
-  vml::Tensor _in;
-  vml::Tensor _filter;
-  vml::Tensor _out;
+  vml::Tensor *_in;
+  vml::Tensor *_filter;
+  vml::Tensor *_out;
   std::vector<int> _params;
+  int _data_type;
   
   //F func_;
 };
@@ -1016,7 +1005,7 @@ Bench* make_conv2d_bench(
     << "-" << param[4] << "x" << param[5]
     << "-" << data_format << "-" << data_type;
 
-  return new Conv2DBench(buf.str(), *in, *filter, *out, param, data_format, data_type);
+  return new Conv2DBench(buf.str(), in, filter, out, param, data_format, data_type);
 }
 
 template <typename F>
@@ -1182,8 +1171,10 @@ int main(int argc, char* argv[])
   PUSH(ApplyAdamOpBench<float>("ApplyAdam", n, 200));
 
 #ifdef USE_VEDNN
-  if (!opt_validation_only)
+  if (!opt_validation_only){
     add_conv2d_bench(v);
+    add_conv2d_backprop_bench(v);
+  }
 #endif
 
   if (opts.verbose > 0)
