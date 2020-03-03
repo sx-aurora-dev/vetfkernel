@@ -2382,14 +2382,30 @@ int equal2_nn_n1(uint64_t out,
                size_t n0,
                size_t n1)
 {
-  bool* po = reinterpret_cast<bool*>(out);
   const T* pi0 = reinterpret_cast<const T*>(in0);
   const T* pi1 = reinterpret_cast<const T*>(in1);
 
+  if ( (out&0x3)==0 && (n1&0x3)==0 ) {
+    int32_t* po = reinterpret_cast<int32_t*>(out);
 #pragma omp parallel for
-  for (size_t i = 0; i < n0; ++i) {
-    for (size_t j = 0; j < n1; ++j) {
-      po[i * n1 + j] = ( pi0[i * n1 + j] == pi1[i] );
+    for (size_t i = 0; i < n0; ++i) {
+      for (size_t j = 0; j < n1/4; ++j) {
+	int32_t b0 = ( pi0[i*n1+4*j+0] == pi1[i] ) ? 1 : 0 ;
+	int32_t b1 = ( pi0[i*n1+4*j+1] == pi1[i] ) ? 1 : 0 ;
+	int32_t b2 = ( pi0[i*n1+4*j+2] == pi1[i] ) ? 1 : 0 ;
+	int32_t b3 = ( pi0[i*n1+4*j+3] == pi1[i] ) ? 1 : 0 ;
+
+	po[i*(n1/4)+j] = b0 + (b1<<8) + (b2<<16) + (b3<<24) ;
+      }
+    }
+  }
+  else {
+    bool* po = reinterpret_cast<bool*>(out);
+#pragma omp parallel for
+    for (size_t i = 0; i < n0; ++i) {
+      for (size_t j = 0; j < n1; ++j) {
+	po[i * n1 + j] = ( pi0[i * n1 + j] == pi1[i] );
+      }
     }
   }
   return 0;
