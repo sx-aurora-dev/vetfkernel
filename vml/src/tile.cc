@@ -7,7 +7,7 @@
 namespace {
 
 template<typename T>
-int tile_dim3(vml::Tensor const& X, vml::Tensor const& Y)
+int tile_dim1(vml::Tensor const& X, vml::Tensor const& Y)
 {
     LOG(LOG_DETAIL) << __FUNCTION__;
     T* px = reinterpret_cast<T*>(X.addr);
@@ -19,6 +19,52 @@ int tile_dim3(vml::Tensor const& X, vml::Tensor const& Y)
     for (size_t i0 = 0; i0 < sx[0]; ++i0) {
         const size_t ix0 = i0 ;
         const size_t iy0 = i0 % sy[0] ;
+        px[ix0] = py[iy0] ;
+    }
+    return 0;
+}
+
+template<typename T>
+int tile_dim2(vml::Tensor const& X, vml::Tensor const& Y)
+{
+    LOG(LOG_DETAIL) << __FUNCTION__;
+    T* px = reinterpret_cast<T*>(X.addr);
+    T const* py = reinterpret_cast<T*>(Y.addr);
+
+    int64_t const* sx = X.dim_size;
+    int64_t const* sy = Y.dim_size;
+
+#pragma omp parallel for
+#pragma _NEC novector
+    for (size_t i0 = 0; i0 < sx[0]; ++i0) {
+        const size_t ix0 = i0 ;
+        const size_t iy0 = i0 % sy[0] ;
+        for (size_t i1 = 0; i1 < sx[1]; ++i1) {
+            const size_t ix1 = ix0 * sx[1] + i1 ;
+            const size_t iy1 = iy0 * sy[1] + (i1 % sy[1]) ;
+            px[ix1] = py[iy1] ;
+        }
+    }
+
+    return 0;
+}
+
+template<typename T>
+int tile_dim3(vml::Tensor const& X, vml::Tensor const& Y)
+{
+    LOG(LOG_DETAIL) << __FUNCTION__;
+    T* px = reinterpret_cast<T*>(X.addr);
+    T const* py = reinterpret_cast<T*>(Y.addr);
+
+    int64_t const* sx = X.dim_size;
+    int64_t const* sy = Y.dim_size;
+
+#pragma omp parallel for
+#pragma _NEC novector
+    for (size_t i0 = 0; i0 < sx[0]; ++i0) {
+        const size_t ix0 = i0 ;
+        const size_t iy0 = i0 % sy[0] ;
+#pragma _NEC novector
         for (size_t i1 = 0; i1 < sx[1]; ++i1) {
             const size_t ix1 = ix0 * sx[1] + i1 ;
             const size_t iy1 = iy0 * sy[1] + (i1 % sy[1]) ;
@@ -188,44 +234,46 @@ int tile_handle(vml::Tensor const& X, vml::Tensor const& Y)
     const T* pi = reinterpret_cast<const T*>(Y.addr);
     T* po = reinterpret_cast<T*>(X.addr);
     if (Y.nelems == 1) {
-	for (size_t i = 0; i < X.nelems; ++i) {
-	    po[i] = pi[0];
-	}
-	rc = 0 ;
-    } else if (Y.dims == 2 && X.dims == 2
-	       && Y.dim_size[0] == X.dim_size[0]
-	       && Y.dim_size[1] == 1) {
-	for (size_t i = 0; i < Y.dim_size[0]; ++i) {
-	    for (size_t j = 0; j < X.dim_size[1]; ++j) {
-		po[i * X.dim_size[1] + j] = pi[i];
-	    }
-	}
-	rc = 0 ;
-    } else if (Y.dims == 2 && X.dims == 2
-	       && Y.dim_size[1] == X.dim_size[1]
-	       && Y.dim_size[0] == 1) {
-	for (size_t i = 0; i < X.dim_size[0]; ++i) {
-	    for (size_t j = 0; j < X.dim_size[1]; ++j) {
-		po[i * X.dim_size[1] + j] = pi[j];
-	    }
-	}
-	rc = 0 ;
+        for (size_t i = 0; i < X.nelems; ++i) {
+            po[i] = pi[0];
+        }
+        rc = 0 ;
+    } else if ( Y.dims == X.dims && Y.dims == 1 ) {
+	    rc = tile_dim1<T>(X, Y) ;
+    } else if ( Y.dims == X.dims && Y.dims == 1 ) {
+        if( Y.dim_size[0] == X.dim_size[0] && Y.dim_size[1] == 1) {
+            for (size_t i = 0; i < Y.dim_size[0]; ++i) {
+                for (size_t j = 0; j < X.dim_size[1]; ++j) {
+                po[i * X.dim_size[1] + j] = pi[i];
+                }
+            }
+            rc = 0 ;
+        } else if ( Y.dim_size[1] == X.dim_size[1] && Y.dim_size[0] == 1) {
+            for (size_t i = 0; i < X.dim_size[0]; ++i) {
+                for (size_t j = 0; j < X.dim_size[1]; ++j) {
+                po[i * X.dim_size[1] + j] = pi[j];
+                }
+            }
+            rc = 0 ;
+        } else {
+            rc = tile_dim1<T>(X, Y) ;
+        }
     } else if ( Y.dims == X.dims && Y.dims == 3 ) {
-	rc = tile_dim3<T>(X, Y) ;
+	    rc = tile_dim3<T>(X, Y) ;
     } else if ( Y.dims == X.dims && Y.dims == 4 ) {
-	if( Y.dim_size[2]==1 && Y.dim_size[3]==1 ) {
-	    rc = tile_dim4_11<T>(X, Y) ;
-	}
-	else {
-	    rc = tile_dim4<T>(X, Y) ;
-	}
+        if( Y.dim_size[2]==1 && Y.dim_size[3]==1 ) {
+            rc = tile_dim4_11<T>(X, Y) ;
+        }
+        else {
+            rc = tile_dim4<T>(X, Y) ;
+        }
     } else if ( Y.dims == X.dims && Y.dims == 5 ) {
-	if( Y.dim_size[3]==1 && Y.dim_size[4]==1 ) {
-	    rc = tile_dim5_11<T>(X, Y) ;
-	}
-	else {
-	    rc = tile_dim5<T>(X, Y) ;
-	}
+        if( Y.dim_size[3]==1 && Y.dim_size[4]==1 ) {
+            rc = tile_dim5_11<T>(X, Y) ;
+        }
+        else {
+            rc = tile_dim5<T>(X, Y) ;
+        }
     }
 
     return rc ;
