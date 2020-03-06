@@ -79,6 +79,16 @@ int AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
        out[i] = in[0][i] + in[1][i] ;
      }
      break ;
+  case 3 :
+    for (size_t i = 0; i < num_elems; ++i) {
+      out[i] = in[0][i] + in[1][i] + in[2][i];
+    }
+    break ;
+  case 4 :
+    for (size_t i = 0; i < num_elems; ++i) {
+      out[i] = in[0][i] + in[1][i] + in[2][i] + in[3][i];
+    }
+    break ;
   default :
      for (size_t i = 0; i < num_elems; ++i) {
        out[i] = in[0][i];
@@ -90,7 +100,6 @@ int AddNOp(T* out, T** in, size_t num_elems, size_t num_inputs)
      }
      break ;
   }
-
   return 0;
 }
 };
