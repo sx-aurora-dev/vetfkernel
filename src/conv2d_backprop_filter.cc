@@ -1,3 +1,5 @@
+#undef NDEBUG
+
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -8,154 +10,73 @@
 #include <vednn.h>
 
 #include "kernel.h"
+#include "ve_ops_common.h"
+#include "vml.h"
 #include "vml/log.h"
+#include "vml/types.h"
+#include <vector>
 
-REGISTER_KERNEL("Conv2DBackpropFilter", "conv2d_backprop_filter");
+#include "vml/profile.h"
 
-extern "C" {
-    int conv2d_backprop_filter(const void* arg, size_t len);
-}
+#include <iostream>
 
-struct TensorParam {
-    int w,h,c,n ;
-} ;
-
-struct ConvParam {
-    uint64_t out_bp;
-    uint64_t in;
-    uint64_t filter_bp;
-    TensorParam out_bp_param;
-    TensorParam in_param;
-    TensorParam filter_bp_param;
-
-    int row_stride;
-    int col_stride;
-    int row_dilation;
-    int col_dilation;
-    int row_padding;
-    int col_padding;
-
-    int data_format;
-    int data_type;
-};
-
-int conv2d_backprop_filter(const void* arg, size_t len)
-{
-    LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
-
+//#define _DEBUG
 #ifdef _DEBUG
-    fprintf(stderr, "[start]conv2d_backprop_filter\n");
-#endif
-    assert(len == sizeof(ConvParam));
-    const ConvParam& p = *(ConvParam*)arg;
-
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
-
-#ifdef _DEBUG
-    fprintf(stderr, "conv2d_backprop_filter: data_format=%d data_type=%d\n", p.data_format, p.data_type);
-    // assert(p.data_type   == 1 ) ; // float
-    // assert(p.data_format == 1 ) ; // NHWC
-
-    fprintf(stderr, "conv2d_backprop_filter: out_bp     (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.out_bp_param.n, p.out_bp_param.c, p.out_bp_param.h, p.out_bp_param.w ) ;
-    fprintf(stderr, "conv2d_backprop_filter: input      (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.in_param.n, p.in_param.c, p.in_param.h, p.in_param.w ) ;
-    fprintf(stderr, "conv2d_backprop_filter: filter_bp  (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.filter_bp_param.n, p.filter_bp_param.c, p.filter_bp_param.h, p.filter_bp_param.w ) ;
-
-    fprintf(stderr, "conv2d_backprop_filter: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
-            p.col_stride,   p.row_stride,
-            p.col_dilation, p.row_dilation,
-            p.col_padding,   p.row_padding);
+#define PRINT(str) fprintf(stderr, str);
+#else
+#define PRINT(str)
 #endif
 
+namespace {
 
-    const int N = p.filter_bp_param.n ;
-    const int C = p.filter_bp_param.c ;
-    const int H = p.filter_bp_param.h ;
-    const int W = p.filter_bp_param.w ;
-    
-    float * transformed_bp_filter = NULL ;  
-    if( p.filter_bp_param.n > 1 || p.filter_bp_param.c > 1 ) {
-      transformed_bp_filter = (float *) malloc(sizeof(float)*N*C*H*W) ;
-      for(size_t i=0; i<N*C*H*W; i++) transformed_bp_filter[i] = 0.f ;
-    }
-    else { 
-      float * filter_bp = (float *) p.filter_bp ;     
-      for(size_t i=0; i<N*C*H*W; i++) filter_bp[i] = 0.f ;
-    }
-    
-    void *pIn         = (void *) p.in ;
-    void *pGradOut    = (void *) p.out_bp ;
-    void *pGradFilter = (transformed_bp_filter != NULL) ? (void*)transformed_bp_filter : (void*)p.filter_bp  ;
-    
-    vednnTensorParam_t ParamIn ;
-    vednnTensorParam_t ParamGradOut ;
-    vednnFilterParam_t ParamGradFilter ;
+int op_Conv2d_Backprop_Filter(VEOpArgs const& args) {
 
-    vednnConvolutionParam_t ParamConv ;
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
+	
+  if (args.nArguments() != 9)
+    return 1;
 
-    ParamIn.dtype   = DTYPE_FLOAT ;
-    ParamIn.batch   = p.in_param.n ;
-    ParamIn.channel = p.in_param.c ;
-    ParamIn.height  = p.in_param.h ;
-    ParamIn.width   = p.in_param.w ;
+  int ret = 1;
 
-    ParamGradOut.dtype   = DTYPE_FLOAT ;
-    ParamGradOut.batch   = p.out_bp_param.n ;
-    ParamGradOut.channel = p.out_bp_param.c ;
-    ParamGradOut.width   = p.out_bp_param.w ;
-    ParamGradOut.height  = p.out_bp_param.h ;
-    
-    ParamGradFilter.dtype      = DTYPE_FLOAT ;
-    ParamGradFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
-    ParamGradFilter.inChannel  = p.in_param.c ;
-    ParamGradFilter.outChannel = p.out_bp_param.c ;
-    ParamGradFilter.width      = p.filter_bp_param.w ;
-    ParamGradFilter.height     = p.filter_bp_param.h ;
+  const vml::Tensor* input  = args.arg<vml::Tensor>(0);
+  const vml::Tensor* out_bp = args.arg<vml::Tensor>(1);
+  const vml::Tensor* filter = args.arg<vml::Tensor>(2);
 
-    ParamConv.group          = 1 ;
-    ParamConv.strideWidth    = p.col_stride ; 
-    ParamConv.strideHeight   = p.row_stride ; 
-    ParamConv.padWidth       = p.col_padding ;
-    ParamConv.padHeight      = p.row_padding ;
-    ParamConv.dilationWidth  = p.col_dilation ; 
-    ParamConv.dilationHeight = p.row_dilation ; 
-
-    vednnConvolutionBackwardFilter(&ParamIn,         pIn,
-                     	           &ParamGradOut,    pGradOut, 
-                     	           &ParamGradFilter, pGradFilter,
-                     	           &ParamConv,
-                     	           VEDNN_CONV_ALGORITHM_DIRECT );
-
-    if( transformed_bp_filter != NULL ) {
-      float * filter_bp = (float *) p.filter_bp ;     
+  int row_stride           = *args.arg<int>(3);
+  int col_stride           = *args.arg<int>(4);
+  int row_dilation         = *args.arg<int>(5);
+  int col_dilation         = *args.arg<int>(6);
+  int row_padding          = *args.arg<int>(7);
+  int col_padding          = *args.arg<int>(8);
 
 #if 0
-      for(int n=0; n<N ; n++) {
-        for(int c=0; c<C ; c++) {
-          for(int h=0; h<H ; h++) {
-            for(int w=0; w<W ; w++) {
-              filter_bp[((h*W+w)*C+c)*N+n] = transformed_bp_filter[((n*C+c)*H+h)*W+w] ;
- 	    }
-          }
-        }
-      }
-#else
-#pragma omp parallel for
-      for(int n=0; n<N ; n++) {
-        for(int c=0; c<C ; c++) {
-          for(int hw=0; hw<H*W ; hw++) {
-            filter_bp[((hw)*C+c)*N+n] = transformed_bp_filter[((n*C+c)*H)*W+hw] ;
-          }
-        }
-      }
+  int data_layout          = *args.arg<int>(9) ;	// currently support NCHW only.
+  int filter_layout        = *args.arg<int>(10) ;	// currently support NCHW only.
 #endif
-      free(transformed_bp_filter) ;
-    }
-#ifdef _DEBUG
-    fprintf(stderr, "[end]conv2d_backprop_filter\n");
-#endif
-    LOG(LOG_TRACE) << __FUNCTION__ << ": end. ret=0";
-    return 0;
-}
+
+  std::vector<int> v_params(7);
+
+  v_params[0] = col_stride;
+  v_params[1] = row_stride;
+  v_params[2] = col_dilation;
+  v_params[3] = row_dilation;
+  v_params[4] = col_padding;
+  v_params[5] = row_padding;
+  v_params[6] = FORMAT_NCHW;   // vml and vednn only suppot NCHW
+
+
+  PRINT("call to vml\n");
+  ret = vml::conv2d_backprop_filter(*input, *filter, *out_bp, v_params);
+  PRINT("return from vml\n");
+
+error_exit:
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
+  return ret;
+
+}  // op_Conv2D
+
+}  // namespace
+
+
+DEFINE_KERNEL(Conv2DBackpropFilter, op_Conv2d_Backprop_Filter);

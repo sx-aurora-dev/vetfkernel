@@ -18,22 +18,22 @@
 
 //#define _DEBUG
 
-int vml::conv2d(vml::Tensor const& in,
-                vml::Tensor const& filter,
-                vml::Tensor const& out,
-                std::vector<int> params) // stride[W,H],dilation[W,H],padding[W,H],data_format
+int vml::conv2d_backprop_filter(vml::Tensor const& in,
+				vml::Tensor const& filter,
+				vml::Tensor const& out_bp,
+				std::vector<int> params) // stride[W,H],dilation[W,H],padding[W,H],data_format
 {
     LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
 
-    PROF_BEGIN(conv2d);
+    PROF_BEGIN(conv2d_backprop_filter);
 
 #ifdef _DEBUG
-    fprintf(stderr, "[start] vml::conv2d\n");
+    fprintf(stderr, "[start] vml::conv2d_backprop_filter\n");
 #endif
 
     assert(in.dims == 4);
     assert(filter.dims == 4);
-    assert(out.dims == 4);
+    assert(out_bp.dims == 4);
     assert(params.size() == 7);
 
     int data_format = params[6];
@@ -45,25 +45,28 @@ int vml::conv2d(vml::Tensor const& in,
       return 1;
 
 #ifdef _DEBUG
-    fprintf(stderr, "conv2d: data_format=%s data_type=%d\n",
+    fprintf(stderr, "conv2d_backprop_filter: data_format=%s data_type=%d\n",
             data_format==FORMAT_NCHW?"NCHW":"*ERR*", in.dtype);
     // assert(p.data_type   == 1 ) ; // float
     // assert(p.data_format == 1 ) ; // NCHW
 
-    fprintf(stderr, "conv2d: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
+    fprintf(stderr, "conv2d_backprop_filter: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
             in.dim_size[0], in.dim_size[1], in.dim_size[2], in.dim_size[3]);
-    fprintf(stderr, "conv2d: filter  (N,C,H,W) = (%d,%d,%d,%d)\n",
-            filter.dim_size[0], filter.dim_size[1], filter.dim_size[2], filter.dim_size[3]);
-    fprintf(stderr, "conv2d: output  (N,C,H,W) = (%d,%d,%d,%d)\n",
-            out.dim_size[0], out.dim_size[1], out.dim_size[2], out.dim_size[3]);
+    fprintf(stderr, "conv2d_backprop_filter: filter  (N,C,H,W) = (%d,%d,%d,%d)\n",
+            filter.dim_size[0], filter.dim_size[1],
+	    filter.dim_size[2], filter.dim_size[3]);
+    fprintf(stderr, "conv2d_backprop_filter: output  (N,C,H,W) = (%d,%d,%d,%d)\n",
+            out_bp.dim_size[0], out_bp.dim_size[1],
+	    out_bp.dim_size[2], out_bp.dim_size[3]);
 
-    fprintf(stderr, "conv2d: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
+    fprintf(stderr, "conv2d_backprop_filter: stride=%dx%d dilation=%dx%d padding=%dx%d\n", 
             params[0], params[1], params[2], params[3], params[4], params[5]);
 
     // dump tensor
 #define DUMP_TENSOR(_TENSOR)						\
     {									\
-      fprintf(stderr, "conv2d: Tensor-dump : %s\n", #_TENSOR);		\
+      fprintf(stderr,							\
+	      "conv2d_backprop_filter: Tensor-dump : %s\n", #_TENSOR);	\
       int dim0 = _TENSOR.dim_size[0];					\
       int dim1 = _TENSOR.dim_size[1];					\
       int dim2 = _TENSOR.dim_size[2];					\
@@ -89,21 +92,20 @@ int vml::conv2d(vml::Tensor const& in,
 #endif
 
 
-    void *pIn     = in.ptr<void*>();
-    void *pOut    = out.ptr<void*>();
-    void *pFilter = filter.ptr<void*>();
+    void *pIn         = in.ptr<void*>();
+    void *pGradOut    = out_bp.ptr<void*>();
+    void *pGradFilter = filter.ptr<void*>();
 
-    LOG(LOG_TRACE) << __FUNCTION__ << ": pIn     = "
+    LOG(LOG_TRACE) << __FUNCTION__ << ": pIn         = "
 		   << std::hex << pIn << std::dec;
-    LOG(LOG_TRACE) << __FUNCTION__ << ": pOut    = "
-		   << std::hex << pOut << std::dec;
-    LOG(LOG_TRACE) << __FUNCTION__ << ": pFilter = "
-		   << std::hex << pFilter << std::dec;
+    LOG(LOG_TRACE) << __FUNCTION__ << ": pGradOut    = "
+		   << std::hex << pGradOut << std::dec;
+    LOG(LOG_TRACE) << __FUNCTION__ << ": pGradFilter = "
+		   << std::hex << pGradFilter << std::dec;
 
-    
     vednnTensorParam_t ParamIn ;
-    vednnFilterParam_t ParamFilter ;
-    vednnTensorParam_t ParamOut ;
+    vednnTensorParam_t ParamGradOut ;
+    vednnFilterParam_t ParamGradFilter ;
 
     vednnConvolutionParam_t ParamConv ;
 
@@ -113,18 +115,18 @@ int vml::conv2d(vml::Tensor const& in,
     ParamIn.height  = in.dim_size[2];
     ParamIn.width   = in.dim_size[3];
 
-    ParamFilter.dtype      = DTYPE_FLOAT ;
-    ParamFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
-    ParamFilter.inChannel  = in.dim_size[1];
-    ParamFilter.outChannel = out.dim_size[1];
-    ParamFilter.height     = filter.dim_size[2];
-    ParamFilter.width      = filter.dim_size[3];
-     
-    ParamOut.dtype   = DTYPE_FLOAT ;
-    ParamOut.batch   = out.dim_size[0];
-    ParamOut.channel = out.dim_size[1];
-    ParamOut.height  = out.dim_size[2];
-    ParamOut.width   = out.dim_size[3];
+    ParamGradOut.dtype   = DTYPE_FLOAT ;
+    ParamGradOut.batch   = out_bp.dim_size[0];
+    ParamGradOut.channel = out_bp.dim_size[1];
+    ParamGradOut.height  = out_bp.dim_size[2];
+    ParamGradOut.width   = out_bp.dim_size[3];
+    
+    ParamGradFilter.dtype      = DTYPE_FLOAT ;
+    ParamGradFilter.layout     = VEDNN_FILTER_LAYOUT_NCHW ;
+    ParamGradFilter.inChannel  = in.dim_size[1];
+    ParamGradFilter.outChannel = out_bp.dim_size[1];
+    ParamGradFilter.height     = filter.dim_size[2];
+    ParamGradFilter.width      = filter.dim_size[3];
 
     ParamConv.group          = 1 ;
     ParamConv.strideWidth    = params[0];  // col stride    W
@@ -134,27 +136,27 @@ int vml::conv2d(vml::Tensor const& in,
     ParamConv.padWidth       = params[4];  // col padding   W
     ParamConv.padHeight      = params[5];  // row padding   H
 
-    vednnConvolutionForward(&ParamIn,     pIn,
-                     	    &ParamFilter, pFilter,
-                     	    &ParamOut,    pOut, 
-                     	    &ParamConv,
-                     	    VEDNN_CONV_ALGORITHM_DIRECT );
-    
+    vednnConvolutionBackwardFilter(&ParamIn,         pIn,
+                     	           &ParamGradOut,    pGradOut, 
+                     	           &ParamGradFilter, pGradFilter,
+                     	           &ParamConv,
+                     	           VEDNN_CONV_ALGORITHM_DIRECT );
 
 #define FMT(t) "[ " << (t).dim_size[0] << " " << (t).dim_size[1] \
     << " " << (t).dim_size[2] << " " << (t).dim_size[3] << " ]"
-    PROF_END(conv2d)
+    PROF_END(conv2d_backprop_filter)
       << " in=" << FMT(in)
       << " filter=" << FMT(filter)
-      << " out=" << FMT(out)
+      << " out_bp=" << FMT(out_bp)
       << " stride=[" << params[0] << " " << params[1] << "]"
       << " padding=[" << params[4] << " " << params[5] << "]";
 #undef FMT
 
 #ifdef _DEBUG
-    DUMP_TENSOR(out);
-    fprintf(stderr, "[end] vml::conv2d\n");
+    DUMP_TENSOR(out_bp);
+    fprintf(stderr, "[end] vml::conv2d_backprop_filter\n");
 #endif
+
     LOG(LOG_TRACE) << __FUNCTION__ << ": end. ret=0";
     return 0;
 }
