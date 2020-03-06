@@ -1334,22 +1334,22 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
   if (CheckDimsAll(out, in0, in1, 2)) {
     if (in0.dim_size[1] == in1.dim_size[1]) {
       if (in0.dim_size[0] == 1) {
-	// (1,Z1) * (Z0,Z1) => (Z0,Z1) * (1,Z1)
-	return mul2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]) ;
+	      // (1,Z1) * (Z0,Z1) => (Z0,Z1) * (1,Z1)
+      	return mul2_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]) ;
       }
       if (in1.dim_size[0] == 1) {
-	// (Y0,Y1) * (1,Y1)
-	return mul2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
+	      // (Y0,Y1) * (1,Y1)
+	      return mul2_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]) ;
       }
     }
     if (in0.dim_size[0] == in1.dim_size[0]) {
       if (in1.dim_size[1] == 1) {
-	// (Y0,Y1) * (Y0,1)
-	return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
+	      // (Y0,Y1) * (Y0,1)
+	      return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0], in0.dim_size[1]);
       }
       if (in0.dim_size[1] == 1) {
-	// (Z0,1) * (Z0,Z1) => (Z0,Z1) * (Z0,1)
-	return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
+	      // (Z0,1) * (Z0,Z1) => (Z0,Z1) * (Z0,1)
+	      return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0], in1.dim_size[1]);
       }
     }
     if ( in0.dim_size[0] == 1 && in1.dim_size[1] == 1 ) {
@@ -1377,20 +1377,26 @@ int mul(vml::Tensor const& out, vml::Tensor const& in0, vml::Tensor const& in1)
       return mul2_n1_1n<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in1.dim_size[2]) ;
     }
     if (in1.dim_size[0] == in1.dim_size[0]
-	&&  in0.dim_size[1] == in1.dim_size[1]
-	&&  in1.dim_size[2] == 1) {
+	      &&  in0.dim_size[1] == in1.dim_size[1]
+	      &&  in1.dim_size[2] == 1) {
       // (Y0,Y1,Y2) * (Y0,Y1,1) => (Y0*Y1,Y2) * (Y0*Y1,1)
       return mul2_nn_n1<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0]*in0.dim_size[1], in0.dim_size[2]) ;
     }
     if (in1.dim_size[0] == in1.dim_size[0]
-	&&  in0.dim_size[1] == in1.dim_size[1]
-	&&  in0.dim_size[2] == 1) {
+      	&&  in0.dim_size[1] == in1.dim_size[1]
+	      &&  in0.dim_size[2] == 1) {
       // (Z0,Z1,1) * (Z0,Z1,Z2) => (Z0*Z1,Z2) * (Z0*Z1,1)
       return mul2_nn_n1<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0]*in1.dim_size[1], in1.dim_size[2]) ;
     }
-    if (in1.dim_size[0] == in1.dim_size[0]
-	&&  in0.dim_size[1] == 1
-	&&  in0.dim_size[2] == in1.dim_size[2] ) {
+    if (in0.dim_size[0] == in1.dim_size[0]
+	    &&  in1.dim_size[1] == 1
+	    &&  in0.dim_size[2] == in1.dim_size[2] ) {
+      // (Y0,Y1,Y2) * (Y0,1,Y2)
+      return mul3_nn_n1_nn<T>(out.addr, in0.addr, in1.addr, in0.dim_size[0],in0.dim_size[1], in0.dim_size[2]) ;
+    }
+    if (in0.dim_size[0] == in1.dim_size[0]
+	    &&  in0.dim_size[1] == 1
+	    &&  in0.dim_size[2] == in1.dim_size[2] ) {
       // (Z0,1,Z2) * (Z0,Z1,Z2) => (Z0,Z1,Z2) * (Z0,1,Z2)
       return mul3_nn_n1_nn<T>(out.addr, in1.addr, in0.addr, in1.dim_size[0],in1.dim_size[1], in1.dim_size[2]) ;
     }
