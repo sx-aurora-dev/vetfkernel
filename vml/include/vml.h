@@ -159,12 +159,17 @@ int applyAdam(
 int conv2d(vml::Tensor const& in,
            vml::Tensor const& filter,
            vml::Tensor const& out,
-           std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
+           std::vector<int> params); // stride[W,H],dilation[W,H],padding[W,H],data_format
 
 int conv2d_backprop_filter(vml::Tensor const& in,
 			   vml::Tensor const& out_bp,
 			   vml::Tensor const& filter_bp,
-			   std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
+			   std::vector<int> params); // stride[W,H],dilation[W,H],padding[W,H],data_format
+
+int conv2d_backprop_input(vml::Tensor const& out_bp,
+			  vml::Tensor const& filter,
+			  vml::Tensor const& in_bp,
+			  std::vector<int> params); // stride[W,H],dilation[W,H],padding[W,H],data_format
 
 int batch_matmul(vml::Tensor const & in_x,
                  vml::Tensor const & in_y,
