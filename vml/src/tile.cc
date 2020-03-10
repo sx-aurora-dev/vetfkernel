@@ -240,18 +240,18 @@ int tile_handle(vml::Tensor const& X, vml::Tensor const& Y)
         rc = 0 ;
     } else if ( Y.dims == X.dims && Y.dims == 1 ) {
 	    rc = tile_dim1<T>(X, Y) ;
-    } else if ( Y.dims == X.dims && Y.dims == 1 ) {
+    } else if ( Y.dims == X.dims && Y.dims == 2 ) {
         if( Y.dim_size[0] == X.dim_size[0] && Y.dim_size[1] == 1) {
             for (size_t i = 0; i < Y.dim_size[0]; ++i) {
                 for (size_t j = 0; j < X.dim_size[1]; ++j) {
-                po[i * X.dim_size[1] + j] = pi[i];
+                    po[i * X.dim_size[1] + j] = pi[i];
                 }
             }
             rc = 0 ;
         } else if ( Y.dim_size[1] == X.dim_size[1] && Y.dim_size[0] == 1) {
             for (size_t i = 0; i < X.dim_size[0]; ++i) {
                 for (size_t j = 0; j < X.dim_size[1]; ++j) {
-                po[i * X.dim_size[1] + j] = pi[j];
+                    po[i * X.dim_size[1] + j] = pi[j];
                 }
             }
             rc = 0 ;
