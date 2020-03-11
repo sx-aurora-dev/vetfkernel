@@ -50,6 +50,30 @@ DEFINE_KERNEL(LeakyRelu, op_leaky_relu);
 DEFINE_KERNEL(LeakyReluGrad, op_leaky_relu_grad);
 
 
+/* Elu / EluGrad */
+
+int op_elu(const VEOpArgs& args)
+{
+  const vml::Tensor* f = args.arg<vml::Tensor>(0);
+  const vml::Tensor* a = args.arg<vml::Tensor>(1);
+
+  return vml::elu(*a, *f);
+}
+
+int op_elu_grad(const VEOpArgs& args)
+{
+  const vml::Tensor* gradients = args.arg<vml::Tensor>(0);
+  const vml::Tensor* features = args.arg<vml::Tensor>(1);
+  const vml::Tensor* backprops = args.arg<vml::Tensor>(2);
+
+  return vml::elu_grad(*backprops, *gradients, *features);
+}
+
+DEFINE_KERNEL(Elu, op_elu);
+DEFINE_KERNEL(EluGrad, op_elu_grad);
+
+
+
 /* Selu / SeluGrad */
 
 int op_selu(const VEOpArgs& args)

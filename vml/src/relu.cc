@@ -138,6 +138,83 @@ int vml::leaky_relu_grad(vml::Tensor const& backprops,
 }
 
 
+/* Elu / EluGrad */
+
+namespace {
+template <typename T>
+int elu_(vml::Tensor const& a, vml::Tensor const& f)
+{
+  T* pa = reinterpret_cast<T*>(a.addr);
+  T const* pf = reinterpret_cast<T const*>(f.addr);
+
+  const T one         = static_cast<T>(1);
+  const T zero        = static_cast<T>(0);
+
+  for (size_t i = 0; i < a.nelems; ++i) {
+    const T feature = pf[i] ;
+    pa[i] = feature < zero ? std::exp(feature) - one : feature ;
+  }
+
+  return 0;
+}
+
+} // namespace
+
+int vml::elu(vml::Tensor const& a, vml::Tensor const& f)
+{
+  if (a.nelems != f.nelems)
+    return 1;
+
+  if (a.dtype == DT_FLOAT && f.dtype == DT_FLOAT)
+    return elu_<float>(a, f);
+
+  return 1;
+}
+
+namespace {
+template <typename T>
+int elu_grad_(vml::Tensor const& backprops,
+              vml::Tensor const& gradients,
+              vml::Tensor const& features )
+{
+  T* b = reinterpret_cast<T*>(backprops.addr);
+  T const* g = reinterpret_cast<T const*>(gradients.addr);
+  T const* f = reinterpret_cast<T const*>(features.addr);
+
+  const T scale       = static_cast<T>(1.0507009873554804934193349852946);
+  const T scale_alpha = static_cast<T>(1.7580993408473768599402175208123);
+  const T zero        = static_cast<T>(0.) ;
+  const T one         = static_cast<T>(1.) ;
+
+  for (size_t i = 0; i < backprops.nelems; ++i) {
+    const T activation = f[i] ;
+    const T gradient   = g[i] ;
+    b[i] =  activation < zero ? gradient * (activation + one) : gradient ;
+  }
+
+  return 0;
+}
+
+} // namespace
+
+
+int vml::elu_grad(vml::Tensor const& backprops,
+                  vml::Tensor const& gradients,
+                  vml::Tensor const& features )
+{
+  if (backprops.nelems != gradients.nelems
+      || backprops.nelems != features.nelems)
+    return 1;
+
+  if (backprops.dtype == DT_FLOAT
+      && gradients.dtype == DT_FLOAT
+      && features.dtype == DT_FLOAT)
+    return elu_grad_<float>(backprops, gradients, features) ;
+
+  return 1;
+}
+
+
 /* Selu / SeluGrad */
 
 namespace {
@@ -200,8 +277,8 @@ int selu_grad_(vml::Tensor const& backprops,
 
 
 int vml::selu_grad(vml::Tensor const& backprops,
-                         vml::Tensor const& gradients,
-                         vml::Tensor const& features )
+                   vml::Tensor const& gradients,
+                   vml::Tensor const& features )
 {
   if (backprops.nelems != gradients.nelems
       || backprops.nelems != features.nelems)
