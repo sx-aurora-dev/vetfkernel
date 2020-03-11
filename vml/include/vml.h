@@ -58,6 +58,14 @@ int leaky_relu_grad(vml::Tensor const& backprops,
                     vml::Tensor const& gradients,
                     vml::Tensor const& features,
                     double alpha);
+int elu(vml::Tensor const& out, vml::Tensor const& in) ;
+int elu_grad(vml::Tensor const& backprops,
+             vml::Tensor const& gradients,
+             vml::Tensor const& features) ;
+int selu(vml::Tensor const& out, vml::Tensor const& in) ;
+int selu_grad(vml::Tensor const& backprops,
+              vml::Tensor const& gradients,
+              vml::Tensor const& features) ;
 
 // unary op
 int abs(vml::Tensor const& out, vml::Tensor const& in);
