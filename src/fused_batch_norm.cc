@@ -330,7 +330,7 @@ template <typename T, typename U> int FusedBatchNormGrad_NCHW(
           offset_backprop[c] += y_backprop[offset + i];
           scale_backprop[c] += y_backprop[offset + i]
               * (x[offset + i] - mean[c]) / std::sqrt(variance[c] + epsilon);
-          x_backprop[offset + c]
+          x_backprop[offset + i]
               = y_backprop[offset + i]
               * scale[c] / std::sqrt(variance[c] + epsilon);
         }
