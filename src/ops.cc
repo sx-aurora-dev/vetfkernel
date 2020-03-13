@@ -794,6 +794,52 @@ int transpose4_1023(uint64_t out, uint64_t in, const int32_t* dim_size)
 }
 
 template<typename Tin, typename Tout = Tin>
+int transpose4_2310(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;
+  const int64_t d1 = dim_size[1] ;
+  const int64_t d2 = dim_size[2] ;
+  const int64_t d3 = dim_size[3] ;
+
+#pragma omp parallel for
+  for (int64_t i0 = 0; i0 < d0; ++i0) {
+    for (int64_t i1 = 0; i1 < d1; ++i1) {
+      for (int64_t i23 = 0; i23 < d2*d3; ++i23) {
+	po[(i23*d1+i1)*d0+i0] = pi[(i0*d1+i1)*d2*d3+i23] ;
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
+int transpose4_3201(uint64_t out, uint64_t in, const int32_t* dim_size)
+{
+  Tout* po = reinterpret_cast<Tout*>(out);
+  const Tin* pi = reinterpret_cast<Tin*>(in);
+
+  const int64_t d0 = dim_size[0] ;	// h
+  const int64_t d1 = dim_size[1] ;	// w
+  const int64_t d2 = dim_size[2] ;	// c
+  const int64_t d3 = dim_size[3] ;	// n
+
+#pragma omp parallel for
+  for (int64_t i3 = 0; i3 < d3; ++i3) {
+    for (int64_t i2 = 0; i2 < d2; ++i2) {
+      for (int64_t i01 = 0; i01 < d0*d1; ++i01) {
+	po[(i3*d2+i2)*d0*d1+i01]  = pi[(i01*d2+i2)*d3+i3] ;
+      }
+    }
+  }
+
+  return 0;
+}
+
+template<typename Tin, typename Tout = Tin>
 int transpose4(uint64_t out, uint64_t in, const int32_t* dim_size, const int32_t* perm)
 {
   Tout* po = reinterpret_cast<Tout*>(out);
@@ -1132,6 +1178,12 @@ int op_TransposeBase(const void* args, size_t len)
 	  ret |= transpose4_0132<T>(p->out+offset, p->in+offset, dim_size) ;
 	}
       }
+    } else if (p->perm[0] == 3 && p->perm[1] == 2
+	       && p->perm[2] == 0 && p->perm[3] == 1) {
+      ret = transpose4_3201<T>(p->out, p->in, p->dim_size) ;
+    } else if (p->perm[0] == 2 && p->perm[1] == 3
+	       && p->perm[2] == 1 && p->perm[3] == 0) {
+      ret = transpose4_2310<T>(p->out, p->in, p->dim_size) ;
     } else if (p->perm[0] == 1 && p->perm[1] == 0
 	       && p->perm[2] == 2 && p->perm[3] == 3) {
       ret = transpose4_1023<T>(p->out, p->in, p->dim_size) ;
