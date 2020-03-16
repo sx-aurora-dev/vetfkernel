@@ -67,7 +67,7 @@ int op_Conv2d_Backprop_Filter(VEOpArgs const& args) {
 
 
   PRINT("call to vml\n");
-  ret = vml::conv2d_backprop_filter(*input, *filter, *out_bp, v_params);
+  ret = vml::conv2d_backprop_filter(*input, *out_bp, *filter, v_params);
   PRINT("return from vml\n");
 
 error_exit:

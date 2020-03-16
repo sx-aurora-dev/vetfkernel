@@ -162,8 +162,8 @@ int conv2d(vml::Tensor const& in,
            std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
 
 int conv2d_backprop_filter(vml::Tensor const& in,
-			   vml::Tensor const& filter,
 			   vml::Tensor const& out_bp,
+			   vml::Tensor const& filter_bp,
 			   std::vector<int> params); // stride[2],dilation[2],padding[2],data_format
 
 int batch_matmul(vml::Tensor const & in_x,
