@@ -1,583 +1,611 @@
-#include <cstdio>
-#include <cstdint>
-#include <cstdint>
-#include <cassert>
-#include <algorithm>
-#include "kernel.h"
+#include "ve_ops_common.h"
+#include "vml.h"
 #include "vml/types.h"
-#include "vml/log.h"
 
 #include <omp.h>
 
-REGISTER_KERNEL("ArgMax", "op_ArgMax");
-REGISTER_KERNEL("ArgMin", "op_ArgMin");
-
-#define CHECK_ARG_LEN(l0, l1) \
-  if ((l0) != (l1)) { \
-      LOG(LOG_ERROR) << __FUNCTION__ << ": illegal argument length: " << (l1) << " expected but " << (l0); \
-      return 1; \
-  }
-
-extern "C" {
-  int op_ArgMax(const void* arg, size_t len);
-  int op_ArgMin(const void* arg, size_t len);
-}
-
-
-#define VE_ARGOP_MAX_HANDLE_DIM 4
+enum VEArgOpType { ARGMAX=0, ARGMIN=1 };
 
 //
-// ArgMax
+// ArgMax/ArgMin
 //
 
 namespace {
 
 template <typename T, typename Index>
-int argmax_10(const T* in, Index* out, const int64_t* dim_size)
+int argmax_d1(vml::Tensor const& in, vml::Tensor const& out, const int64_t d0)
 {
-  const int64_t d0 = dim_size[0] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
+
 
   Index idx = 0 ;
   for(int64_t i=0; i<d0; i++) {
-    if( in[idx] < in[i] ) idx = i ;
+    if( pi[idx] < pi[i] ) idx = i ;
   }
-  out[0] = idx ;
+  po[0] = idx ;
+
   return 0 ;
 }
 
-
 template <typename T, typename Index>
-int argmax_20(const T* in, Index* out, const int64_t* dim_size) 
+int argmax_d2a0(vml::Tensor const& in,
+                vml::Tensor const& out,
+                const int64_t d0,
+		const int64_t d1)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
-#pragma novector
-  for(int64_t j=0; j<d1; j++) {
+#pragma _NEC novector
+  for(int64_t i1=0; i1<d1; i1++) {
     Index idx = 0 ;
-#pragma vector
-    for(int64_t i=0; i<d0; i++) {
-      if( in[idx*d1+j] < in[i*d1+j] ) idx = i ;
+#pragma _NEC vector
+    for(int64_t i0=0; i0<d0; i0++) {
+      if( pi[idx*d1+i1] < pi[i0*d1+i1] ) idx = i0 ;
     }
-    out[j] = idx ;
+    po[i1] = idx ;
   }
 
   return 0 ;
 }
 
 template <typename T, typename Index>
-int argmax_21(const T* in, Index* out, const int64_t* dim_size) 
+int argmax_d2a1(vml::Tensor const& in,
+                vml::Tensor const& out,
+                const int64_t d0,
+		const int64_t d1)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
-  for(int64_t i=0; i<d0; i++) {
+#pragma _NEC novector
+  for(int64_t i0=0; i0<d0; i0++) {
     Index idx = 0 ;
-    for(int64_t j=0; j<d1; j++) {
-      if( in[idx] < in[j] ) idx = j ;
+#pragma _NEC vector
+    for(int64_t i1=0; i1<d1; i1++) {
+      if( pi[i0*d1+idx] < pi[i0*d1+i1] ) idx = i1 ;
     }
-    out[i] = idx ;
-    in+=d1 ;
+    po[i0] = idx ;
   }
 
   return 0 ;
 }
 
-template <typename T, typename Index>
-int argmax_30(const T* in, Index* out, const int64_t* dim_size) 
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t j=0; j<d1; j++) {
-    for(int64_t k=0; k<d2; k++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t i=0; i<d0; i++) {
-        if( in[idx*d1*d2+j*d2+k] < in[i*d1*d2+j*d2+k] ) idx = i ;
-      }
-      out[j*d2+k] = idx ;
-    }
-  }
-
-  return 0 ;
-}
 
 template <typename T, typename Index>
-int argmax_31(const T* in, Index* out, const int64_t* dim_size) 
+int argmax_d3a1(vml::Tensor const& in,
+                vml::Tensor const& out,
+		const int64_t d0,
+		const int64_t d1,
+		const int64_t d2)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t i=0; i<d0; i++) {
-    for(int64_t k=0; k<d2; k++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t j=0; j<d1; j++) {
-        if( in[i*d1*d2+idx*d2+k] < in[i*d1*d2+j*d2+k] ) idx = j ;
-      }
-      out[i*d2+k] = idx ;
-    }
-  }
-  return 0 ;
-}
-
-template <typename T, typename Index>
-int argmax_32(const T* in, Index* out, const int64_t* dim_size)
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t i=0; i<d0; i++) {
-    for(int64_t j=0; j<d1; j++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t k=0; k<d2; k++) {
-        if( in[idx] < in[k] ) idx = k ;
-      }
-      *out = idx ;
-      in+=d2 ;
-      out++ ;
-    }
-  }
-  return 0 ;
-}
-
-#if 0
-template <typename T, typename Index>
-int argmax_43(const T* in, Index* out, const int64_t* dim_size)
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-  const int64_t d3 = dim_size[3] ;
-  int64_t oi, oo, oo0, oo1;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
   for(int64_t i0=0; i0<d0; i0++) {
-    oo0 = i0*d1*d2 ;
-    for(int64_t i1=0; i1<d1; i1++) {
-      oo1 = oo0 + i1*d2 ;
-      for(int64_t i2=0; i2<d2; i2++) {
-        oo = oo1 + i2 ;
-        oi = oo*d3 ;
-        Index idx = 0 ;
-#pragma vector
-        for(int64_t i3=0; i3<d3; i3++) {
-          if( in[oi+idx] < in[oi+i3] ) idx = i3 ;
-        }
-        out[oo] = idx ;
+    for(int64_t i2=0; i2<d2; i2++) {
+      Index idx = 0 ;
+#pragma _NEC vector
+      for(int64_t i1=0; i1<d1; i1++) {
+	if( pi[(i0*d1*d2+i2)+idx*d2] < pi[(i0*d1*d2+i2)+i1*d2] ) idx = i1 ;
       }
+      po[i0*d2+i2] = idx ;
     }
   }
+
   return 0 ;
 }
-#else
-#define MAXSTRIP 10240
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 template <typename T, typename Index>
-int argmax_43(const T* in, Index* out, const int64_t* dim_size)
+int argmax_handler(vml::Tensor const& in,
+	           vml::Tensor const& out,
+                   int64_t axis)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-  const int64_t d3 = dim_size[3] ;
-  int64_t osize = d0*d1*d2 ;
-  T omax[MAXSTRIP];
-
-  LOG(LOG_DETAIL) << "argmax_43" << " begin";
-  for (int64_t i=0; i<osize; i+=MAXSTRIP) {
-    for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
-      omax[j] = in[(i+j)*d3] ;
-      out[i+j] = 0;
-    }
-    for(int64_t i3=1; i3<d3; i3++) {
-#pragma _NEC ivdep
-#pragma _NEC packed_vector
-      for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
-        if (omax[j] < in[(i+j)*d3+i3]) {
-          out[i+j] = i3 ;
-          omax[j] = in[(i+j)*d3+i3] ;
-        }
-      }
-    }
-  }
-  LOG(LOG_DETAIL) << "argmax_43" << " end";
-  return 0 ;
-}
-#undef MAXSTRIP
-#undef MIN
-#endif
-
-
-template <typename T, typename Index>
-int argmax(uint64_t in_ptr, uint64_t out_ptr,
-           int64_t axis, int64_t input_dims, int64_t* dim_size)
-{
-  const T* in = reinterpret_cast<const T*>(in_ptr);
-  Index* out = reinterpret_cast<Index*>(out_ptr);
 
   int ret = 1 ;
 
-  if( input_dims == 1 ) {
+  if( in.dims == 1 ) {
     if( axis == 0 ) {
-      ret = argmax_10<T, Index>(in, out, dim_size) ;
+      ret = argmax_d1<T, Index>(in, out, in.dim_size[0]) ;
     }
   }
-  else if( input_dims == 2 ) {
+  else if( in.dims == 2 ) {
     if( axis == 0 ) {
-      ret = argmax_20<T, Index>(in, out, dim_size) ;
+      ret = argmax_d2a0<T, Index>(in, out, in.dim_size[0], in.dim_size[1]) ;
     }
     else if( axis == 1 ) {
-      ret = argmax_21<T, Index>(in, out, dim_size) ;
+      ret = argmax_d2a1<T, Index>(in, out, in.dim_size[0], in.dim_size[1]) ;
     }
   }
-  else if( input_dims == 3 ) {
+  else if(in.dims == 3 ) {
     if( axis == 0 ) {
-      ret = argmax_30<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] ;
+      ret = argmax_d2a0<T, Index>(in, out, d0, d1) ;
     }
     else if( axis == 1 ) {
-      ret = argmax_31<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
     }
     else if( axis == 2 ) {
-      ret = argmax_32<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] ;
+      const int64_t d1 = in.dim_size[2] ;
+      ret = argmax_d2a1<T, Index>(in, out, d0, d1) ;
     }
   }
-  else if( input_dims == 4 ) {
-    if( axis == 3 ) {
-      ret = argmax_43<T, Index>(in, out, dim_size) ;
+  else if(in.dims == 4 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      ret = argmax_d2a0<T, Index>(in, out, d0, d1) ;
     }
-    else
-      ret = 1 ;
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      ret = argmax_d2a1<T, Index>(in, out, d0, d1) ;
+    }
   }
+  else if(in.dims == 5 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      ret = argmax_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      ret = argmax_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+  else if(in.dims == 6 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmax_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] * in.dim_size[5] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      const int64_t d2 = in.dim_size[5] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 5 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      const int64_t d1 = in.dim_size[5] ;
+      ret = argmax_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+  else if(in.dims == 7 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmax_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      const int64_t d2 = in.dim_size[5] * in.dim_size[6] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 5 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      const int64_t d1 = in.dim_size[5] ;
+      const int64_t d2 = in.dim_size[6] ;
+      ret = argmax_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 6 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      const int64_t d1 = in.dim_size[6] ;
+      ret = argmax_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+
   return ret ;
 }
-}
-
-int op_ArgMax(const void* args, size_t len)
-{
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
-
-  struct Args {
-    int dtype, idxtype ;
-    int64_t axis ;
-    uint64_t in_ptr, out_ptr ;
-    int64_t input_dims ;
-    int64_t dim_size[VE_ARGOP_MAX_HANDLE_DIM] ;
-  } const* p;
-
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
-
-  int ret = 1;
-
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  if (p->dtype == DT_FLOAT) {
-    if ( p->idxtype == DT_INT32 ) {
-      ret = argmax<float, int32_t> (p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-    else if ( p->idxtype == DT_INT64 ) {
-      ret = argmax<float, int64_t> (p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-  }
-  else if (p->dtype == DT_DOUBLE) {
-    if ( p->idxtype == DT_INT32 ) {
-      ret = argmax<double, int32_t>(p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-    else if ( p->idxtype == DT_INT64 ) {
-      ret = argmax<double, int64_t>(p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-  }
-
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
-  return ret;
-}
-
-//
-// ArgMin
-//
-
-namespace {
 
 template <typename T, typename Index>
-int argmin_10(const T* in, Index* out, const int64_t* dim_size)
+int argmin_d1(vml::Tensor const& in, vml::Tensor const& out, const int64_t d0)
 {
-  const int64_t d0 = dim_size[0] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
+
 
   Index idx = 0 ;
   for(int64_t i=0; i<d0; i++) {
-    if( in[idx] > in[i] ) idx = i ;
+    if( pi[idx] > pi[i] ) idx = i ;
   }
-  out[0] = idx ;
+  po[0] = idx ;
+
   return 0 ;
 }
 
-
 template <typename T, typename Index>
-int argmin_20(const T* in, Index* out, const int64_t* dim_size)
+int argmin_d2a0(vml::Tensor const& in,
+                vml::Tensor const& out,
+                const int64_t d0,
+		const int64_t d1)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
-#pragma novector
-  for(int64_t j=0; j<d1; j++) {
+#pragma _NEC novector
+  for(int64_t i1=0; i1<d1; i1++) {
     Index idx = 0 ;
-#pragma vector
-    for(int64_t i=0; i<d0; i++) {
-      if( in[idx*d1+j] > in[i*d1+j] ) idx = i ;
+#pragma _NEC vector
+    for(int64_t i0=0; i0<d0; i0++) {
+      if( pi[idx*d1+i1] > pi[i0*d1+i1] ) idx = i0 ;
     }
-    out[j] = idx ;
+    po[i1] = idx ;
   }
 
   return 0 ;
 }
 
 template <typename T, typename Index>
-int argmin_21(const T* in, Index* out, const int64_t* dim_size)
+int argmin_d2a1(vml::Tensor const& in,
+                vml::Tensor const& out,
+                const int64_t d0,
+		const int64_t d1)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
-  for(int64_t i=0; i<d0; i++) {
+#pragma _NEC novector
+  for(int64_t i0=0; i0<d0; i0++) {
     Index idx = 0 ;
-    for(int64_t j=0; j<d1; j++) {
-      if( in[idx] > in[j] ) idx = j ;
+#pragma _NEC vector
+    for(int64_t i1=0; i1<d1; i1++) {
+      if( pi[i0*d1+idx] > pi[i0*d1+i1] ) idx = i1 ;
     }
-    out[i] = idx ;
-    in+=d1 ;
+    po[i0] = idx ;
   }
 
   return 0 ;
 }
 
-template <typename T, typename Index>
-int argmin_30(const T* in, Index* out, const int64_t* dim_size)
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t j=0; j<d1; j++) {
-    for(int64_t k=0; k<d2; k++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t i=0; i<d0; i++) {
-        if( in[idx*d1*d2+j*d2+k] > in[i*d1*d2+j*d2+k] ) idx = i ;
-      }
-      out[j*d2+k] = idx ;
-    }
-  }
-
-  return 0 ;
-}
 
 template <typename T, typename Index>
-int argmin_31(const T* in, Index* out, const int64_t* dim_size)
+int argmin_d3a1(vml::Tensor const& in,
+                vml::Tensor const& out,
+		const int64_t d0,
+		const int64_t d1,
+		const int64_t d2)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t i=0; i<d0; i++) {
-    for(int64_t k=0; k<d2; k++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t j=0; j<d1; j++) {
-        if( in[i*d1*d2+idx*d2+k] > in[i*d1*d2+j*d2+k] ) idx = j ;
-      }
-      out[i*d2+k] = idx ;
-    }
-  }
-  return 0 ;
-}
-
-template <typename T, typename Index>
-int argmin_32(const T* in, Index* out, const int64_t* dim_size) 
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-
-  for(int64_t i=0; i<d0; i++) {
-    for(int64_t j=0; j<d1; j++) {
-      Index idx = 0 ;
-#pragma vector
-      for(int64_t k=0; k<d2; k++) {
-        if( in[idx] > in[k] ) idx = k ;
-      }
-      *out = idx ;
-      in+=d2 ;
-      out++ ;
-    }
-  }
-  return 0 ;
-}
-
-#if 0
-template <typename T, typename Index>
-int argmin_43(const T* in, Index* out, const int64_t* dim_size)
-{
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-  const int64_t d3 = dim_size[3] ;
-  int64_t oi, oo, oo0, oo1;
+  const T* pi = reinterpret_cast<const T*>(in.addr);
+  Index*   po = reinterpret_cast<Index*>(out.addr);
 
   for(int64_t i0=0; i0<d0; i0++) {
-    oo0 = i0*d1*d2 ;
-    for(int64_t i1=0; i1<d1; i1++) {
-      oo1 = oo0 + i1*d2 ;
-      for(int64_t i2=0; i2<d2; i2++) {
-        oo = oo1 + i2 ;
-        oi = oo * d3 ;
-        Index idx = 0 ;
-#pragma vector
-        for(int64_t i3=0; i3<d3; i3++) {
-          if( in[oi+idx] > in[oi+i3] ) idx = i3 ;
-        }
-        out[oo] = idx ;
+    for(int64_t i2=0; i2<d2; i2++) {
+      Index idx = 0 ;
+#pragma _NEC vector
+      for(int64_t i1=0; i1<d1; i1++) {
+	if( pi[(i0*d1*d2+i2)+idx*d2] > pi[(i0*d1*d2+i2)+i1*d2] ) idx = i1 ;
       }
+      po[i0*d2+i2] = idx ;
     }
   }
+
   return 0 ;
 }
-#else
-#define MAXSTRIP 10240
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 template <typename T, typename Index>
-int argmin_43(const T* in, Index* out, const int64_t* dim_size)
+int argmin_handler(vml::Tensor const& in,
+	           vml::Tensor const& out,
+                   int64_t axis)
 {
-  const int64_t d0 = dim_size[0] ;
-  const int64_t d1 = dim_size[1] ;
-  const int64_t d2 = dim_size[2] ;
-  const int64_t d3 = dim_size[3] ;
-  int64_t osize = d0*d1*d2 ;
-  T omax[MAXSTRIP];
-
-  for (int64_t i=0; i<osize; i+=MAXSTRIP) {
-    for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
-      omax[j] = in[(i+j)*d3] ;
-      out[i+j] = 0;
-    }
-    for(int64_t i3=1; i3<d3; i3++) {
-#pragma _NEC ivdep
-#pragma _NEC packed_vector
-      for (int64_t j=0; j<MIN(MAXSTRIP,osize-i); j++) {
-        if (omax[j] > in[(i+j)*d3+i3]) {
-          out[i+j] = i3 ;
-          omax[j] = in[(i+j)*d3+i3] ;
-        }
-      }
-    }
-  }
-  return 0 ;
-}
-#undef MAXSTRIP
-#endif
-
-template <typename T, typename Index>
-int argmin(uint64_t in_ptr, uint64_t out_ptr,
-           int64_t axis, int64_t input_dims, int64_t* dim_size)
-{
-  const T* in = reinterpret_cast<const T*>(in_ptr);
-  Index* out = reinterpret_cast<Index*>(out_ptr);
-
   int ret = 1 ;
 
-  if( input_dims == 1 ) {
+  if( in.dims == 1 ) {
     if( axis == 0 ) {
-      ret = argmin_10<T, Index>(in, out, dim_size) ;
+      ret = argmin_d1<T, Index>(in, out, in.dim_size[0]) ;
     }
   }
-  else if( input_dims == 2 ) {
+  else if( in.dims == 2 ) {
     if( axis == 0 ) {
-      ret = argmin_20<T, Index>(in, out, dim_size) ;
+      ret = argmin_d2a0<T, Index>(in, out, in.dim_size[0], in.dim_size[1]) ;
     }
     else if( axis == 1 ) {
-      ret = argmin_21<T, Index>(in, out, dim_size) ;
+      ret = argmin_d2a1<T, Index>(in, out, in.dim_size[0], in.dim_size[1]) ;
     }
   }
-  else if( input_dims == 3 ) {
+  else if(in.dims == 3 ) {
     if( axis == 0 ) {
-      ret = argmin_30<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] ;
+      ret = argmin_d2a0<T, Index>(in, out, d0, d1) ;
     }
     else if( axis == 1 ) {
-      ret = argmin_31<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
     }
     else if( axis == 2 ) {
-      ret = argmin_32<T, Index>(in, out, dim_size) ;
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] ;
+      const int64_t d1 = in.dim_size[2] ;
+      ret = argmin_d2a1<T, Index>(in, out, d0, d1) ;
     }
   }
-  else if( input_dims == 4 ) {
-    if( axis == 3 ) {
-      ret = argmin_43<T, Index>(in, out, dim_size) ;
+  else if(in.dims == 4 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      ret = argmin_d2a0<T, Index>(in, out, d0, d1) ;
     }
-    else
-      ret = 1 ;
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      ret = argmin_d2a1<T, Index>(in, out, d0, d1) ;
+    }
   }
+  else if(in.dims == 5 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      ret = argmin_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      ret = argmin_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+  else if(in.dims == 6 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmin_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] * in.dim_size[5] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      const int64_t d2 = in.dim_size[5] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 5 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      const int64_t d1 = in.dim_size[5] ;
+      ret = argmin_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+  else if(in.dims == 7 ) {
+    if( axis == 0 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmin_d2a0<T, Index>(in, out, d0, d1) ;
+    }
+    else if( axis == 1 ) {
+      const int64_t d0 = in.dim_size[0] ;
+      const int64_t d1 = in.dim_size[1] ;
+      const int64_t d2 = in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 2 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1];
+      const int64_t d1 = in.dim_size[2] ;
+      const int64_t d2 = in.dim_size[3] * in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 3 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] ;
+      const int64_t d1 = in.dim_size[3] ;
+      const int64_t d2 = in.dim_size[4] * in.dim_size[5] * in.dim_size[6] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 4 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] ;
+      const int64_t d1 = in.dim_size[4] ;
+      const int64_t d2 = in.dim_size[5] * in.dim_size[6] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 5 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] ;
+      const int64_t d1 = in.dim_size[5] ;
+      const int64_t d2 = in.dim_size[6] ;
+      ret = argmin_d3a1<T, Index>(in, out, d0, d1, d2) ;
+    }
+    else if( axis == 6 ) {
+      const int64_t d0 = in.dim_size[0] * in.dim_size[1] * in.dim_size[2] * in.dim_size[3] * in.dim_size[4] * in.dim_size[5] ;
+      const int64_t d1 = in.dim_size[6] ;
+      ret = argmin_d2a1<T, Index>(in, out, d0, d1) ;
+    }
+  }
+
   return ret ;
 }
+
+
+
+int argmax(vml::Tensor const& in, vml::Tensor const& out, const int64_t axis)
+{
+  int ret = 1 ;
+
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in="   << in ;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": out="  << out ;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": axis=" << axis ;
+
+  if( in.dtype == DT_FLOAT ) {
+    if( out.dtype == DT_INT64 ) {
+      ret = argmax_handler<float,int64_t>(in, out, axis) ;
+    }
+    else if ( out.dtype == DT_INT32 ) {
+      ret = argmax_handler<float,int32_t>(in, out, axis) ;
+    }
+  }
+
+  return ret ;
 }
 
-int op_ArgMin(const void* args, size_t len)
+int argmin(vml::Tensor const& in, vml::Tensor const& out, const int64_t axis)
 {
-  LOG(LOG_TRACE) << __FUNCTION__ << " begin";
+  int ret = 1 ;
 
-  struct Args {
-    int dtype, idxtype ;
-    int64_t axis ;
-    uint64_t in_ptr, out_ptr ;
-    int64_t input_dims ;
-    int64_t dim_size[VE_ARGOP_MAX_HANDLE_DIM] ;
-  } const* p;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": in="   << in ;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": out="  << out ;
+  LOG(LOG_PARAM) << __FUNCTION__ << ": axis=" << axis ;
 
-  CHECK_ARG_LEN(len, sizeof(Args));
-  p = reinterpret_cast<const Args*>(args);
+  if( in.dtype == DT_FLOAT ) {
+    if( out.dtype == DT_INT64 ) {
+      ret = argmin_handler<float,int64_t>(in, out, axis) ;
+    }
+    else if ( out.dtype == DT_INT32 ) {
+      ret = argmin_handler<float,int32_t>(in, out, axis) ;
+    }
+  }
+
+  return ret ;
+}
+
+
+} ;
+
+int Arg(VEOpArgs const& args)
+{
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
 
   int ret = 1;
 
-  LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p->dtype;
-
-  if (p->dtype == DT_FLOAT) {
-    if ( p->idxtype == DT_INT32 ) {
-      ret = argmin<float, int32_t> (p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-    else if ( p->idxtype == DT_INT64 ) {
-      ret = argmin<float, int64_t> (p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-  }
-  else if (p->dtype == DT_DOUBLE) {
-    if ( p->idxtype == DT_INT32 ) {
-      ret = argmin<double, int32_t>(p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
-    else if ( p->idxtype == DT_INT64 ) {
-      ret = argmin<double, int64_t>(p->in_ptr, p->out_ptr,
-                                    p->axis, p->input_dims, 
-                                    (int64_t*) p->dim_size) ;
-    }
+  if (args.nArguments() != 4) {
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nArguments should be 4. But "
+        << args.nArguments();
+    goto error_exit;
   }
 
-  LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=" << ret;
+  {
+    vml::Tensor const* input  = args.arg<vml::Tensor>(0);
+    vml::Tensor const* output = args.arg<vml::Tensor>(1);
+
+    const int64_t axis   = *args.arg<int64_t>(2) ;
+    const int64_t op     = *args.arg<int64_t>(3) ;
+
+    if( op == ARGMAX )
+      ret = argmax(*input, *output, axis) ;
+    else if( op == ARGMIN )
+      ret = argmin(*input, *output, axis) ;
+  }
+
+error_exit:
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
   return ret;
 }
 
 
+DEFINE_KERNEL(Arg, Arg) ;
