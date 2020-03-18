@@ -21,8 +21,6 @@ extern "C" {
   int op_Mean(const void* args, size_t len);
   int op_Sum(const void* args, size_t len);
   int op_Transpose(const void* args, size_t len);
-  int op_Conv2d(const void* arg, size_t len);
-  int conv2d_backprop_input(const void* arg, size_t len);
 }
 
 static double second()
@@ -875,116 +873,40 @@ class ApplyAdamOpBench : public Bench
 class Conv2DBench : public Bench
 {
   public:
-    Conv2DBench(//F func,
-                std::string name,
-                vml::Tensor *in_bp,
+    Conv2DBench(std::string name,
+                vml::Tensor *in,
                 vml::Tensor *filter,
-                vml::Tensor *out_bp,
+                vml::Tensor *out,
                 std::vector<int> param, // stride[2], dilation[2], padding[2]
                 int data_format,
-                int data_type) : Bench(name) {
+                int data_type) : Bench(name),
+				 in_(in),
+				 filter_(filter),
+				 out_(out),
+				 data_type_(data_type) {
 
-      // assert(data_formag = FORMAT_NCHW);
-      _in     = in_bp;
-      _filter = filter;
-      _out    = out_bp;
-
-      _params = param;
-      _params.push_back(data_format);
-
-      _data_type = data_type;
-    }
-  
-    int validate(BenchOpts const&) override { return 1; }
-
-    int run() override {
-      vml::conv2d(*_in, *_filter, *_out, _params);
-      return 0;
-    }
-
-  private:
-
-  vml::Tensor *_in;
-  vml::Tensor *_filter;
-  vml::Tensor *_out;
-  std::vector<int> _params;
-  int _data_type;
-  
-  //F func_;
-};
-
-template<typename F>
-class Conv2DBackPropBench : public Bench
-{
-  public:
-    Conv2DBackPropBench(F func,
-                std::string name,
-                vml::Tensor const& out_bp,
-                vml::Tensor const& filter,
-                vml::Tensor& in_bp,
-                std::vector<int> param, // stride[2], dilation[2], padding[2]
-                int data_format,
-                int data_type) : Bench(name), func_(func) {
       assert(data_format == FORMAT_NCHW);
-      args_.out_bp = out_bp.addr;
-      args_.filter = filter.addr;
-      args_.in_bp = in_bp.addr;
-      args_.out_bp_param = nchw(out_bp);
-      args_.filter_param = nchw(filter);
-      args_.in_bp_param = nchw(in_bp);
-      args_.row_stride = param[0];
-      args_.col_stride = param[1];
-      args_.row_dilation = param[2];
-      args_.col_dilation = param[3];
-      args_.row_padding = param[4];
-      args_.col_padding = param[5];
-      args_.data_format = data_format;
-      args_.data_type = data_type;
+      params_ = param;
+      params_.push_back(data_format);
     }
-
+  
     int validate(BenchOpts const&) override { return 1; }
 
     int run() override {
-      func_(&args_, sizeof(args_));
+      vml::conv2d(*in_, *filter_, *out_, params_);
       return 0;
     }
 
   private:
-    struct TensorParam {
-      int w,h,c,n ;
-    } ;
 
-    struct ConvParam {
-      uint64_t out_bp;
-      uint64_t filter;
-      uint64_t in_bp;
-      TensorParam out_bp_param;
-      TensorParam filter_param;
-      TensorParam in_bp_param;
-
-      int row_stride;
-      int col_stride;
-      int row_dilation;
-      int col_dilation;
-      int row_padding;
-      int col_padding;
-
-      int data_format;
-      int data_type;
-    };
-
-    TensorParam nchw(vml::Tensor const& t) {
-      int64_t const* d = t.dim_size;
-      TensorParam p = {(int)d[2], (int)d[3], (int)d[1], (int)d[0]};
-      return p;
-    }
-
-    ConvParam args_;
-    F func_;
+  vml::Tensor *in_;
+  vml::Tensor *filter_;
+  vml::Tensor *out_;
+  std::vector<int> params_;
+  int data_type_;
 };
 
-Bench* make_conv2d_bench(
-                         std::string name,
+Bench* make_conv2d_bench(std::string name,
                          std::vector<size_t> const& in_shape,
                          std::vector<size_t> const& filter_shape,
                          std::vector<size_t> const& out_shape,
@@ -1008,49 +930,86 @@ Bench* make_conv2d_bench(
   return new Conv2DBench(buf.str(), in, filter, out, param, data_format, data_type);
 }
 
-template <typename F>
-Bench* make_conv2d_backprop_bench(F func,
+void add_conv2d_bench(std::vector<Bench*>& v)
+{
+
+  // in, filter, out, {stride[2], dilation[2], padding[2]}
+  // conv2d
+#define F(...) v.push_back(make_conv2d_bench("Conv2D", __VA_ARGS__))
+  F({32, 256, 34, 34}, {512, 256, 4, 4}, {32, 512, 31, 31}, {1, 1, 1, 1, 0, 0});
+  F({32, 1024, 14, 14}, {2048, 1024, 1, 1}, {32, 2048, 7, 7}, {2, 2, 1, 1, 0, 0}
+#undef F
+); // ResNet50
+}
+
+class Conv2DBackpropInputBench : public Bench
+{
+  public:
+    Conv2DBackpropInputBench(std::string name,
+                vml::Tensor *out_bp,
+                vml::Tensor *filter,
+                vml::Tensor *in_bp,
+                std::vector<int> param, // stride[2], dilation[2], padding[2]
+                int data_format,
+                int data_type) : Bench(name),
+				 out_bp_(out_bp),
+				 filter_(filter),
+				 in_bp_(in_bp),
+				 data_type_(data_type) {
+
+      assert(data_format == FORMAT_NCHW);
+      params_ = param;
+      params_.push_back(data_format);
+
+    }
+  
+    int validate(BenchOpts const&) override { return 1; }
+
+    int run() override {
+      vml::conv2d_backprop_input(*out_bp_, *filter_, *in_bp_, params_);
+      return 0;
+    }
+
+  private:
+
+  vml::Tensor *out_bp_;
+  vml::Tensor *filter_;
+  vml::Tensor *in_bp_;
+  std::vector<int> params_;
+  int data_type_;
+};
+
+Bench* make_conv2d_backprop_input_bench(
                          std::string name,
-                         std::vector<size_t> const& in_shape,
-                         std::vector<size_t> const& filter_shape,
                          std::vector<size_t> const& out_shape,
+                         std::vector<size_t> const& filter_shape,
+                         std::vector<size_t> const& in_shape,
                          std::vector<int> param,
                          int data_format = FORMAT_NCHW,
                          int data_type = DT_FLOAT)
 {
-  vml::Tensor* in = createRandomTensor<float>(in_shape);
+  vml::Tensor* out_bp = createRandomTensor<float>(out_shape);
   vml::Tensor* filter = createRandomTensor<float>(filter_shape);
-  vml::Tensor* out = createRandomTensor<float>(out_shape);
+  vml::Tensor* in_bp = createRandomTensor<float>(in_shape);
 
   std::stringstream buf;
 
 #define S(t) (t).dim_size[0] << "x" << (t).dim_size[1] << "x" << (t).dim_size[2] << "x" << (t).dim_size[3]
-  buf << name << "-" << S(*in) << "-" << S(*filter) << "-" << S(*out)
+  buf << name << "-" << S(*out_bp) << "-" << S(*filter) << "-" << S(*in_bp)
     << "-" << param[0] << "x" << param[1]
     << "-" << param[2] << "x" << param[3]
     << "-" << param[4] << "x" << param[5]
     << "-" << data_format << "-" << data_type;
 
-  return new Conv2DBackPropBench<F>(func, buf.str(), *in, *filter, *out, param, data_format, data_type);
+  return new Conv2DBackpropInputBench(buf.str(), out_bp, filter, in_bp, param, data_format, data_type);
 }
 
-void add_conv2d_bench(std::vector<Bench*>& v)
+void add_conv2d_backprop_input_bench(std::vector<Bench*>& v)
 {
 
-  // in, filter, out, {stride[2], dilation[2], stride[2]}
-  // conv2d
-#define F(...) v.push_back(make_conv2d_bench("Conv2D", __VA_ARGS__))
-  F({32, 256, 34, 34}, {512, 256, 4, 4}, {32, 512, 31, 31}, {1, 1, 1, 1, 0, 0});
-  F({32, 1024, 14, 14}, {2048, 1024, 1, 1}, {32, 2048, 7, 7}, {2, 2, 1, 1, 0, 0}); // ResNet50
-#undef F
-}
-
-void add_conv2d_backprop_bench(std::vector<Bench*>& v)
-{
-  // in, filter, out, {stride[2], dilation[2], stride[2]}
-  
+  // out_bp, filter, in_bp, {stride[2], dilation[2], padding[2]}
   // conv2d_backprop_input
-#define F(...) v.push_back(make_conv2d_backprop_bench(conv2d_backprop_input, "Conv2DBackpropInput", __VA_ARGS__))
+#define F(...) v.push_back(make_conv2d_backprop_input_bench("Conv2DBackpropInput", __VA_ARGS__))
   F({32, 1024, 16, 16}, {1024, 256, 4, 4}, {32, 256, 32, 32}, {2, 2, 1, 1, 1, 1});
 #undef F
 }
@@ -1173,7 +1132,7 @@ int main(int argc, char* argv[])
 #ifdef USE_VEDNN
   if (!opt_validation_only){
     add_conv2d_bench(v);
-    add_conv2d_backprop_bench(v);
+    add_conv2d_backprop_input_bench(v);
   }
 #endif
 

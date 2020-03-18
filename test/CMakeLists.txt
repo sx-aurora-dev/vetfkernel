@@ -8,6 +8,7 @@ if (NOT X86)
 endif()
 
 #set(CMAKE_CXX_FLAGS "-D_DEBUG")
+set(CMAKE_CXX_FLAGS "-D_DEBUG -g")
 
 set(VEDNN_PATH ${CMAKE_SOURCE_DIR}/libs/vednn CACHE PATH "path to vednn")
 

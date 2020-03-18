@@ -43,7 +43,8 @@ endif()
 if (USE_VEDNN)
   target_sources(vml PRIVATE
     conv2d.cc
-    conv2d_backprop_filter.cc)
+    conv2d_backprop_filter.cc
+    conv2d_backprop_input.cc)
   target_link_libraries(vml PUBLIC vednn_openmp)
 endif()
 
