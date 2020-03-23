@@ -171,6 +171,20 @@ int conv2d_backprop_input(vml::Tensor const& out_bp,
 			  vml::Tensor const& in_bp,
 			  std::vector<int> params); // stride[W,H],dilation[W,H],padding[W,H],data_format
 
+// fused_batch_norm op
+int fused_batch_norm(vml::Tensor const& x_input,
+                     vml::Tensor const& scale_input,
+                     vml::Tensor const& offset_input,
+                     vml::Tensor const& estimated_mean_input,
+                     vml::Tensor const& estimated_variance_input,
+                     vml::Tensor const& y_output,
+                     vml::Tensor const& batch_mean_output,
+                     vml::Tensor const& saved_mean_output,
+                     vml::Tensor const& batch_var_output,
+                     vml::Tensor const& saved_var_output,
+                     float epsilon,
+                     bool is_training);
+
 int batch_matmul(vml::Tensor const & in_x,
                  vml::Tensor const & in_y,
                  vml::Tensor const & out,
