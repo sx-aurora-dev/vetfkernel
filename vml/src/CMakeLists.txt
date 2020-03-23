@@ -23,6 +23,7 @@ add_library(vml STATIC
   batch_matmul.cc
   biasAdd.cc
   binary_ops.cc
+  fused_batch_norm.cc
   pad.cc
   randomUniform.cc
   reduction.cc
