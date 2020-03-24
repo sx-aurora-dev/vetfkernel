@@ -8,6 +8,32 @@
 namespace {
 
 template <typename T>
+void Operate1(
+	      vml::Tensor const& input,
+	      int32_t *paddings,
+	      T pad_value,
+	      vml::Tensor const* output
+	      )
+{
+  int64_t i0_sz = input.dim_size[0];
+  int64_t i0_ps = paddings[0];       // padding low-side size for 1-dim
+  int64_t o0_sz = output->dim_size[0];
+
+
+  for (int64_t i = 0; i < output->nelems; i++ ) { // initialize
+    (reinterpret_cast<T *>(output->addr))[i] = pad_value;
+  }
+  for (int64_t i0 = 0; i0 < i0_sz; i0++) {
+
+      int64_t inidx  = i0 ;
+      int64_t outidx = i0+i0_ps ;
+
+      (reinterpret_cast<T *>(output->addr))[outidx]
+	= (reinterpret_cast<T *>(input.addr))[inidx];
+  }
+}
+
+template <typename T>
 void Operate2(
 	      vml::Tensor const& input,
 	      int32_t *paddings,
@@ -90,9 +116,52 @@ void Operate3(
   }
 }
 
+template <typename T>
+void Operate4(
+	      vml::Tensor const& input,
+	      int32_t *paddings,
+	      T pad_value,
+	      vml::Tensor const* output
+	      )
+{
+  int64_t i0 = input.dim_size[0];
+  int64_t i1 = input.dim_size[1];
+  int64_t i2 = input.dim_size[2];
+  int64_t i3 = input.dim_size[3];
+  int64_t p0 = paddings[0];          // padding low-side size for 1-dim
+  int64_t p1 = paddings[2];          //                           2-dim
+  int64_t p2 = paddings[4];          //                           3-dim
+  int64_t p3 = paddings[6];          //                           4-dim
+  int64_t o0 = output->dim_size[0];
+  int64_t o1 = output->dim_size[1];
+  int64_t o2 = output->dim_size[2];
+  int64_t o3 = output->dim_size[3];
+
+
+#pragma _NEC ivdep
+  for (int64_t i = 0; i < output->nelems; i++ ) { // initialize
+    (reinterpret_cast<T *>(output->addr))[i] = pad_value;
+  }
+
+  for (int64_t d0 = 0; d0 < i0; d0++) {
+    for (int64_t d1 = 0; d1 < i1; d1++) {
+      for (int64_t d2 = 0; d2 < i2; d2++) {
+	for (int64_t d3 = 0; d3 < i3; d3++) {
+
+	  int64_t inidx  = ((d0*i1+d1)*i2+d2)*i3+d3;
+	  int64_t outidx = (((d0+p0)*o1 +(d1+p1))*o2 +(d2+p2))*o3+(d3+p3);
+
+	  (reinterpret_cast<T *>(output->addr))[outidx]
+	    = (reinterpret_cast<T *>(input.addr))[inidx];
+	}
+      }
+    }
+  }
+}
+
 
 template <typename T>
-void Operate(
+int Operate(
 	     vml::Tensor const& input,
 	     int32_t *paddings,
 	     T pad_value,
@@ -114,21 +183,22 @@ void Operate(
 #endif
 
 
-#define CALLOPN(D)				\
-  case D:								\
-  {									\
-    Operate ## D<T>(input, paddings, pad_value, output);		\
-    break;								\
+#define CALLOPN(D)						\
+  case D:							\
+  {								\
+    Operate ## D<T>(input, paddings, pad_value, output);	\
+    return 0 ;							\
   }
   switch(input.dims) {
+  CALLOPN(1);
   CALLOPN(2);
   CALLOPN(3);
+  CALLOPN(4);
   default:
-      LOG(LOG_ERROR) << __FUNCTION__ << ": Not supported dimension(only 2 or 3). Dim is "
+      LOG(LOG_ERROR) << __FUNCTION__ << ": Not supported dimension. Dim is "
 		     << input.dims;
-      break;
+      return 1 ;
   }
-#undef CALLOPN
 }
 } // namespace
 
@@ -142,10 +212,10 @@ int vml::pad(
 {
   LOG(LOG_TRACE) << __FUNCTION__ << "(float): begin";
 
-  Operate<float>(in, padding, pad_value, &out);
+  int rc = Operate<float>(in, padding, pad_value, &out);
 
   LOG(LOG_TRACE) << __FUNCTION__ << ": end, ret = " << 0;
-  return 0;
+  return rc ;
 }
 
 //  pad for double
@@ -158,8 +228,8 @@ int vml::pad(
 {
   LOG(LOG_TRACE) << __FUNCTION__ << "(double): begin";
 
-  Operate<double>(in, padding, pad_value, &out);
+  int rc = Operate<double>(in, padding, pad_value, &out);
 
   LOG(LOG_TRACE) << __FUNCTION__ << ": end, ret = " << 0;
-  return 0;
+  return rc ;
 }
