@@ -92,7 +92,7 @@ void Operate3(
 
 
 template <typename T>
-void Operate(
+int Operate(
 	     vml::Tensor const& input,
 	     int32_t *paddings,
 	     T pad_value,
@@ -114,11 +114,11 @@ void Operate(
 #endif
 
 
-#define CALLOPN(D)				\
-  case D:								\
-  {									\
-    Operate ## D<T>(input, paddings, pad_value, output);		\
-    break;								\
+#define CALLOPN(D)						\
+  case D:							\
+  {								\
+    Operate ## D<T>(input, paddings, pad_value, output);	\
+    return 0 ;							\
   }
   switch(input.dims) {
   CALLOPN(2);
@@ -126,9 +126,8 @@ void Operate(
   default:
       LOG(LOG_ERROR) << __FUNCTION__ << ": Not supported dimension(only 2 or 3). Dim is "
 		     << input.dims;
-      break;
+      return 1 ;
   }
-#undef CALLOPN
 }
 } // namespace
 
@@ -142,10 +141,10 @@ int vml::pad(
 {
   LOG(LOG_TRACE) << __FUNCTION__ << "(float): begin";
 
-  Operate<float>(in, padding, pad_value, &out);
+  int rc = Operate<float>(in, padding, pad_value, &out);
 
   LOG(LOG_TRACE) << __FUNCTION__ << ": end, ret = " << 0;
-  return 0;
+  return rc ;
 }
 
 //  pad for double
@@ -158,8 +157,8 @@ int vml::pad(
 {
   LOG(LOG_TRACE) << __FUNCTION__ << "(double): begin";
 
-  Operate<double>(in, padding, pad_value, &out);
+  int rc = Operate<double>(in, padding, pad_value, &out);
 
   LOG(LOG_TRACE) << __FUNCTION__ << ": end, ret = " << 0;
-  return 0;
+  return rc ;
 }
