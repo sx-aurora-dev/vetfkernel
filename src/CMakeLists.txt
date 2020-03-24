@@ -55,7 +55,6 @@ if (USE_VEDNN)
     conv2d_backprop_input.cc
     depthwise_conv.cc
     maxpooling.cc
-    maxpooling_backprop.cc
     )
   target_compile_definitions(vetfkernel PRIVATE USE_VEDNN)
   target_link_libraries(vetfkernel PRIVATE vednn_openmp)
