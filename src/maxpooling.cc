@@ -1,106 +1,177 @@
-#include <cstdio>
 #include <cstdint>
-#include <cstring>
-#include <cassert>
-
-#include <stdlib.h>
+#include "ve_ops_common.h"
+#include "vml.h"
+#include "vml/types.h"
 
 #include <vednn.h>
 
-#include "kernel.h"
-#include "vml/log.h"
+namespace {
 
-REGISTER_KERNEL("MaxPooling", "maxpooling");
-
-extern "C" {
-    int maxpooling(const void* arg, size_t len);
-}
-
-struct TensorParam {
-    int w,h,c,n ;
-} ;
-
-struct PoolingParam {
-    uint64_t in;
-    uint64_t out;
-    TensorParam in_param;
-    TensorParam out_param;
-
-    int row_window;
-    int col_window;
-    int row_stride;
-    int col_stride;
-    int row_padding;
-    int col_padding;
-
-    int data_format;
-    int data_type;
-};
-
-int maxpooling(const void* arg, size_t len)
+int op_maxpool(const VEOpArgs& args)
 {
-    LOG(LOG_TRACE) << __FUNCTION__ << " begin";
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
 
-#ifdef _DEBUG
-    fprintf(stderr, "[start]maxpooling\n");
+  int ret = 1;
+
+  if (args.nArguments() != 8) {
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nArguments should be 8. But "
+        << args.nArguments();
+    goto error_exit;
+  }
+
+  {
+    // dimensions are checked in TF
+    vml::Tensor const* input  = args.arg<vml::Tensor>(0); // NCHW Tensor
+    vml::Tensor const* output = args.arg<vml::Tensor>(1); // NCHW Tensor
+
+    const int64_t row_window  = *args.arg<int64_t>(2) ;
+    const int64_t col_window  = *args.arg<int64_t>(3) ;
+    const int64_t row_stride  = *args.arg<int64_t>(4) ;
+    const int64_t col_stride  = *args.arg<int64_t>(5) ;
+    const int64_t row_padding = *args.arg<int64_t>(6) ;
+    const int64_t col_padding = *args.arg<int64_t>(7) ;
+
+#if 0
+    const int data_layout     = *args.arg<int>(8) ;	// currently support NCHW only.
 #endif
-    assert(len == sizeof(PoolingParam));
-    const PoolingParam& p = *(PoolingParam*)arg;
 
-    LOG(LOG_PARAM) << __FUNCTION__ << ": dtype=" << p.data_type << " dformat=" << p.data_format;
+#define PT(T) \
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << *T
 
-#ifdef _DEBUG
-    fprintf(stderr, "maxpooling: data_format=%d data_type=%d\n", p.data_format, p.data_type);
-    // assert(p.data_type   == 1 ) ; // float
-    // assert(p.data_format == 1 ) ; // NHWC
+    PT(input) ;
+    PT(output) ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": window="  << row_window  << "x" << col_window ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": stride="  << row_stride  << "x" << col_stride ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": padding=" << row_padding << "x" << col_padding ;
 
-    fprintf(stderr, "maxpooling: input   (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.in_param.n, p.in_param.c, p.in_param.h, p.in_param.w ) ;
-    fprintf(stderr, "maxpooling: outnput (N,C,H,W) = (%d,%d,%d,%d)\n",
-            p.out_param.n, p.out_param.c, p.out_param.h, p.out_param.w ) ;
-    
-    fprintf(stderr, "maxpooling: window=%dx%d stride=%dx%d, padding=%dx%d\n",
-            p.col_window,   p.row_window,
-            p.col_stride,   p.row_stride,
-            p.col_padding,  p.row_padding );
-#endif
-     
+    if( input->dtype == DT_FLOAT )
     {
-      void *pIn     = (void *) p.in ;
-      void *pOut    = (void *) p.out ;
-    
+      void *pIn       = (void *) input->addr ;
+      void *pOut      = (void *) output->addr ;
+
       vednnTensorParam_t ParamIn ;
       vednnTensorParam_t ParamOut ;
 
       vednnPoolingParam_t ParamPool ;
 
       ParamIn.dtype   = DTYPE_FLOAT ;
-      ParamIn.batch   = p.in_param.n ;
-      ParamIn.channel = p.in_param.c ;
-      ParamIn.height  = p.in_param.h ;
-      ParamIn.width   = p.in_param.w ;
+      ParamIn.batch   = input->dim_size[0] ;
+      ParamIn.channel = input->dim_size[1] ;
+      ParamIn.height  = input->dim_size[2] ;
+      ParamIn.width   = input->dim_size[3] ;
 
       ParamOut.dtype   = DTYPE_FLOAT ;
-      ParamOut.batch   = p.out_param.n ;
-      ParamOut.channel = p.out_param.c ;
-      ParamOut.width   = p.out_param.w ;
-      ParamOut.height  = p.out_param.h ;
+      ParamOut.batch   = output->dim_size[0] ;
+      ParamOut.channel = output->dim_size[1] ;
+      ParamOut.height  = output->dim_size[2] ;
+      ParamOut.width   = output->dim_size[3] ;
 
-      ParamPool.windowWidth  = p.col_window ; 
-      ParamPool.windowHeight = p.row_window ; 
-      ParamPool.strideWidth  = p.col_stride ; 
-      ParamPool.strideHeight = p.row_stride ; 
-      ParamPool.padWidth     = p.col_padding ;
-      ParamPool.padHeight    = p.row_padding ;
+      ParamPool.windowWidth  = col_window ;
+      ParamPool.windowHeight = row_window ;
+      ParamPool.strideWidth  = col_stride ;
+      ParamPool.strideHeight = row_stride ;
+      ParamPool.padWidth     = col_padding ;
+      ParamPool.padHeight    = row_padding ;
 
-      vednnMaxPoolingForward(&ParamIn,     pIn,
-                       	     &ParamOut,    pOut, 
-                     	     &ParamPool ) ;
+      ret = vednnMaxPoolingForward(&ParamIn,     pIn,
+	                           &ParamOut,    pOut,
+                     	           &ParamPool ) ;
     }
+  }
 
-#ifdef _DEBUG
-    fprintf(stderr, "[end]maxpooling\n");
-#endif
-    LOG(LOG_TRACE) << __FUNCTION__ << " end. ret=0";
-    return 0;
+error_exit:
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
+  return ret;
 }
+
+
+int op_maxpoolgrad(const VEOpArgs& args)
+{
+  LOG(LOG_TRACE) << __FUNCTION__ << ": begin";
+  //LOG(LOG_PARAM) << __FUNCTION__ << ": args.nArguments=" << args.nArguments();
+
+  int ret = 1;
+
+  if (args.nArguments() != 10) {
+    LOG(LOG_ERROR) << __FUNCTION__ << ": nArguments should be 8. But "
+        << args.nArguments();
+    goto error_exit;
+  }
+
+  {
+    // dimensions are checked in TF
+    vml::Tensor const* output_bp = args.arg<vml::Tensor>(0); // NCHW Tensor
+    vml::Tensor const* output    = args.arg<vml::Tensor>(1);   // NCHW Tensor
+    vml::Tensor const* input     = args.arg<vml::Tensor>(2);    // NCHW Tensor
+    vml::Tensor const* input_bp  = args.arg<vml::Tensor>(3);    // NCHW Tensor
+
+    const int64_t row_window  = *args.arg<int64_t>(4) ;
+    const int64_t col_window  = *args.arg<int64_t>(5) ;
+    const int64_t row_stride  = *args.arg<int64_t>(6) ;
+    const int64_t col_stride  = *args.arg<int64_t>(7) ;
+    const int64_t row_padding = *args.arg<int64_t>(8) ;
+    const int64_t col_padding = *args.arg<int64_t>(9) ;
+
+#if 0
+    const int data_layout     = *args.arg<int>(10) ;	// currently support NCHW only.
+#endif
+
+#define PT(T) \
+    LOG(LOG_PARAM) << __FUNCTION__ << ": " #T "=" << *T
+
+    PT(input) ;
+    PT(output) ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": window="  << row_window  << "x" << col_window ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": stride="  << row_stride  << "x" << col_stride ;
+    LOG(LOG_PARAM) << __FUNCTION__ << ": padding=" << row_padding << "x" << col_padding ;
+
+    if( input->dtype == DT_FLOAT )
+    {
+      void *pGradOut  = (void *) output_bp->addr ;
+      void *pOut      = (void *) output->addr ;
+      void *pIn       = (void *) input->addr ;
+      void *pGradIn   = (void *) input_bp->addr ;
+
+      vednnTensorParam_t ParamGradOut ;
+      vednnTensorParam_t ParamOut ;
+      vednnTensorParam_t ParamIn ;
+      vednnTensorParam_t ParamGradIn ;
+
+      vednnPoolingParam_t ParamPool ;
+
+      ParamGradOut.dtype   = ParamOut.dtype   = DTYPE_FLOAT ;
+      ParamGradOut.batch   = ParamOut.batch   = output->dim_size[0] ;
+      ParamGradOut.channel = ParamOut.channel = output->dim_size[1] ;
+      ParamGradOut.height  = ParamOut.height  = output->dim_size[2] ;
+      ParamGradOut.width   = ParamOut.width   = output->dim_size[3] ;
+
+      ParamGradIn.dtype   = ParamIn.dtype   = DTYPE_FLOAT ;
+      ParamGradIn.batch   = ParamIn.batch   = input->dim_size[0] ;
+      ParamGradIn.channel = ParamIn.channel = input->dim_size[1] ;
+      ParamGradIn.height  = ParamIn.height  = input->dim_size[2] ;
+      ParamGradIn.width   = ParamIn.width   = input->dim_size[3] ;
+
+      ParamPool.windowWidth  = col_window ;
+      ParamPool.windowHeight = row_window ;
+      ParamPool.strideWidth  = col_stride ;
+      ParamPool.strideHeight = row_stride ;
+      ParamPool.padWidth     = col_padding ;
+      ParamPool.padHeight    = row_padding ;
+
+      ret = vednnMaxPoolingBackward(&ParamGradOut,   pGradOut,
+                       	            &ParamOut,       pOut,
+                                    &ParamIn,        pIn,
+                       	            &ParamGradIn,    pGradIn,
+                     	            &ParamPool ) ;
+    }
+  }
+
+error_exit:
+  LOG(LOG_TRACE) << __FUNCTION__ << ": end";
+  return ret;
+}
+} // namespace
+
+DEFINE_KERNEL(MaxPool, op_maxpool);
+DEFINE_KERNEL(MaxPoolGrad, op_maxpoolgrad);
